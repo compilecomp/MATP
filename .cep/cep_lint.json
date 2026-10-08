@@ -1,0 +1,156 @@
+{
+  "standard": {
+    "version": "0.1",
+    "doc_path": "standard.md"
+  },
+  "fail_on": [0, 1],
+  "extensions": [".rs", ".cpp", ".hpp", ".h", ".cc", ".c", ".py"],
+  "hot_classes": ["CEP-0", "HPC-0", "RCS-0"],
+  "rules": {
+    "CEP-LINT-FILE-HEADER": {
+      "severity": 1,
+      "check": "comment_block_schema",
+      "mode": "file_header",
+      "max_start_line": 1,
+      "required_fields": ["FILE", "WHAT", "WHY", "CLASS", "STATUS", "FAILURE", "ASSUMES", "COST", "EVIDENCE"],
+      "class_field": "CEP:CLASS:",
+      "allowed_classes": ["CEP-0", "CEP-1", "CEP-2", "CC", "FFI", "HPC-0", "HPC-1", "HPC-2", "RCS-0", "RCS-1", "RCS-2"],
+      "note": "Every first-party source file begins with a CEP file header block (CEP&CC 35)."
+    },
+    "CEP-LINT-FUNC-BLOCK": {
+      "severity": 1,
+      "check": "function_policy",
+      "mode": "block",
+      "required_fields": ["WHAT", "WHY", "STATUS", "FAILURE", "ASSUMES", "COST", "EVIDENCE"],
+      "min_body_statements": 2,
+      "note": "Nontrivial functions carry a full CEP comment block (CEP&CC 10.2)."
+    },
+    "CEP-LINT-STATUS-VALUE": {
+      "severity": 2,
+      "check": "comment_block_schema",
+      "mode": "status_value",
+      "status_field": "STATUS",
+      "allowed_values": ["complete", "partial", "stub", "placeholder"],
+      "note": "Status vocabulary from CEP&CC 10.5."
+    },
+    "CEP-LINT-TODO-OWNER": {
+      "severity": 1,
+      "check": "comment_regex",
+      "pattern": "\\b(TODO|FIXME|XXX|HACK)\\b",
+      "icase": true,
+      "suppression_pattern": "CEP:TODO\\(",
+      "note": "Anonymous work markers are banned (CEP&CC 10.10)."
+    },
+    "CEP-LINT-STUB-DECL": {
+      "severity": 1,
+      "check": "comment_block_schema",
+      "mode": "stub_requirements",
+      "statuses": ["stub", "partial", "placeholder"],
+      "required_fields": ["OWNER", "TICKET"],
+      "note": "Unowned stubs and placeholders are banned (CEP&CC 10.10)."
+    },
+    "CEP-LINT-PLACEHOLDER-COMMENT": {
+      "severity": 1,
+      "check": "comment_regex",
+      "pattern": "\\b(not implemented|unimplemented|placeholder|fixme|tbd|wip)\\b",
+      "icase": true,
+      "suppression_pattern": "^[#/]+\\s*CEP:",
+      "note": "Marker text in comments is a violation unless it is a CEP field line (CEP&CC 50.3)."
+    },
+    "CEP-LINT-PLACEHOLDER-TEXT": {
+      "severity": 1,
+      "check": "string_literal_regex",
+      "pattern": "\\b(not implemented|unimplemented|placeholder|fixme|tbd|wip)\\b",
+      "icase": true,
+      "note": "Placeholders must fail loudly, not leak into runtime messages (CEP&CC 50.3)."
+    },
+    "CEP-LINT-MAGIC-NUMBER": {
+      "severity": 2,
+      "check": "numeric_literal_policy",
+      "allowed_values": [0, 1],
+      "exempt_contexts": ["const", "static", "enum", "assert", "#"],
+      "note": "Magic numbers outside sanctioned contexts (CEP&CC Law 7, 11.1-11.3); severity 2 per 50.3."
+    },
+    "CEP-LINT-MACRO-PREFIX": {
+      "severity": 2,
+      "check": "macro_prefix_policy",
+      "name_pattern": "^CEP_[A-Z0-9_]+$",
+      "guard_pattern": "^[A-Z0-9_]+_(H|HPP|H|h|hpp)$",
+      "note": "Macro naming from CEP&CC 33.16; function-like macros are review-enforced (50.3 limits)."
+    },
+    "CEP-LINT-HOT-BANNED": {
+      "severity": 0,
+      "check": "banned_token_policy",
+      "applies_to_classes": ["CEP-0", "HPC-0", "RCS-0"],
+      "tokens": [
+        "std::vector", "std::string", "std::list", "std::map", "std::set",
+        "std::unordered_map", "std::unordered_set", "std::function", "std::any",
+        "std::shared_ptr", "std::weak_ptr", "std::bind", "std::regex", "std::format",
+        "std::print", "std::println", "std::cout", "std::cerr", "std::cin",
+        "std::filesystem", "std::mutex", "std::lock_guard", "std::thread", "std::async",
+        "std::sort", "std::stable_sort", "dynamic_cast", "typeid", "virtual",
+        "co_await", "co_yield", "co_return", "malloc", "calloc", "realloc",
+        "printf", "fprintf", "sprintf",
+        "Vec", "String", "Box", "Rc", "Arc", "Mutex", "RwLock",
+        "format!", "println!", "eprintln!", "panic!", "todo!", "unimplemented!",
+        "unreachable!", "catch_unwind", "thread::spawn", "dyn ", "async ", "std::", "alloc::"
+      ],
+      "note": "CEP&CC 25.3 and 9.2 ban lists for Rust and C++ hot files; bare 'new'/'delete'/'free'/'throw'/'try'/'catch' are C++-only tokens omitted here because Rust method names like ::new would produce false positives; allocation and runtime bans are covered by the container, formatting, and runtime tokens."
+    },
+    "CEP-LINT-STUB-BODY": {
+      "severity": 1,
+      "check": "function_policy",
+      "mode": "stub_body",
+      "suppress_statuses": ["stub", "partial", "placeholder"],
+      "suppress_status_field": "STATUS",
+      "note": "Empty bodies without a declared status are violations (CEP&CC 50.3)."
+    },
+    "CEP-LINT-EMPTY-CATCH": {
+      "severity": 1,
+      "check": "flat_code_regex",
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "note": "Empty handlers are violations (CEP&CC Law 6, 12.2)."
+    },
+    "CEP-LINT-EMPTY-BRANCH": {
+      "severity": 2,
+      "check": "flat_code_regex",
+      "pattern": "\\b(if|else|for|while|do|switch|try)\\b[^{;()]*\\{\\s*\\}",
+      "note": "Empty branches do nothing (CEP&CC 14.5)."
+    },
+    "CEP-LINT-CONSTANT-RETURN": {
+      "severity": 2,
+      "check": "function_policy",
+      "mode": "constant_return",
+      "note": "Single constant returns are not computed from inputs (CEP&CC 14.5)."
+    },
+    "CEP-LINT-NAMING-TYPE": {
+      "severity": 2,
+      "check": "naming_type",
+      "name_pattern": "^[A-Z][A-Za-z0-9]*$",
+      "note": "Type names are PascalCase without underscores (CEP&CC 33.11)."
+    },
+    "CEP-LINT-NAMING-FUNC": {
+      "severity": 2,
+      "check": "function_policy",
+      "mode": "naming",
+      "name_pattern": "^[a-z][a-z0-9_]*$",
+      "note": "Function names are snake_case (CEP&CC 33.13)."
+    },
+    "CEP-LINT-COMMENTED-CODE": {
+      "severity": 2,
+      "check": "comment_regex",
+      "pattern": "(let|return|fn|use|pub fn|const|int|auto|double|float|char|bool)\\b[^/]*;\\s*$",
+      "icase": false,
+      "suppression_pattern": "CEP:",
+      "note": "Commented-out code is banned; version control is used instead (CEP&CC 10.14)."
+    },
+    "CEP-LINT-DOC-SYNC": {
+      "severity": 1,
+      "check": "doc_rule_coverage",
+      "doc_path": "standard.md",
+      "heading_pattern": "^### Rule (CEP-LINT-[A-Z0-9-]+)",
+      "version_pattern": "^Version: \\*\\*(.+)\\*\\*$",
+      "note": "The standard document and this configuration must agree (CEP&CC 50.3, Law 8)."
+    }
+  }
+}

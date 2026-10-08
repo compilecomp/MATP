@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0003",
+  "name": "clause_new_3lit",
+  "iterations": 200000,
+  "cycles_median": 20.36055,
+  "cycles_min": 20.13857,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1791490685
+}

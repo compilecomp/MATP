@@ -1,0 +1,15 @@
+# CEP:FILE: rust-toolchain.toml
+# CEP:WHAT: Pins the Rust toolchain for the repository.
+# CEP:WHY: The compiler is part of the trusted computing base (CEP&CC 22.12); pinning guarantees deterministic, reproducible builds (CEP&CC 6.5).
+# CEP:CLASS: CEP-1
+# CEP:STATUS: complete
+# CEP:FAILURE: rustup fails if the channel is unavailable; no silent fallback is permitted.
+# CEP:ASSUMES: Contributors install rustup; CI uses the same file.
+# CEP:COST: offline manifest; runtime cost irrelevant.
+# CEP:EVIDENCE: CI job rust-checks runs under this pinned toolchain.
+# CEP:SECURITY: Prevents toolchain drift between machines and CI.
+
+[toolchain]
+channel = "1.99.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

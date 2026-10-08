@@ -1,0 +1,213 @@
+{
+  "scenarios": [
+    {
+      "name": "clean_control_rust",
+      "files": {
+        "clean.rs": "// CEP:FILE: clean.rs\n// CEP:WHAT: Clean control file.\n// CEP:WHY: Proves the primitives produce zero findings on compliant input.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Adds two.\n// CEP:WHY: Sample function.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn add_two(value: u32) -> u32 {\n    let first = value + 1;\n    let second = first + 1;\n    second\n}\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "name": "file_header_missing",
+      "files": {
+        "no_header.rs": "pub fn stray() { let unused = 1; }\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-FILE-HEADER", "count": 1 }
+      ]
+    },
+    {
+      "name": "file_header_incomplete",
+      "files": {
+        "partial_header.rs": "// CEP:FILE: partial_header.rs\n// CEP:WHAT: Incomplete header.\n// CEP:WHY: Missing fields must be reported.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-FILE-HEADER", "count": 4 }
+      ]
+    },
+    {
+      "name": "file_header_bad_class",
+      "files": {
+        "bad_class.rs": "// CEP:FILE: bad_class.rs\n// CEP:WHAT: Bad class.\n// CEP:WHY: Class validation.\n// CEP:CLASS: CEP-99\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-FILE-HEADER", "count": 1 }
+      ]
+    },
+    {
+      "name": "func_block_missing",
+      "files": {
+        "no_block.rs": "// CEP:FILE: no_block.rs\n// CEP:WHAT: Missing function block.\n// CEP:WHY: Detection.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn compute(value: u32) -> u32 {\n    let first = value + 1;\n    let second = first + 1;\n    second\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-FUNC-BLOCK", "count": 1 }
+      ]
+    },
+    {
+      "name": "func_block_incomplete",
+      "files": {
+        "partial_block.rs": "// CEP:FILE: partial_block.rs\n// CEP:WHAT: Incomplete function block.\n// CEP:WHY: Field detection.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Adds two.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\npub fn add_two(value: u32) -> u32 {\n    let first = value + 1;\n    let second = first + 1;\n    second\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-FUNC-BLOCK", "count": 4 }
+      ]
+    },
+    {
+      "name": "status_value_invalid",
+      "files": {
+        "bad_status.rs": "// CEP:FILE: bad_status.rs\n// CEP:WHAT: Invalid status.\n// CEP:WHY: Vocabulary enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: done\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-STATUS-VALUE", "count": 1 }
+      ]
+    },
+    {
+      "name": "todo_owner_missing",
+      "files": {
+        "marker.rs": "// CEP:FILE: marker.rs\n// CEP:WHAT: Marker comment.\n// CEP:WHY: Marker enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n// TODO: fix this later\n// CEP:TODO(alice): CEP-512: sanctioned form is allowed\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-TODO-OWNER", "count": 1 }
+      ]
+    },
+    {
+      "name": "stub_decl_missing_owner",
+      "files": {
+        "stub.rs": "// CEP:FILE: stub.rs\n// CEP:WHAT: Unowned stub.\n// CEP:WHY: Ownership enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Stub function.\n// CEP:WHY: Sample.\n// CEP:STATUS: stub\n// CEP:FAILURE: debug assertion fires.\npub fn stubbed(value: u32) -> u32 {\n    value\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-STUB-DECL", "count": 2 }
+      ]
+    },
+    {
+      "name": "stub_decl_owned_is_clean",
+      "files": {
+        "owned_stub.rs": "// CEP:FILE: owned_stub.rs\n// CEP:WHAT: Owned stub.\n// CEP:WHY: Sanctioned form.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Stub function.\n// CEP:WHY: Sample.\n// CEP:STATUS: stub\n// CEP:FAILURE: debug assertion fires.\n// CEP:OWNER: alice\n// CEP:TICKET: CEP-512\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: ticket CEP-512.\npub fn stubbed(value: u32) -> u32 {\n    value\n}\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "name": "placeholder_comment",
+      "files": {
+        "placeholder.rs": "// CEP:FILE: placeholder.rs\n// CEP:WHAT: Placeholder marker.\n// CEP:WHY: Marker enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n// this is not implemented yet\n// CEP:STATUS: placeholder is a field line and suppressed\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-PLACEHOLDER-COMMENT", "count": 1 }
+      ]
+    },
+    {
+      "name": "placeholder_text",
+      "files": {
+        "message.rs": "// CEP:FILE: message.rs\n// CEP:WHAT: Placeholder in a string.\n// CEP:WHY: Runtime message enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Builds a message.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn message() -> &'static str {\n    let text = \"fixme later\";\n    text\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-PLACEHOLDER-TEXT", "count": 1 }
+      ]
+    },
+    {
+      "name": "magic_number",
+      "files": {
+        "magic.rs": "// CEP:FILE: magic.rs\n// CEP:WHAT: Magic number.\n// CEP:WHY: Sanctioned-context enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Computes a size.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn size() -> u32 {\n    let raw = 4096;\n    let adjusted = raw + 1;\n    adjusted\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-MAGIC-NUMBER", "count": 1 }
+      ]
+    },
+    {
+      "name": "magic_number_const_is_clean",
+      "files": {
+        "constant.rs": "// CEP:FILE: constant.rs\n// CEP:WHAT: Sanctioned constant.\n// CEP:WHY: Const declarations are exempt.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub const kPageSize: u32 = 4096;\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "name": "macro_prefix",
+      "files": {
+        "macro.cpp": "// CEP:FILE: macro.cpp\n// CEP:WHAT: Macro naming.\n// CEP:WHY: Prefix enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n#define MAX_SIZE 4096\n#define CEP_LIMIT_MAX_SIZE 4096\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-MACRO-PREFIX", "count": 1 }
+      ]
+    },
+    {
+      "name": "hot_banned_rust",
+      "files": {
+        "hot.rs": "// CEP:FILE: hot.rs\n// CEP:WHAT: Banned tokens in a hot file.\n// CEP:WHY: Hot-path ban enforcement.\n// CEP:CLASS: CEP-0\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Allocates.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn allocate() -> u32 {\n    let buffer = Vec::new();\n    buffer.len() as u32\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-HOT-BANNED", "count": 1 }
+      ]
+    },
+    {
+      "name": "hot_banned_cold_file_is_clean",
+      "files": {
+        "cold.rs": "// CEP:FILE: cold.rs\n// CEP:WHAT: Same tokens in a cold file.\n// CEP:WHY: Class scoping.\n// CEP:CLASS: CEP-1\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Allocates.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn allocate() -> u32 {\n    let buffer = Vec::new();\n    buffer.len() as u32\n}\n"
+      },
+      "expected_findings": []
+    },
+    {
+      "name": "stub_body",
+      "files": {
+        "empty_body.rs": "// CEP:FILE: empty_body.rs\n// CEP:WHAT: Empty body without status.\n// CEP:WHY: Stub-body enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Does nothing.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn nothing() {}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-STUB-BODY", "count": 1 }
+      ]
+    },
+    {
+      "name": "empty_catch",
+      "files": {
+        "handler.cpp": "// CEP:FILE: handler.cpp\n// CEP:WHAT: Empty catch handler.\n// CEP:WHY: Handler enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Runs the handler.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\nvoid run() {\n    try { } catch (const int&) { }\n    int done = 1;\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-EMPTY-CATCH", "count": 1 },
+        { "rule": "CEP-LINT-EMPTY-BRANCH", "count": 1 }
+      ]
+    },
+    {
+      "name": "constant_return",
+      "files": {
+        "constant_return.cpp": "// CEP:FILE: constant_return.cpp\n// CEP:WHAT: Constant return.\n// CEP:WHY: Computation enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Returns a constant.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\nbool ready() {\n    return true;\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-CONSTANT-RETURN", "count": 1 }
+      ]
+    },
+    {
+      "name": "naming_type",
+      "files": {
+        "naming.rs": "// CEP:FILE: naming.rs\n// CEP:WHAT: Type naming.\n// CEP:WHY: PascalCase enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub struct bad_type_name {\n    pub field: u32,\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-NAMING-TYPE", "count": 1 }
+      ]
+    },
+    {
+      "name": "naming_func",
+      "files": {
+        "naming_func.rs": "// CEP:FILE: naming_func.rs\n// CEP:WHAT: Function naming.\n// CEP:WHY: snake_case enforcement.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n\n// CEP:WHAT: Adds two.\n// CEP:WHY: Sample.\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\npub fn AddTwo(value: u32) -> u32 {\n    let first = value + 1;\n    let second = first + 1;\n    second\n}\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-NAMING-FUNC", "count": 1 }
+      ]
+    },
+    {
+      "name": "commented_code",
+      "files": {
+        "commented.rs": "// CEP:FILE: commented.rs\n// CEP:WHAT: Commented-out code.\n// CEP:WHY: Version control is used instead.\n// CEP:CLASS: CEP-2\n// CEP:STATUS: complete\n// CEP:FAILURE: none.\n// CEP:ASSUMES: none.\n// CEP:COST: constant.\n// CEP:EVIDENCE: self-test.\n// let old_value = 4096;\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-COMMENTED-CODE", "count": 1 }
+      ]
+    },
+    {
+      "name": "python_headers",
+      "files": {
+        "sample.py": "# CEP:FILE: sample.py\n# CEP:WHAT: Python clean control.\n# CEP:WHY: Python comment markers.\n# CEP:CLASS: CEP-2\n# CEP:STATUS: complete\n# CEP:FAILURE: none.\n# CEP:ASSUMES: none.\n# CEP:COST: constant.\n# CEP:EVIDENCE: self-test.\n# TODO: anonymous marker must still be found\n"
+      },
+      "expected_findings": [
+        { "rule": "CEP-LINT-TODO-OWNER", "count": 1 }
+      ]
+    }
+  ]
+}

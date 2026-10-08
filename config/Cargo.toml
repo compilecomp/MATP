@@ -1,0 +1,28 @@
+# CEP:FILE: config/Cargo.toml
+# CEP:WHAT: Package manifest for the mapt-config crate: named target and limit constants for all MAPT engines.
+# CEP:WHY: Centralizes every constant so no hot or cold module defines magic numbers (CEP&CC Law 7, 11.3, 32.11); feature flags select the target configuration at build time (CEP&CC 6.2).
+# CEP:CLASS: CEP-1
+# CEP:STATUS: complete
+# CEP:FAILURE: Cargo fails at parse time if this file is malformed; no runtime failure.
+# CEP:ASSUMES: Exactly one target feature is enabled; enforced by compile_error guards in target.rs.
+# CEP:COST: offline manifest; runtime cost irrelevant.
+# CEP:EVIDENCE: unit test unit/config/limits_test.rs validates constant invariants.
+# CEP:SECURITY: no_std crate with zero dependencies; constants only; no untrusted input.
+
+[package]
+name = "mapt-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "mapt_config"
+path = "lib.rs"
+
+[features]
+default = ["target-x86-64"]
+target-x86-64 = []
+target-arm64 = []
+target-riscv64 = []
+target-generic = []

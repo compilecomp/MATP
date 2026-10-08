@@ -1,0 +1,25 @@
+# CEP:FILE: cold/Cargo.toml
+# CEP:WHAT: Package manifest for the mapt-cold crate: CEP-1 deterministic runtime code (arena host, symbol table builder, IR verifier, debug printer).
+# CEP:WHY: Design section 4.1 requires cold/ to hold CEP-1 code that may allocate and use std, while never being called from hot code; a separate crate makes the boundary mechanical.
+# CEP:CLASS: CEP-1
+# CEP:STATUS: complete
+# CEP:FAILURE: Cargo fails at parse time if malformed; no runtime failure.
+# CEP:ASSUMES: Depends on mapt-hot and mapt-config only; zero third-party dependencies.
+# CEP:COST: offline manifest; runtime cost irrelevant.
+# CEP:EVIDENCE: unit tests under tests/unit/cold.
+# CEP:SECURITY: zero dependencies keeps the supply-chain surface empty (CEP&CC 22.11).
+
+[package]
+name = "mapt-cold"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "mapt_cold"
+path = "lib.rs"
+
+[dependencies]
+mapt-config = { path = "../config" }
+mapt-hot = { path = "../hot" }

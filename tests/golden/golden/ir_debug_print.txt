@@ -1,0 +1,8 @@
+// MAPT IR debug-print golden file. Regenerate with UPDATE_GOLDEN=1 cargo test --test ir_debug_print_test
+a = (a)
+f(a) = (f (a))
+h(a,b) = (h (a) (b))
+f(V0) = (f V0)
+eq = (= (f (a)) V0)
+sort = (sort 1)
+clause = c1: (p (a)) | ~(p (b))

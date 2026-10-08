@@ -1,0 +1,21 @@
+# CEP:FILE: target/Cargo.toml
+# CEP:WHAT: Package manifest for the mapt-target crate: target-specific cycle counters and target hooks isolated per CEP&CC 32.5.
+# CEP:WHY: Design section 4 requires a target/ tree isolating ISA-specific code from generic hot code; a separate crate plus cfg-gated modules is the Rust mechanism for that isolation.
+# CEP:CLASS: CEP-1
+# CEP:STATUS: complete
+# CEP:FAILURE: Cargo fails at parse time if malformed; no runtime failure.
+# CEP:ASSUMES: Exactly one architecture module compiles per build (enforced by cfg attributes).
+# CEP:COST: offline manifest; runtime cost irrelevant.
+# CEP:EVIDENCE: benches use the x86-64 counter; CI target matrix compiles arm64 and riscv64.
+# CEP:SECURITY: inline assembly is confined to this crate and documented per block (CEP&CC 25.7).
+
+[package]
+name = "mapt-target"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "mapt_target"
+path = "lib.rs"

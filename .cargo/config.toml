@@ -1,0 +1,13 @@
+# CEP:FILE: .cargo/config.toml
+# CEP:WHAT: Cargo build configuration for the MAPT workspace.
+# CEP:WHY: Redirects build artifacts to build/ so the source directory target/ (design section 4, CEP&CC 32.5) is not shadowed by Cargo's default output directory.
+# CEP:CLASS: CEP-1
+# CEP:STATUS: complete
+# CEP:FAILURE: Cargo fails if this file is malformed; no runtime failure.
+# CEP:ASSUMES: The target/ source tree exists and holds target-specific Rust modules only.
+# CEP:COST: offline configuration; runtime cost irrelevant.
+# CEP:EVIDENCE: repository layout inspection; CI builds use this redirection.
+# CEP:SECURITY: No environment-variable dependence; configuration is repository-trusted.
+
+[build]
+target-dir = "build"

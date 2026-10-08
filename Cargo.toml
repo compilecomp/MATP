@@ -1,0 +1,169 @@
+# CEP:FILE: Cargo.toml (workspace root, package mapt)
+# CEP:WHAT: Cargo workspace manifest for MAPT: hot (CEP-0), cold (CEP-1), config, target crates plus the root test and bench package.
+# CEP:WHY: A single workspace gives one lockfile (supply-chain pinning, CEP&CC 22.11), explicit test and bench target declarations (determinism, CEP&CC 38.10), and shared pinned profile settings (deterministic builds, CEP&CC 6.5).
+# CEP:CLASS: CEP-1
+# CEP:STATUS: complete
+# CEP:FAILURE: Cargo fails at parse time if this file is malformed; no runtime failure.
+# CEP:ASSUMES: Build directory is redirected to build/ via .cargo/config.toml so the source tree target/ is not shadowed; enforced by repository layout.
+# CEP:COST: offline manifest; runtime cost irrelevant.
+# CEP:EVIDENCE: CI job rust-checks builds this workspace with --locked.
+# CEP:SECURITY: Zero third-party dependencies; all members are first-party path dependencies (vendoring not required, CEP&CC 22.11).
+
+[workspace]
+resolver = "2"
+members = [
+    "hot",
+    "cold",
+    "config",
+    "target",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.99.0"
+
+[package]
+name = "mapt"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "mapt"
+path = "src/lib.rs"
+
+[dependencies]
+mapt-hot = { path = "hot" }
+mapt-cold = { path = "cold" }
+mapt-config = { path = "config" }
+mapt-target = { path = "target" }
+
+[[test]]
+name = "arena_test"
+path = "tests/unit/hot/arena_test.rs"
+
+[[test]]
+name = "term_test"
+path = "tests/unit/hot/term_test.rs"
+
+[[test]]
+name = "clause_test"
+path = "tests/unit/hot/clause_test.rs"
+
+[[test]]
+name = "symbol_table_test"
+path = "tests/unit/hot/symbol_table_test.rs"
+
+[[test]]
+name = "substitution_test"
+path = "tests/unit/hot/substitution_test.rs"
+
+[[test]]
+name = "sat_literal_test"
+path = "tests/unit/hot/sat_literal_test.rs"
+
+[[test]]
+name = "sat_trail_test"
+path = "tests/unit/hot/sat_trail_test.rs"
+
+[[test]]
+name = "sat_watch_test"
+path = "tests/unit/hot/sat_watch_test.rs"
+
+[[test]]
+name = "sat_bcp_test"
+path = "tests/unit/hot/sat_bcp_test.rs"
+
+[[test]]
+name = "limits_test"
+path = "tests/unit/config/limits_test.rs"
+
+[[test]]
+name = "symbol_table_builder_test"
+path = "tests/unit/cold/symbol_table_builder_test.rs"
+
+[[test]]
+name = "verifier_test"
+path = "tests/unit/cold/verifier_test.rs"
+
+[[test]]
+name = "debug_printer_test"
+path = "tests/unit/cold/debug_printer_test.rs"
+
+[[test]]
+name = "arena_property_test"
+path = "tests/property/arena_property_test.rs"
+
+[[test]]
+name = "term_property_test"
+path = "tests/property/term_property_test.rs"
+
+[[test]]
+name = "bcp_property_test"
+path = "tests/property/bcp_property_test.rs"
+
+[[test]]
+name = "arena_contract_test"
+path = "tests/contract/arena_contract_test.rs"
+
+[[test]]
+name = "term_contract_test"
+path = "tests/contract/term_contract_test.rs"
+
+[[test]]
+name = "arena_fuzz_test"
+path = "tests/fuzz/arena_fuzz_test.rs"
+
+[[test]]
+name = "term_fuzz_test"
+path = "tests/fuzz/term_fuzz_test.rs"
+
+[[test]]
+name = "sat_fuzz_test"
+path = "tests/fuzz/sat_fuzz_test.rs"
+
+[[test]]
+name = "symbol_bounds_test"
+path = "tests/security/symbol_bounds_test.rs"
+
+[[test]]
+name = "literal_encoding_test"
+path = "tests/security/literal_encoding_test.rs"
+
+[[test]]
+name = "ir_debug_print_test"
+path = "tests/golden/ir_debug_print_test.rs"
+
+[[bench]]
+name = "arena_bench"
+path = "benches/hot/arena_bench.rs"
+harness = false
+
+[[bench]]
+name = "term_bench"
+path = "benches/hot/term_bench.rs"
+harness = false
+
+[[bench]]
+name = "clause_bench"
+path = "benches/hot/clause_bench.rs"
+harness = false
+
+[[bench]]
+name = "substitution_bench"
+path = "benches/hot/substitution_bench.rs"
+harness = false
+
+[[bench]]
+name = "sat_bench"
+path = "benches/hot/sat_bench.rs"
+harness = false
+
+[profile.release]
+panic = "abort"
+lto = true
+codegen-units = 1
+debug = false
+strip = "none"

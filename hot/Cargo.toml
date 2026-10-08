@@ -1,0 +1,24 @@
+# CEP:FILE: hot/Cargo.toml
+# CEP:WHAT: Package manifest for the mapt-hot crate: CEP-0/HPC-0 hot-path engine code for MAPT.
+# CEP:WHY: Isolates all hot code into one no_std crate so the CEP-0 ban set (CEP&CC 25.3) applies crate-wide and is auditable from the manifest.
+# CEP:CLASS: CEP-1
+# CEP:STATUS: complete
+# CEP:FAILURE: Cargo fails at parse time if malformed; no runtime failure.
+# CEP:ASSUMES: Depends only on mapt-config (no_std, constants); zero third-party dependencies.
+# CEP:COST: offline manifest; runtime cost irrelevant.
+# CEP:EVIDENCE: cep_lint gate runs CEP-LINT-HOT-BANNED over every file of this crate.
+# CEP:SECURITY: no_std plus zero dependencies eliminates the crate-level supply-chain surface (CEP&CC 22.11).
+
+[package]
+name = "mapt-hot"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "mapt_hot"
+path = "lib.rs"
+
+[dependencies]
+mapt-config = { path = "../config" }

@@ -1,0 +1,14 @@
+# Build artifacts (redirected from target/ by .cargo/config.toml)
+build/
+
+# Python tooling artifacts
+__pycache__/
+*.pyc
+
+# cep_lint build artifacts
+tools/cep_lint/build/
+
+# Editor and OS noise
+.idea/
+.vscode/
+.DS_Store

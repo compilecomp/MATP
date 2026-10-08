@@ -1,0 +1,87 @@
+# MAPT CI — CEP&CC 0.1 gates (sections 16, 34.3, 38.48, 50.6)
+
+name: cepcc
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: never
+
+jobs:
+  lint:
+    name: cep_lint (build, self-test, self-lint, doc-sync, repo lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build cep_lint (CEP&CC 6.3 warning set, -Werror)
+        run: ./tools/cep_lint/build.sh
+      - name: Self-test manifest (50.6 gate 3)
+        run: ./tools/cep_lint/build/cep_lint --self-test
+      - name: Self-lint gate (50.6 gate 2: zero severity 0 and 1)
+        run: ./tools/cep_lint/build/cep_lint tools/cep_lint/src
+      - name: Repository lint (all first-party sources, fail on severity 0 and 1)
+        run: ./tools/cep_lint/build/cep_lint hot cold config target src tests benches scripts
+
+  rust:
+    name: rust (fmt, clippy -D warnings, tests debug+release, ignored-expensive)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          components: rustfmt, clippy
+      - name: Format check
+        run: cargo fmt --all -- --check
+      - name: Clippy (warnings are errors)
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Tests (debug, including debug assertions)
+        run: cargo test
+      - name: Tests (release, including the expensive ignored test)
+        run: cargo test --release -- --ignored
+
+  determinism:
+    name: determinism (two identical runs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - name: Determinism gate
+        run: python3 scripts/check_determinism.py
+
+  bench:
+    name: bench (measure, gate, disassembly evidence)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - name: Run benchmarks
+        run: cargo bench
+      - name: Benchmark regression gate (13.4)
+        run: python3 scripts/bench_gate.py
+      - name: Disassembly evidence extraction (23.4)
+        run: |
+          cargo rustc -p mapt-hot --release -- --emit asm
+          for bench in arena_bench term_bench clause_bench substitution_bench sat_bench; do
+            cargo rustc --bench $bench --release -- --emit asm
+          done
+          python3 scripts/extract_disasm.py
+
+  sanitizers:
+    name: sanitizers (address, undefined)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-10-01
+          components: rust-src
+      - name: AddressSanitizer + UBSan (6.6)
+        run: |
+          cargo +nightly-2026-10-01 test -Z sanitizer=address,undefined \
+            --target x86_64-unknown-linux-gnu -- \
+            --skip table_full_after_load_factor_bound
+      - name: ThreadSanitizer is not applicable in Phase 1
+        run: echo "Phase 1 is single-threaded by construction (Cell-based stores are !Sync); TSan starts with Phase 4 concurrency (ticket CEP-1008)."
