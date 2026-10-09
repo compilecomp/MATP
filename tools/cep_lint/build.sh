@@ -5,14 +5,14 @@
 # CEP:CLASS: CEP-2
 # CEP:STATUS: complete
 # CEP:FAILURE: exits nonzero when compilation or linking fails.
-# CEP:ASSUMES: run from the repository root; g++ with C++26 support is available.
+# CEP:ASSUMES: run from the repository root; a C++26-capable compiler is available as $CXX or as g++ (GCC 14 or newer; GitHub runners install g++-14 and export CXX).
 # CEP:COST: offline build; a few seconds.
 # CEP:EVIDENCE: CI job lint runs this script.
 # CEP:SECURITY: no network; repository sources only.
 
 set -eu
 mkdir -p tools/cep_lint/build
-g++ -std=c++26 -O2 \
+"${CXX:-g++}" -std=c++26 -O2 \
     -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow \
     -Wnon-virtual-dtor -Wold-style-cast -Woverloaded-virtual -Wformat=2 -Werror \
     -Itools/cep_lint/src \
