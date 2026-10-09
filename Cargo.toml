@@ -77,6 +77,62 @@ name = "sat_bcp_test"
 path = "tests/unit/hot/sat_bcp_test.rs"
 
 [[test]]
+name = "unify_test"
+path = "tests/unit/hot/unify_test.rs"
+
+[[test]]
+name = "ordering_test"
+path = "tests/unit/hot/ordering_test.rs"
+
+[[test]]
+name = "discrimination_tree_test"
+path = "tests/unit/hot/discrimination_tree_test.rs"
+
+[[test]]
+name = "sat_vsids_test"
+path = "tests/unit/hot/sat_vsids_test.rs"
+
+[[test]]
+name = "sat_restart_test"
+path = "tests/unit/hot/sat_restart_test.rs"
+
+[[test]]
+name = "sat_cdcl_test"
+path = "tests/unit/hot/sat_cdcl_test.rs"
+
+[[test]]
+name = "sat_solver_test"
+path = "tests/unit/hot/sat_solver_test.rs"
+
+[[test]]
+name = "unify_property_test"
+path = "tests/property/unify_property_test.rs"
+
+[[test]]
+name = "ordering_property_test"
+path = "tests/property/ordering_property_test.rs"
+
+[[test]]
+name = "discrimination_property_test"
+path = "tests/property/discrimination_property_test.rs"
+
+[[test]]
+name = "cdcl_property_test"
+path = "tests/property/cdcl_property_test.rs"
+
+[[test]]
+name = "cdcl_fuzz_test"
+path = "tests/fuzz/cdcl_fuzz_test.rs"
+
+[[test]]
+name = "phase2_bounds_test"
+path = "tests/security/phase2_bounds_test.rs"
+
+[[test]]
+name = "unification_trail_contract_test"
+path = "tests/contract/unification_trail_contract_test.rs"
+
+[[test]]
 name = "limits_test"
 path = "tests/unit/config/limits_test.rs"
 
@@ -159,6 +215,26 @@ harness = false
 [[bench]]
 name = "sat_bench"
 path = "benches/hot/sat_bench.rs"
+harness = false
+
+[[bench]]
+name = "unify_bench"
+path = "benches/hot/unify_bench.rs"
+harness = false
+
+[[bench]]
+name = "ordering_bench"
+path = "benches/hot/ordering_bench.rs"
+harness = false
+
+[[bench]]
+name = "index_bench"
+path = "benches/hot/index_bench.rs"
+harness = false
+
+[[bench]]
+name = "cdcl_bench"
+path = "benches/hot/cdcl_bench.rs"
 harness = false
 
 [profile.release]

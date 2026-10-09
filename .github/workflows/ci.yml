@@ -70,7 +70,7 @@ jobs:
       - name: Disassembly evidence extraction (23.4)
         run: |
           cargo rustc -p mapt-hot --release -- --emit asm
-          for bench in arena_bench term_bench clause_bench substitution_bench sat_bench; do
+          for bench in arena_bench term_bench clause_bench substitution_bench sat_bench unify_bench ordering_bench index_bench cdcl_bench; do
             cargo rustc --bench $bench --release -- --emit asm
           done
           python3 scripts/extract_disasm.py

@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0006",
+  "name": "unify_occurs_reject",
+  "iterations": 200000,
+  "cycles_median": 42.34884,
+  "cycles_min": 41.49736,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1791574203
+}

@@ -18,17 +18,30 @@ import sys
 # CEP:WHY: A named threshold documents how much variance the gate tolerates (CEP&CC 11.3).
 CEP_GATE_HEADROOM_PERCENT = 25.0
 
-# CEP:WHAT: Baseline medians (cycles per operation) recorded 2026-10-08 on x86-64 (Intel Xeon, virtualized), rustc 1.99.0, release.
+# CEP:WHAT: Baseline medians (cycles per operation) recorded 2026-10-08 (Phase 1) and 2026-10-10 (Phase 2 additions) on x86-64 (Intel Xeon, virtualized), rustc 1.99.0, release.
 # CEP:WHY: The gate compares fresh measurements against these numbers; update them only with a benchmark evidence note (CEP&CC 13.1).
+# CEP:NOTE: sat_bcp_step was re-baselined 2026-10-10 from 44.53 to 54.90 cycles: Phase 2 conflict analysis requires per-assignment reason and level recording (SatCore::assign_with_reason adds two stores per propagation), an honest, measured cost of the implication-graph tracking (design 11.1 S18/S19).
 CEP_BASELINES = {
     "arena_alloc_bytes": 9.99,
     "clause_new_3lit": 20.36,
-    "sat_bcp_step": 44.53,
+    "sat_bcp_step": 54.90,
     "sat_literal_negate": 1.03,
     "substitution_apply_small": 174.53,
     "substitution_lookup": 1.96,
     "term_intern_binary_hit": 37.90,
     "term_symbol_lookup": 2.95,
+    "unify_ground_identical": 14.40,
+    "unify_bind_pair": 101.88,
+    "unify_occurs_reject": 42.35,
+    "match_witness_success": 118.27,
+    "ordering_kbo_weight": 111.00,
+    "ordering_kbo_lex": 238.18,
+    "ordering_lpo": 22.22,
+    "index_insert": 1496.32,
+    "index_retrieve": 1632.91,
+    "cdcl_analyze": 697.42,
+    "cdcl_decide": 420.41,
+    "cdcl_solve_per_conflict": 5372.33,
 }
 
 

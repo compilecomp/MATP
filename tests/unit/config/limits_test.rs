@@ -59,6 +59,18 @@ fn limit_invariants() {
     assert!(opaque(kMaxTermWeight) < opaque(u32::MAX));
     assert!(opaque(kMaxSubstitutionTrailDepth) >= opaque(kMaxVariablesPerClause));
     assert!(opaque(kMaxUnificationDepth) >= opaque(kMaxTermDepth as u32));
+    assert!(opaque(kSatVsidsDecayPercent) >= opaque(1));
+    assert!(opaque(kSatVsidsDecayPercent) < opaque(100));
+    assert!(opaque(kSatVsidsActivityCeiling) > opaque(0.0));
+    assert!(opaque(kSatVsidsActivityCeiling * kSatVsidsRescaleFactor) <= opaque(1.0));
+    assert!(opaque(kSatRestartGeometricFactorPercent) >= opaque(100));
+    assert!(opaque(kMaxOrderingSteps) >= opaque(kMaxTermDepth as u32));
+    assert!(opaque(kDiscriminationTreeNodes) < opaque(kInvalidIndexNode));
+    assert!(opaque(kDiscriminationTreeEntries) < opaque(kInvalidIndexEntry));
+    assert!(opaque(kIndexEqualitySymbol) > opaque(kMaxSymbolCount));
+    assert!(opaque(kIndexEqualitySymbol) < opaque(kInvalidSymbolId));
+    assert!(opaque(kIndexEqualitySymbol) != opaque(kInvalidIndexNode));
+    assert!(opaque(kSatMaxConflicts) >= opaque(1));
 }
 
 // CEP:WHAT: Verifies result codes are distinct.

@@ -43,6 +43,25 @@ TARGETS = {
         ("build/release/deps/sat_bench-*.s", "sat_bench4main,"),
         ("build/release/deps/mapt_hot-*.s", "7SatCore9propagate,"),
     ],
+    "disasm_unify.txt": [
+        ("build/release/deps/unify_bench-*.s", "unify_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "11unification5unify13unify_bounded,"),
+    ],
+    "disasm_ordering.txt": [
+        ("build/release/deps/ordering_bench-*.s", "ordering_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "15compare_bounded,"),
+        ("build/release/deps/mapt_hot-*.s", "11lpo_greater,"),
+    ],
+    "disasm_index.txt": [
+        ("build/release/deps/index_bench-*.s", "index_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "18DiscriminationTree6insert,"),
+        ("build/release/deps/mapt_hot-*.s", "18DiscriminationTree8retrieve,"),
+    ],
+    "disasm_cdcl.txt": [
+        ("build/release/deps/cdcl_bench-*.s", "cdcl_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "16ConflictAnalyzer7analyze,"),
+        ("build/release/deps/mapt_hot-*.s", "10CdclSolver5solve,"),
+    ],
 }
 
 

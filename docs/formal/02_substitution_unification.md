@@ -1,8 +1,8 @@
 # Formal Specification 02: Substitutions and Unification (Phase 1: Substitutions)
 
 Version: 0.1
-Status: complete for the substitution algebra; unification and matching algorithms are Phase 2 scope (tracked as ticket CEP-1002) and their definitions are fixed here so the Phase 2 implementation cannot drift.
-Role: normative reference for `hot/unification/substitution.rs`; cited by its `CEP:EVIDENCE` fields and by design sections 5.5 and 8.2.
+Status: complete; the unification, matching, and composition algorithms were delivered with Phase 2 (`hot/unification/unify.rs`, ticket CEP-1002 closed) against the definitions fixed here in Phase 1.
+Role: normative reference for `hot/unification/substitution.rs` and `hot/unification/unify.rs`; cited by their `CEP:EVIDENCE` fields and by design sections 5.5 and 8.2.
 
 ## 1. Substitutions
 
@@ -44,6 +44,8 @@ These invariants are exercised by `tests/unit/hot/substitution_test.rs::trail_un
 **Matching (Phase 2).** `sigma` matches pattern `p` onto subject `t` iff `hat-sigma(p) = t` and `dom(sigma) subset of vars(p)`; one-directional, no occurs check needed.
 
 Phase 2 requirements fixed by this document: the algorithm must (a) use the flat-array substitution of this module, (b) bound work by `kMaxUnificationDepth`, (c) record bindings on the trail for backtracking, (d) return the MGU materialized in the arena for proof records, and (e) cite this section in its `CEP:HPC-PASS-LEGALITY` comment.
+
+The delivered implementation (`hot/unification/unify.rs`, Phase 2) satisfies (a)-(e): failures unwind to the entry trail depth (section 4), matching verifies its result with one application pass as a soundness witness for the shared variable namespace, and composition (section 3) materializes records through `Substitution::write_record`; the property tests (`tests/property/unify_property_test.rs`) verify the unifier and idempotency theorems and the occurs-check agreement with a naive scan.
 
 ## 6. Complexity bounds
 

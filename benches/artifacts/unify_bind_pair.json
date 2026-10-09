@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0006",
+  "name": "unify_bind_pair",
+  "iterations": 200000,
+  "cycles_median": 101.8751,
+  "cycles_min": 101.36836,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1791574202
+}

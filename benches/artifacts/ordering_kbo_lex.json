@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0007",
+  "name": "ordering_kbo_lex",
+  "iterations": 1000000,
+  "cycles_median": 238.184318,
+  "cycles_min": 237.96522,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1791574201
+}

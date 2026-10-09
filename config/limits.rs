@@ -569,6 +569,136 @@ pub const kSatTrailCapacity: u32 = kMaxSatVariables;
 /// CEP:SECURITY: bounds level-array memory.
 pub const kMaxDecisionLevels: u32 = kMaxSatVariables;
 
+/// CEP:WHAT: VSIDS activity decay in percent: each conflict multiplies the activity increment by 100 / kSatVsidsDecayPercent.
+/// CEP:WHY: Design 11.1 S13 (activity decay / update): the geometric decay of the increment makes recent conflicts dominate variable ordering; the percent form keeps the constant an integer like every other named limit (design 20.1) while the f64 arithmetic happens only inside the VSIDS heap.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Static assertions reject values outside 1..=99.
+/// CEP:ASSUMES: 95 percent (MiniSat-style 0.95 decay per conflict, Moskewicz et al. DAC 2001).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::decay_grows_increment; property/cdcl_property_test.rs.
+/// CEP:SECURITY: none.
+pub const kSatVsidsDecayPercent: u32 = 95;
+
+/// CEP:WHAT: VSIDS activity ceiling at which all scores and the increment are rescaled.
+/// CEP:WHY: Design 11.1 S7 stores activities as f64; unbounded bumping over a long search would overflow to infinity and destroy the heap ordering; the MiniSat rescale discipline (multiply all activities and the increment by the rescale factor once the increment passes the ceiling) keeps every score finite and the comparison total, which preserves determinism (CEP&CC 38.10).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a maintenance threshold, not an error path.
+/// CEP:ASSUMES: 1e100 leaves many orders of magnitude before f64 overflow.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::rescale_keeps_scores_finite.
+/// CEP:SECURITY: none.
+pub const kSatVsidsActivityCeiling: f64 = 1e100;
+
+/// CEP:WHAT: Factor applied to every activity and to the increment during a VSIDS rescale.
+/// CEP:WHY: The reciprocal scale of the ceiling restores scores to a small range while preserving their order exactly (multiplication by a positive constant is order-preserving on non-negative finite doubles).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: kSatVsidsActivityCeiling * kSatVsidsRescaleFactor <= 1.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::rescale_keeps_scores_finite.
+/// CEP:SECURITY: none.
+pub const kSatVsidsRescaleFactor: f64 = 1e-100;
+
+/// CEP:WHAT: Default decision polarity (phase) for variables with no saved phase.
+/// CEP:WHY: Design 11.1 S14 (phase selection: saved phase or constant phase); false mirrors the MiniSat default of trying the negated literal first, which empirically shortens refutations.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: phase saving starts from this constant.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::saved_phase_defaults_to_constant.
+/// CEP:SECURITY: none.
+pub const kSatDefaultPhasePositive: bool = false;
+
+/// CEP:WHAT: Maximum number of conflicts one CDCL solve may process before returning Indeterminate.
+/// CEP:WHY: Design 20.1 named-limit discipline: every engine has an explicit budget so unbounded search is impossible (CEP&CC 22.10); CDCL terminates in theory, but a defensive budget converts pathological inputs into an explicit bounded-failure result instead of an unbounded run.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: CdclSolver::solve returns Indeterminate(CdclError::ConflictBudgetExceeded) past the budget.
+/// CEP:ASSUMES: Same order as the ATP inference budget kMaxInferences.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
+/// CEP:SECURITY: denial-of-service bound on adversarial formulas.
+pub const kSatMaxConflicts: u64 = 100_000_000;
+
+/// CEP:WHAT: Geometric restart growth factor in percent (each restart multiplies the interval by this factor / 100).
+/// CEP:WHY: Design 11.5: "Geometric restarts are available as an alternative" to Luby; the percent form keeps the named-constant discipline (design 20.1, CEP&CC 11.3).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Static assertions reject values below 100 (which would shrink intervals without bound).
+/// CEP:ASSUMES: 150 percent (1.5x growth, a common middle ground between Luby and pure doubling).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::geometric_intervals_grow.
+/// CEP:SECURITY: none.
+pub const kSatRestartGeometricFactorPercent: u32 = 150;
+
+/// CEP:WHAT: Maximum ordering-comparison steps (recursive clause examinations) in one KBO/LPO comparison.
+/// CEP:WHY: LPO recursion can multiply comparisons exponentially on pathological terms; the step budget turns that into a loud bounded failure (CEP&CC 22.10 unbounded-recursion ban) while leaving every realistic comparison unaffected.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ordering comparison returns OrderingError::StepBudgetExceeded past the budget.
+/// CEP:ASSUMES: 65,536 steps is far above any realistic comparison (ground terms below the depth and weight caps).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: security/phase2_bounds_test.rs::ordering_step_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on adversarial term pairs.
+pub const kMaxOrderingSteps: u32 = 65_536;
+
+/// CEP:WHAT: Maximum node count of one discrimination tree.
+/// CEP:WHY: Design 9.2: nodes are allocated contiguously in the arena; a named cap bounds arena consumption by the index (design 20.1) and makes exhaustion an explicit error instead of arena starvation.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Insert returns IndexError::TreeFull at the cap.
+/// CEP:ASSUMES: 2^20 nodes x 20 bytes = 20 MiB, sized against kMaxClauses-scale workloads.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: security/phase2_bounds_test.rs::discrimination_tree_node_cap_enforced.
+/// CEP:SECURITY: bounds index memory under untrusted insert floods.
+pub const kDiscriminationTreeNodes: u32 = 1_048_576;
+
+/// CEP:WHAT: Maximum payload entries (leaf list nodes) of one discrimination tree.
+/// CEP:WHY: Every indexed (term, payload) pair allocates one leaf entry; the cap is the second explicit bound on index memory next to the node cap (design 20.1).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Insert returns IndexError::EntryBudgetExceeded at the cap.
+/// CEP:ASSUMES: 2^22 entries x 16 bytes = 64 MiB, above the clause budget kMaxClauses with one entry per indexed literal.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: security/phase2_bounds_test.rs::discrimination_tree_entry_budget_enforced.
+/// CEP:SECURITY: bounds index memory under untrusted insert floods.
+pub const kDiscriminationTreeEntries: u32 = 4_194_304;
+
+/// CEP:WHAT: Reserved edge symbol encoding equality atoms in the discrimination tree (they carry no symbol-table ID).
+/// CEP:WHY: Equality atoms are indexed like function applications (design 5.1 Eq(left, right)); the reserved value must not collide with any real symbol ID (dense below kMaxSymbolCount) nor with kInvalidSymbolId.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a representation constant.
+/// CEP:ASSUMES: kMaxSymbolCount and kInvalidSymbolId leave the value unreachable by real symbols; enforced by static assertion.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::equality_terms_indexed.
+/// CEP:SECURITY: none.
+pub const kIndexEqualitySymbol: u32 = u32::MAX - 1;
+
+/// CEP:WHAT: Sentinel node index meaning "no node" inside the discrimination tree.
+/// CEP:WHY: Intrusive child and sibling links terminate in a named sentinel instead of a magic -1 or reused invalid offset (CEP&CC 11.3).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: u32::MAX-2 is never a valid node index because node count is capped below it.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs.
+/// CEP:SECURITY: none.
+pub const kInvalidIndexNode: u32 = u32::MAX - 2;
+
+/// CEP:WHAT: Sentinel entry index meaning "no payload entry" inside a discrimination-tree leaf list.
+/// CEP:WHY: Leaf lists are singly linked through arena entries; the terminator is a named constant (CEP&CC 11.3).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: u32::MAX-2 never aliases a real entry because the entry count is capped below it.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs.
+/// CEP:SECURITY: none.
+pub const kInvalidIndexEntry: u32 = u32::MAX - 2;
+
+/// CEP:WHAT: Maximum flat preorder symbols of a term indexed into, or queried against, one discrimination tree.
+/// CEP:WHY: The tree walk and insert operate on flattened symbol sequences held in fixed stack buffers; the named capacity keeps the hot path allocation-free with a loud TermTooLarge error at the bound (CEP&CC 22.10, Law 6) instead of unbounded buffering.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Index insert/delete/retrieve return IndexError::TermTooLarge past the capacity.
+/// CEP:ASSUMES: 1024 symbols covers realistic indexed and query terms (the clause-literal bound kMaxClauseLiterals x max symbol fan-out stays above it; deeper terms are pathological and rejected loudly).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::term_capacity_enforced; security/phase2_bounds_test.rs::index_capacity_enforced.
+/// CEP:SECURITY: denial-of-service bound on index work per term.
+pub const kIndexTermCapacity: u32 = 1024;
+
 // CEP:WHAT: Static invariant checks for limit constants.
 // CEP:WHY: CEP&CC Law 3 bans comment-only invariants; every cross-constant assumption above is enforced here at compile time.
 // CEP:STATUS: complete
@@ -616,4 +746,16 @@ const _: () = {
     assert!(kMaxTermWeight < u32::MAX);
     assert!(kMaxSubstitutionTrailDepth >= kMaxVariablesPerClause);
     assert!(kMaxUnificationDepth >= kMaxTermDepth as u32);
+    assert!(kSatVsidsDecayPercent >= 1);
+    assert!(kSatVsidsDecayPercent < 100);
+    assert!(kSatVsidsActivityCeiling > 0.0);
+    assert!(kSatVsidsActivityCeiling * kSatVsidsRescaleFactor <= 1.0);
+    assert!(kSatRestartGeometricFactorPercent >= 100);
+    assert!(kMaxOrderingSteps >= kMaxTermDepth as u32);
+    assert!(kDiscriminationTreeNodes < kInvalidIndexNode);
+    assert!(kDiscriminationTreeEntries < kInvalidIndexEntry);
+    assert!(kIndexEqualitySymbol > kMaxSymbolCount);
+    assert!(kIndexEqualitySymbol < kInvalidSymbolId);
+    assert!(kIndexEqualitySymbol != kInvalidIndexNode);
+    assert!(kSatMaxConflicts >= 1);
 };

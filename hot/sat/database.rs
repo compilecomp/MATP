@@ -6,7 +6,7 @@
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns SatCoreError for every failure path (storage, trail, assignment, invariant violations); never panics.
 // CEP:ASSUMES: Single-threaded use (Cell interior mutability); the arena outlives the core; all clauses added through add_clause get exactly one watch-list attachment.
-// CEP:COST: initialization is O(variables); add_clause is O(length); propagation is measured at 44.5 cycles median per step in bench CEP-BENCH-0005, artifact benches/artifacts/sat_bcp_step.json.
+// CEP:COST: initialization is O(variables); add_clause is O(length); propagation is measured at 54.90 cycles median per step (including the reason and level recording of assign_with_reason) in bench CEP-BENCH-0005, artifact benches/artifacts/sat_bcp_step.json.
 // CEP:EVIDENCE: unit/hot/sat_watch_test.rs; unit/hot/sat_trail_test.rs; unit/hot/sat_bcp_test.rs; property/bcp_property_test.rs; bench CEP-BENCH-0005.
 // CEP:SECURITY: variable counts and literal ranges are validated at initialization and clause creation; backtracking clears exactly the popped assignments.
 // CEP:UNSAFE: none; this file is safe Rust.
@@ -21,7 +21,7 @@ use crate::sat::clause::{ClauseStorage, SatClauseError};
 use crate::sat::literal::SatLiteral;
 use crate::sat::trail::{SatTrail, SatTrailError};
 use crate::sat::watch_lists::{WatchListError, WatchLists};
-use mapt_config::limits::kMaxSatVariables;
+use mapt_config::limits::{kInvalidClauseOffset, kMaxSatVariables};
 
 /// CEP:WHAT: Unified error type of the SAT core.
 /// CEP:WHY: CEP&CC 33.18: component-specific error vocabulary; SatCore spans four subcomponents so it flattens their errors into one enum with explicit From conversions.
@@ -162,6 +162,24 @@ pub struct SatCore<'a> {
     /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs.
     /// CEP:SECURITY: bounds-checked.
     clauses: ClauseStorage<'a>,
+    /// CEP:WHAT: Decision level per variable (0 = unassigned or root), Phase 2 conflict-analysis input (design 11.1 S15).
+    /// CEP:WHY: First-UIP analysis must know, for every literal of the conflict clause, the level at which its variable was assigned; a flat array indexed by variable keeps that a single load (design 5.5 no-hash-map discipline) and cancelling clears it in lockstep with the value array.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (infallible reads return 0 for unassigned variables).
+    /// CEP:ASSUMES: sized for `variables`; kept consistent with the value array by assign/decide/cancel_until.
+    /// CEP:COST: 4 bytes per variable; 1 load per analysis step.
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{levels_recorded, cancel_clears_levels}.
+    /// CEP:SECURITY: bounds-checked writes; reads clamped.
+    levels: &'a [core::cell::Cell<u32>],
+    /// CEP:WHAT: Antecedent (reason) clause offset per variable, kInvalidClauseOffset for decisions and root assignments (design 11.1 S18-S19 input).
+    /// CEP:WHY: Conflict analysis resolves a propagated literal against its reason clause; recording the reason at assign time (BCP passes the propagating clause) is what makes the implication graph walkable in O(1) per variable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (kInvalidClauseOffset marks "no reason").
+    /// CEP:ASSUMES: sized for `variables`; reason clauses are never deleted in Phase 2 (deletion policy is ticket CEP-1003, Phase 3).
+    /// CEP:COST: 4 bytes per variable; 1 load per analysis resolution.
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{reasons_recorded, root_assignment_has_no_reason}.
+    /// CEP:SECURITY: bounds-checked writes; reads validated against storage on use.
+    reasons: &'a [core::cell::Cell<u32>],
 }
 
 impl<'a> SatCore<'a> {
@@ -188,12 +206,30 @@ impl<'a> SatCore<'a> {
             })
         })?;
         let clauses = ClauseStorage::new(arena, variables);
+        let level_range = arena
+            .alloc_array::<core::cell::Cell<u32>>(variables)
+            .map_err(|_| SatCoreError::Storage(SatClauseError::ArenaFull))?;
+        let levels = arena
+            .array::<core::cell::Cell<u32>>(level_range)
+            .map_err(|_| SatCoreError::Storage(SatClauseError::InvalidClauseOffset))?;
+        let reason_range = arena
+            .alloc_array::<core::cell::Cell<u32>>(variables)
+            .map_err(|_| SatCoreError::Storage(SatClauseError::ArenaFull))?;
+        let reasons = arena
+            .array::<core::cell::Cell<u32>>(reason_range)
+            .map_err(|_| SatCoreError::Storage(SatClauseError::InvalidClauseOffset))?;
+        for index in 0..variables as usize {
+            levels[index].set(0);
+            reasons[index].set(kInvalidClauseOffset);
+        }
         Ok(SatCore {
             variables,
             assignments,
             trail,
             watches,
             clauses,
+            levels,
+            reasons,
         })
     }
 
@@ -238,15 +274,33 @@ impl<'a> SatCore<'a> {
         }
     }
 
-    // CEP:WHAT: Assigns a literal true at the current level (trail push plus value write).
-    // CEP:WHY: The only sanctioned assignment path, so trail and values can never diverge (design 11.1 S5 invariant).
+    // CEP:WHAT: Assigns a literal true at the current level (trail push plus value write) with no antecedent clause.
+    // CEP:WHY: The only sanctioned assignment path, so trail and values can never diverge (design 11.1 S5 invariant); the reasonless form serves decisions, root (level-0) assignments, and asserting literals of learnt unit clauses, all of which have no propagating clause.
     // CEP:STATUS: complete
     // CEP:FAILURE: Returns InvariantViolation when the literal is already false (caller bug surfaced loudly); propagates TrailFull and Assignment errors.
     // CEP:ASSUMES: callers assign only unassigned or true literals (BCP checks before calling; property-tested).
     // CEP:COST: 1 compare + 2 stores + trail push.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::{value_evaluation, propagation_drains_queue}.
+    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::{value_evaluation, propagation_drains_queue}; unit/hot/sat_cdcl_test.rs::root_assignment_has_no_reason.
     // CEP:SECURITY: defensive invariant check retained in release.
     pub fn assign(&self, literal: SatLiteral) -> Result<(), SatCoreError> {
+        self.assign_with_reason(literal, kInvalidClauseOffset)
+    }
+
+    // CEP:WHAT: Assigns a literal true at the current level, recording the antecedent clause for conflict analysis.
+    // CEP:WHY: Design 11.1 S18/S19: the implication graph is walked through per-variable reason clauses; BCP records the propagating clause here, and learnt-clause assertion records the learnt clause, which is what makes first-UIP resolution sound (Formal Spec 06).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: as assign(); the reason offset is stored unvalidated (validated when read by analysis).
+    // CEP:ASSUMES: reason is a clause offset of this core's storage or kInvalidClauseOffset.
+    // CEP:COST: as assign() plus 2 stores (level, reason).
+    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{reasons_recorded, levels_recorded}.
+    // CEP:SECURITY: index bounds-checked.
+    pub fn assign_with_reason(&self, literal: SatLiteral, reason: u32) -> Result<(), SatCoreError> {
+        let variable = literal.variable().0 as usize;
+        if variable >= self.levels.len() {
+            return Err(SatCoreError::Assignment(
+                AssignmentError::VariableOutOfRange,
+            ));
+        }
         match self.value_of_literal(literal) {
             SatValue::True => Ok(()),
             SatValue::False => Err(SatCoreError::InvariantViolation),
@@ -259,9 +313,43 @@ impl<'a> SatCore<'a> {
                 };
                 self.assignments
                     .set_value(SatVarRaw(literal.variable().0), value)?;
+                self.levels[variable].set(self.trail.level());
+                self.reasons[variable].set(reason);
                 Ok(())
             }
         }
+    }
+
+    // CEP:WHAT: Returns the decision level at which a variable was assigned (0 when unassigned or root).
+    // CEP:WHY: Conflict analysis and the learnt-clause backjump computation read the level of every literal (design 11.1 S15, S22).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none; out-of-range variables read as 0 (clamped, deterministic).
+    // CEP:ASSUMES: variable below the declared count.
+    // CEP:COST: 1 bounds check + 1 load.
+    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::reasons_recorded.
+    // CEP:SECURITY: clamped read, no out-of-range access.
+    pub fn level_of(&self, variable: u32) -> u32 {
+        let index = variable as usize;
+        if index >= self.levels.len() {
+            return 0;
+        }
+        self.levels[index].get()
+    }
+
+    // CEP:WHAT: Returns the antecedent clause offset of a variable (kInvalidClauseOffset for decisions and root assignments).
+    // CEP:WHY: Conflict analysis resolves propagated literals against their reasons (design 11.1 S19).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none; out-of-range variables read as no-reason (clamped, deterministic).
+    // CEP:ASSUMES: variable below the declared count.
+    // CEP:COST: 1 bounds check + 1 load.
+    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{reasons_recorded, root_assignment_has_no_reason}.
+    // CEP:SECURITY: clamped read.
+    pub fn reason_of(&self, variable: u32) -> u32 {
+        let index = variable as usize;
+        if index >= self.reasons.len() {
+            return kInvalidClauseOffset;
+        }
+        self.reasons[index].get()
     }
 
     // CEP:WHAT: Opens a new decision level and assigns the decision literal.
@@ -279,6 +367,12 @@ impl<'a> SatCore<'a> {
         if self.value_of_literal(literal) == SatValue::True {
             return Ok(());
         }
+        let variable = literal.variable().0 as usize;
+        if variable >= self.levels.len() {
+            return Err(SatCoreError::Assignment(
+                AssignmentError::VariableOutOfRange,
+            ));
+        }
         self.trail.push_decision(literal)?;
         let value = if literal.is_positive() {
             SatValue::True
@@ -287,6 +381,8 @@ impl<'a> SatCore<'a> {
         };
         self.assignments
             .set_value(SatVarRaw(literal.variable().0), value)?;
+        self.levels[variable].set(self.trail.level());
+        self.reasons[variable].set(kInvalidClauseOffset);
         Ok(())
     }
 
@@ -336,7 +432,7 @@ impl<'a> SatCore<'a> {
                 SatValue::True => Ok(AttachOutcome::AlreadySatisfied),
                 SatValue::False => Ok(AttachOutcome::Conflict),
                 SatValue::Unassigned => {
-                    self.assign(unit)?;
+                    self.assign_with_reason(unit, offset)?;
                     Ok(AttachOutcome::UnitEnqueued(offset))
                 }
             };
@@ -366,9 +462,15 @@ impl<'a> SatCore<'a> {
         while index > keep {
             index -= 1;
             if let Some(literal) = self.trail.literal_at(index) {
-                let variable = SatVarRaw(literal.variable().0);
-                let cleared = self.assignments.set_value(variable, SatValue::Unassigned);
+                let variable = literal.variable().0;
+                let raw = SatVarRaw(variable);
+                let cleared = self.assignments.set_value(raw, SatValue::Unassigned);
                 debug_assert!(cleared.is_ok());
+                let slot = variable as usize;
+                if slot < self.levels.len() {
+                    self.levels[slot].set(0);
+                    self.reasons[slot].set(kInvalidClauseOffset);
+                }
             }
         }
         self.trail.cancel_until(level);

@@ -376,12 +376,32 @@ impl<'a> Substitution<'a> {
     // CEP:EVIDENCE: unit/hot/substitution_test.rs::materialize_and_read_back.
     // CEP:SECURITY: binding count bounded by kMaxVariablesPerClause.
     pub fn materialize(&self) -> Result<u32, SubstitutionError> {
-        let mut count: u32 = 0;
+        let mut pairs: [(u32, u32); kMaxVariablesPerClause as usize] =
+            [(0, 0); kMaxVariablesPerClause as usize];
+        let mut count: usize = 0;
         for index in 0..kMaxVariablesPerClause {
-            if self.bindings[index as usize].get() != kInvalidTermOffset {
+            let offset = self.bindings[index as usize].get();
+            if offset != kInvalidTermOffset {
+                pairs[count] = (index, offset);
                 count += 1;
             }
         }
+        self.write_record(&pairs[..count])
+    }
+
+    // CEP:WHAT: Writes explicit binding pairs as an arena substitution record and returns its offset.
+    // CEP:WHY: Composition (unify.rs, Spec 02 section 3) produces a derived pair set rather than the flat-array bindings of one substitution, so record construction must accept caller-assembled pairs; sharing one writer keeps the serialized layout single-sourced.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: Returns ArenaFull when the record does not fit; VariableOutOfRange when the pair count exceeds the variable bound (a caller bug surfaced loudly).
+    // CEP:ASSUMES: pairs are (variable, term offset) with distinct variables below kMaxVariablesPerClause.
+    // CEP:COST: O(pairs) plus two arena allocations.
+    // CEP:EVIDENCE: unit/hot/unify_test.rs::{compose_union_of_domains, compose_drops_identity}; unit/hot/substitution_test.rs::materialize_and_read_back.
+    // CEP:SECURITY: pair count and arena bounds checked.
+    pub fn write_record(&self, pairs: &[(u32, u32)]) -> Result<u32, SubstitutionError> {
+        if pairs.len() > kMaxVariablesPerClause as usize {
+            return Err(SubstitutionError::VariableOutOfRange);
+        }
+        let count = pairs.len() as u32;
         let header_range = self
             .arena
             .alloc_array::<SubstitutionRecord>(1)
@@ -399,20 +419,15 @@ impl<'a> Substitution<'a> {
             reserved: 0,
         };
         if count > 0 {
-            let pairs = self
+            let destinations = self
                 .arena
                 .array_mut::<SubstitutionBinding>(pairs_range)
                 .map_err(|_| SubstitutionError::ArenaFull)?;
-            let mut cursor = 0;
-            for index in 0..kMaxVariablesPerClause {
-                let offset = self.bindings[index as usize].get();
-                if offset != kInvalidTermOffset {
-                    pairs[cursor] = SubstitutionBinding {
-                        variable: index,
-                        term_offset: offset,
-                    };
-                    cursor += 1;
-                }
+            for (index, (variable, term_offset)) in pairs.iter().enumerate() {
+                destinations[index] = SubstitutionBinding {
+                    variable: *variable,
+                    term_offset: *term_offset,
+                };
             }
         }
         Ok(header_range.start)

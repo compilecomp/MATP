@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0009",
+  "name": "cdcl_decide",
+  "iterations": 100000,
+  "cycles_median": 420.41164,
+  "cycles_min": 419.16226,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1791574198
+}

@@ -6,7 +6,7 @@
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns SatCoreError on structural failures (unreadable records, trail overflow); returns PropagationOutcome::Conflict when a clause is falsified — a legitimate SAT result, not an error. Never panics.
 // CEP:ASSUMES: Watch-list invariant: a clause appears in exactly the lists of its literals at positions 0 and 1; every assignment went through SatCore::assign (trail and values consistent); a variable is assigned at most once between backtracks.
-// CEP:COST: amortized O(1) per propagation, worst O(clause length) per watch scan; measured 44.5 cycles median per propagation step (queue dequeue, value evaluation, watch scan, unit assignment) on an implication chain on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, measured 2026-10-08, bench CEP-BENCH-0005, artifact benches/artifacts/sat_bcp_step.json.
+// CEP:COST: amortized O(1) per propagation, worst O(clause length) per watch scan; measured 54.90 cycles median per propagation step (queue dequeue, value evaluation, watch scan, unit assignment with reason and level recording) on an implication chain on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, measured 2026-10-10, bench CEP-BENCH-0005, artifact benches/artifacts/sat_bcp_step.json; the 2026-10-08 Phase 1 baseline was 44.53 cycles before Phase 2 added the two per-assignment stores for conflict analysis (design 11.1 S18/S19), re-baselined in scripts/bench_gate.py with this note.
 // CEP:EVIDENCE: bench CEP-BENCH-0005; unit/hot/sat_bcp_test.rs (implication chains, conflicts, unit enqueues, watch moves, queue draining); property/bcp_property_test.rs (soundness against brute-force implication on random formulas, watch-list integrity); disassembly artifact benches/artifacts/disasm_sat.txt.
 // CEP:SECURITY: all clause and literal reads are bounds-checked; a corrupted watch link surfaces as an error, never as out-of-bounds access.
 // CEP:UNSAFE: none; this file is safe Rust.
@@ -139,7 +139,7 @@ impl<'a> SatCore<'a> {
             if self.value_of_literal(other) == SatValue::False {
                 return Ok(PropagationOutcome::Conflict(current));
             }
-            self.assign(other)?;
+            self.assign_with_reason(other, current)?;
             cursor = WatchCursor::Node(current, slot);
         }
         Ok(PropagationOutcome::NoConflict)

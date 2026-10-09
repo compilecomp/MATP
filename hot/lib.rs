@@ -1,5 +1,5 @@
 // CEP:FILE: hot/lib.rs
-// CEP:WHAT: Root module of the mapt-hot crate: the CEP-0/HPC-0 hot-path engine layer (arena, IR, substitution engine, SAT core).
+// CEP:WHAT: Root module of the mapt-hot crate: the CEP-0/HPC-0 hot-path engine layer (arena, IR, substitution engine, unification and matching, term orderings, term indexing, SAT core with CDCL).
 // CEP:WHY: Design section 4.1 requires hot/ to contain only CEP-0 code with no logging, no allocation, no I/O, no dyn, and no std runtime; the crate-level no_std attribute enforces the std ban mechanically (CEP&CC 25.3.1).
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
@@ -22,8 +22,10 @@
 // CEP:SECURITY: none.
 #![allow(non_upper_case_globals)]
 
+pub mod index;
 pub mod ir;
 pub mod memory;
+pub mod ordering;
 pub mod result;
 pub mod sat;
 pub mod unification;
