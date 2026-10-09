@@ -1,5 +1,5 @@
 // CEP:FILE: tests/unit/hot/clause_test.rs
-// CEP:WHAT: Unit tests for clauses and literals: layouts, canonical ordering, weight caching, monotonic IDs, inline/overflow storage, and derivation records.
+// CEP:WHAT: Unit tests for clauses and literals: layouts, canonical ordering, weight caching, monotonic IDs, inline/overflow storage, derivation records, and every reachable error path of new_clause.
 // CEP:WHY: CEP&CC 32.8 requires tests for every CEP-0 function; clause invariants are consumed directly by the Phase 3 search loop.
 // CEP:CLASS: CEP-2
 // CEP:STATUS: complete
@@ -7,19 +7,36 @@
 // CEP:ASSUMES: fixtures from tests/common/mod.rs.
 // CEP:COST: offline; runtime cost irrelevant.
 // CEP:EVIDENCE: this file is the evidence cited by hot/ir/clause.rs and hot/ir/literal.rs.
-// CEP:SECURITY: literal bound and ID budget are exercised here.
+// CEP:SECURITY: the literal bound, parent bound, weight overflow, and arena exhaustion paths are exercised here; the clause ID budget is unreachable defense-in-depth (see hot/ir/clause.rs).
 
 #[path = "../../common/mod.rs"]
 mod common;
 
-use common::make_term_fixture;
-use mapt::hot::ir::clause::{ClauseError, DerivationStep, InferenceRule};
+use common::{kTestArenaBytes, make_arena, make_term_fixture, standard_symbols};
+use mapt::cold::symbol_table_builder::SymbolTableBuilder;
+use mapt::hot::ir::clause::{ClauseError, ClauseStore, DerivationStep, InferenceRule};
 use mapt::hot::ir::literal::Literal;
-use mapt::hot::ir::term::TermError;
+use mapt::hot::ir::term::{TermError, TermStore};
 use mapt_config::limits::{
     kFirstClauseId, kInlineClauseLiterals, kInvalidClauseId, kInvalidClauseOffset,
-    kInvalidSubstitutionOffset, kMaxClauseLiterals, kMaxDerivationParents,
+    kInvalidSubstitutionOffset, kMaxClauseLiterals, kMaxDerivationParents, kMaxTermWeight,
+    kTermHashTableCapacity,
 };
+
+// CEP:WHAT: Literals in the weight-overflow fixture (5 x kMaxTermWeight exceeds u32::MAX).
+// CEP:WHY: Named constant; 4 literals would sum to exactly u32::MAX + 1, so 5 keeps the margin explicit.
+#[allow(non_upper_case_globals)]
+const kWeightOverflowLiterals: usize = 5;
+
+// CEP:WHAT: Arena headroom above the term hash table in the arena-exhaustion fixture (64 KiB).
+// CEP:WHY: Named constant; holds the symbol table, fixture terms, and roughly 400 clause headers before exhaustion.
+#[allow(non_upper_case_globals)]
+const kArenaFullHeadroomBytes: u32 = 65_536;
+
+// CEP:WHAT: Upper bound on clause allocations before the arena-exhaustion test fails loudly (100_000).
+// CEP:WHY: A regression that keeps allocating would otherwise hang the suite; the bound is far above the expected ~400.
+#[allow(non_upper_case_globals)]
+const kArenaFullIterationCap: u64 = 100_000;
 
 // CEP:WHAT: Resolves a fixture symbol ID by name.
 // CEP:WHY: Readable tests.
@@ -379,6 +396,100 @@ fn header_readback() {
     assert_eq!(clause.lbd, 0);
     assert_eq!(clause.reserved, 0);
     assert_eq!(clause.derivation.rule, InferenceRule::NegatedConjecture);
+}
+
+// CEP:WHAT: Verifies new_clause rejects derivations with more than kMaxDerivationParents parents.
+// CEP:WHY: CEP&CC Law 6: every failure branch of a CEP-0 function must be exercised (32.8); the parent bound guards the fixed-size parents array.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the bound is not enforced.
+// CEP:ASSUMES: standard fixture.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/ir/clause.rs (ClauseError::TooManyParents).
+// CEP:SECURITY: fixed-size record bound.
+#[test]
+fn too_many_parents_rejected() {
+    let (_arena, symbols, builder, terms, clauses) = make_term_fixture();
+    let (pa, _pb) = fixture_atoms(&terms, &symbols, &builder);
+    let mut derivation = input_derivation();
+    derivation.parent_count = kMaxDerivationParents as u8 + 1;
+    assert_eq!(
+        clauses.new_clause(&terms, &[Literal::new(pa, true)], 0, derivation),
+        Err(ClauseError::TooManyParents)
+    );
+    // At exactly the bound the derivation is structurally valid.
+    derivation.parent_count = kMaxDerivationParents as u8;
+    assert!(clauses
+        .new_clause(&terms, &[Literal::new(pa, true)], 0, derivation)
+        .is_ok());
+}
+
+// CEP:WHAT: Verifies new_clause rejects clauses whose summed atom weight exceeds u32.
+// CEP:WHY: CEP&CC Law 6: the WeightOverflow branch must be exercised; the weight cache is a u32 field, so the u64 sum is checked before the cast.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the overflow is not rejected.
+// CEP:ASSUMES: a zero-arity predicate may carry symbol weight kMaxTermWeight (intern caps at, not above, kMaxTermWeight).
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/ir/clause.rs (ClauseError::WeightOverflow).
+// CEP:SECURITY: overflow prevention.
+#[test]
+fn weight_overflow_rejected() {
+    let arena = make_arena(kTestArenaBytes);
+    let mut builder = SymbolTableBuilder::new();
+    let heavy = builder
+        .declare_predicate("heavy", 0, kMaxTermWeight, &[])
+        .expect("declare heavy");
+    let symbols = builder.finalize(arena).expect("freeze failed");
+    let terms = TermStore::new(arena).expect("term store failed");
+    let clauses = ClauseStore::new(arena);
+    let atom = terms.intern_pred(&symbols, heavy, &[]).expect("heavy atom");
+    assert_eq!(
+        terms.term(atom).expect("read atom").weight(),
+        kMaxTermWeight,
+        "fixture setup: the heavy atom must weigh exactly kMaxTermWeight"
+    );
+    let overflowing = vec![Literal::new(atom, true); kWeightOverflowLiterals];
+    assert_eq!(
+        clauses.new_clause(&terms, &overflowing, 0, input_derivation()),
+        Err(ClauseError::WeightOverflow)
+    );
+    // Three heavy literals still fit: the u32 cache holds 3 x kMaxTermWeight.
+    let fitting = vec![Literal::new(atom, false); kWeightOverflowLiterals - 2];
+    let ptr = clauses
+        .new_clause(&terms, &fitting, 0, input_derivation())
+        .expect("three heavy literals fit");
+    let clause = clauses.clause(ptr).expect("read");
+    assert_eq!(clause.weight, 3 * kMaxTermWeight);
+}
+
+// CEP:WHAT: Verifies new_clause reports ArenaFull once the arena is exhausted, and that exhaustion is reachable and clean.
+// CEP:WHY: CEP&CC Law 6: the ArenaFull branch must be exercised; bounded memory is a hard Phase 1 invariant (design 7.1).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any error other than ArenaFull or when exhaustion does not occur before the iteration cap.
+// CEP:ASSUMES: the arena holds the term hash table (kTermHashTableCapacity x 4 bytes) plus kArenaFullHeadroomBytes.
+// CEP:COST: ~400 clause allocations.
+// CEP:EVIDENCE: cited by hot/ir/clause.rs (ClauseError::ArenaFull).
+// CEP:SECURITY: resource-exhaustion boundary.
+#[test]
+fn arena_full_after_exhaustion() {
+    let arena = make_arena(kTermHashTableCapacity * 4 + kArenaFullHeadroomBytes);
+    let builder = standard_symbols();
+    let symbols = builder.finalize(arena).expect("freeze failed");
+    let terms = TermStore::new(arena).expect("term store failed");
+    let clauses = ClauseStore::new(arena);
+    let (pa, _pb) = fixture_atoms(&terms, &symbols, &builder);
+    let mut created: u64 = 0;
+    loop {
+        match clauses.new_clause(&terms, &[Literal::new(pa, true)], 0, input_derivation()) {
+            Ok(_) => created += 1,
+            Err(ClauseError::ArenaFull) => break,
+            Err(other) => panic!("unexpected error before exhaustion: {:?}", other),
+        }
+        assert!(
+            created < kArenaFullIterationCap,
+            "arena must exhaust before the iteration cap"
+        );
+    }
+    assert!(created > 0, "the headroom must fit at least one clause");
 }
 
 // CEP:WHAT: Builds an input derivation step.

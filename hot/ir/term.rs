@@ -537,7 +537,7 @@ pub struct TermStore<'a> {
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: exactly kTermHashTableCapacity slots.
     /// CEP:COST: 4 bytes per slot.
-    /// CEP:EVIDENCE: property/term_property_test.rs::store_construction.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
     /// CEP:SECURITY: capacity-bounded.
     slots: &'a [Cell<u32>],
     /// CEP:WHAT: Number of live table entries.

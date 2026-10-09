@@ -242,7 +242,7 @@ impl<'a> SymbolTable<'a> {
     // CEP:FAILURE: Returns SymbolError::InvalidTable when the entry count exceeds kMaxSymbolCount, the sort pool is misaligned or oversized, an entry's signature is out of pool, a signature length disagrees with the kind, the arity exceeds kMaxSymbolArity, the weight is zero for KBO use, or reserved bytes are nonzero.
     // CEP:ASSUMES: the builder wrote SymbolInfo entries and a SortId pool into the given ranges of the given arena.
     // CEP:COST: O(n) one-time validation at freeze; no allocation.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::freeze_rejects_bad_tables; unit/hot/symbol_table_test.rs.
+    // CEP:EVIDENCE: unit/hot/symbol_table_test.rs::freeze_rejects_bad_tables; unit/hot/symbol_table_test.rs.
     // CEP:SECURITY: full structural validation of builder output before hot use.
     pub fn freeze(
         arena: &'a Arena,

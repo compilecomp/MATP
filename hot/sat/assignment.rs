@@ -83,7 +83,7 @@ impl<'a> AssignmentStore<'a> {
     // CEP:FAILURE: Returns AssignmentError::VariableOutOfRange when variable_count exceeds kMaxSatVariables; the arena error is mapped to VariableOutOfRange as the only initialization-time failure worth distinguishing is rethrown as arena exhaustion by the caller (SatCore).
     // CEP:ASSUMES: variable_count > 0 and <= kMaxSatVariables.
     // CEP:COST: O(variable_count) one-time clear.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::assignment_store_values.
+    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::assignment_store_values.
     // CEP:SECURITY: explicit clearing, no uninitialized state.
     pub fn new(
         arena: &'a Arena,

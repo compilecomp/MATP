@@ -1,5 +1,5 @@
 // CEP:FILE: benches/hot/harness.rs
-// CEP:WHAT: Shared benchmark harness: cycle-counter calibration, median-of-repeats measurement, and JSON artifact emission for CEP-0 cost evidence.
+// CEP:WHAT: Shared benchmark harness: cycle-counter accuracy assertion, median-of-repeats measurement, and JSON artifact emission for CEP-0 cost evidence.
 // CEP:WHY: CEP&CC Law 4 and 13: hot code must be measured with stored artifacts (compiler, flags, target, input, cycles, date); the harness centralizes measurement so every bench reports identically structured evidence (CEP&CC 38.47 benchmark requirements).
 // CEP:CLASS: CEP-2
 // CEP:STATUS: complete

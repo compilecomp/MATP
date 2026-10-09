@@ -4,7 +4,7 @@
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
-// CEP:FAILURE: Returns ClauseError::TooManyLiterals beyond kMaxClauseLiterals, ClauseError::ArenaFull when the arena is exhausted, ClauseError::InvalidPointer for unreadable clause references, ClauseError::WeightOverflow when the summed atom weight exceeds u32. Never panics.
+// CEP:FAILURE: Returns ClauseError::TooManyLiterals beyond kMaxClauseLiterals, ClauseError::ArenaFull when the arena is exhausted, ClauseError::InvalidPointer for unreadable clause references, ClauseError::WeightOverflow when the summed atom weight exceeds u32, ClauseError::TooManyParents when a derivation exceeds kMaxDerivationParents; ClauseBudgetExceeded is defense-in-depth and unreachable while kArenaCapacityBytes bounds the arena (see the variant). Never panics.
 // CEP:ASSUMES: Clauses are immutable after construction; the arena outlives the store; literal atoms were interned by the same backing term store; clause identity is the u64 ID, never the address.
 // CEP:COST: construction is O(n^2) worst-case for the canonical insertion sort with n <= kMaxClauseLiterals plus one arena write; measured 20.4 cycles median for a 3-literal clause on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, measured 2026-10-08, bench CEP-BENCH-0003, artifact benches/artifacts/clause_new_3lit.json.
 // CEP:EVIDENCE: bench CEP-BENCH-0003; unit/hot/clause_test.rs; cold verifier tests unit/cold/verifier_test.rs; disassembly artifact benches/artifacts/disasm_clause.txt.
@@ -77,12 +77,11 @@ pub enum InferenceRule {
 /// CEP:FAILURE: none; this type IS the failure vocabulary.
 /// CEP:ASSUMES: none.
 /// CEP:COST: enum copy.
-/// CEP:EVIDENCE: unit/hot/clause_test.rs covers every variant.
-/// CEP:SECURITY: literal-count and ID bounds are resource-exhaustion guards.
+/// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_bound_enforced; unit/hot/clause_test.rs::too_many_parents_rejected; unit/hot/clause_test.rs::weight_overflow_rejected; unit/hot/clause_test.rs::arena_full_after_exhaustion; unit/hot/clause_test.rs::inline_and_overflow_layout; ClauseBudgetExceeded is structurally unreachable in Phase 1 (see its CEP:WHY).
+/// CEP:SECURITY: literal-count, weight, and parent bounds are resource-exhaustion guards.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClauseError {
     /// CEP:WHAT: More than kMaxClauseLiterals literals were supplied.
-    TooManyLiterals,
     /// CEP:WHY: Bounded clause size (design 5.3).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
@@ -90,16 +89,51 @@ pub enum ClauseError {
     /// CEP:COST: enum value.
     /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_bound_enforced.
     /// CEP:SECURITY: memory bound.
-    LiteralBoundExceeded,
+    TooManyLiterals,
     /// CEP:WHAT: The clause ID budget kMaxClauses is exhausted.
+    /// CEP:WHY: Defense-in-depth: kArenaCapacityBytes (256 MiB) divided by the 152-byte minimum clause footprint is about 1.76M, far below kMaxClauses (10M), so arena exhaustion always precedes budget exhaustion; the check exists so future arena growth cannot silently overflow the ID space.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: never returned in Phase 1 (unreachable per CEP:WHY).
+    /// CEP:ASSUMES: kMaxClauses < u64::MAX - kFirstClauseId (static assertion in config/limits.rs).
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: structurally unreachable in Phase 1; guarded by the static assertion chain in config/limits.rs and the unreachability argument in CEP:WHY.
+    /// CEP:SECURITY: ID-space bound.
     ClauseBudgetExceeded,
     /// CEP:WHAT: The arena is exhausted.
+    /// CEP:WHY: Bounded memory is a hard Phase 1 invariant (design 7.1).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::arena_full_after_exhaustion.
+    /// CEP:SECURITY: resource-exhaustion boundary.
     ArenaFull,
     /// CEP:WHAT: A clause reference is unreadable.
+    /// CEP:WHY: Bounds-checked reads are the memory-safety contract (CEP&CC Law 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: handles were produced by this store.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::inline_and_overflow_layout.
+    /// CEP:SECURITY: forged or stale handles are rejected.
     InvalidPointer,
     /// CEP:WHAT: The summed atom weight exceeds u32.
+    /// CEP:WHY: Clause weight is cached in a u32 field (design 5.3); the sum is computed in u64 and checked before the cast.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: per-term weights are already bounded by kMaxTermWeight at intern.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::weight_overflow_rejected.
+    /// CEP:SECURITY: overflow prevention.
     WeightOverflow,
     /// CEP:WHAT: The parent list in a derivation step exceeds kMaxDerivationParents.
+    /// CEP:WHY: Derivation records embed a fixed-size parents array (design 5.4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::too_many_parents_rejected.
+    /// CEP:SECURITY: fixed-size record bound.
     TooManyParents,
 }
 
@@ -416,7 +450,7 @@ pub struct ClauseStore<'a> {
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: none.
     /// CEP:COST: 4 bytes.
-    /// CEP:EVIDENCE: unit/hot/clause_test.rs::store_construction.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
     /// CEP:SECURITY: none.
     live_clauses: Cell<u32>,
 }
@@ -428,7 +462,7 @@ impl<'a> ClauseStore<'a> {
     // CEP:FAILURE: none.
     // CEP:ASSUMES: arena outlives the store.
     // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::store_construction.
+    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
     // CEP:SECURITY: none.
     pub fn new(arena: &'a Arena) -> ClauseStore<'a> {
         ClauseStore {
@@ -444,7 +478,7 @@ impl<'a> ClauseStore<'a> {
     // CEP:FAILURE: none.
     // CEP:ASSUMES: none.
     // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::store_construction.
+    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
     // CEP:SECURITY: none.
     pub fn live_clauses(&self) -> u32 {
         self.live_clauses.get()
@@ -465,7 +499,7 @@ impl<'a> ClauseStore<'a> {
     // CEP:WHAT: Constructs a clause: validates bounds, sorts literals canonically, computes weight, allocates, assigns the next ID.
     // CEP:WHY: Design 5.3: every field invariant (canonical literal order, cached weight, monotonic ID, bounded count) is established here so downstream consumers never re-validate (CEP&CC Law 3).
     // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TooManyLiterals / LiteralBoundExceeded beyond the bound, ClauseBudgetExceeded past kMaxClauses, WeightOverflow on weight overflow, ArenaFull when the arena is exhausted, TooManyParents for bad derivations.
+    // CEP:FAILURE: Returns TooManyLiterals beyond the literal bound, ClauseBudgetExceeded past kMaxClauses, WeightOverflow on weight overflow, ArenaFull when the arena is exhausted, TooManyParents for bad derivations, InvalidPointer for unreadable atoms.
     // CEP:ASSUMES: literal atoms were interned by the given term store (weight reads demand readable terms).
     // CEP:COST: O(n^2) worst-case canonical insertion sort (n <= kMaxClauseLiterals = 512, typical n <= 8) plus one arena allocation; measured in bench CEP-BENCH-0003.
     // CEP:EVIDENCE: bench CEP-BENCH-0003; unit/hot/clause_test.rs (canonical order, weight, monotonic ids, overflow layout).

@@ -6,7 +6,7 @@
 // CEP:FAILURE: none; compile-time constants.
 // CEP:ASSUMES: Feature flags are declared in config/Cargo.toml; target.rs enforces the exactly-one rule.
 // CEP:COST: compile-time only.
-// CEP:EVIDENCE: target.rs static guards.
+// CEP:EVIDENCE: config/target.rs static guards.
 // CEP:SECURITY: prevents silent feature fallback (CEP&CC 6.2).
 
 /// CEP:WHAT: True when the x86-64 target configuration is selected.

@@ -215,7 +215,7 @@ impl<'a> SatCore<'a> {
     // CEP:FAILURE: none (out-of-range variables read as Unassigned by the store).
     // CEP:ASSUMES: literal variables are below the declared count.
     // CEP:COST: 1 load + 2 compares.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::value_evaluation.
+    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::value_evaluation.
     // CEP:SECURITY: none.
     pub fn value_of_literal(&self, literal: SatLiteral) -> SatValue {
         let value = self.assignments.value(SatVarRaw(literal.variable().0));

@@ -7,7 +7,7 @@
 // CEP:FAILURE: none.
 // CEP:ASSUMES: used only on architectures without a dedicated module.
 // CEP:COST: constant.
-// CEP:EVIDENCE: benches/hot/bench_harness.rs checks cycle_counter_is_accurate before recording cycle claims.
+// CEP:EVIDENCE: benches/hot/harness.rs checks cycle_counter_is_accurate before recording cycle claims.
 // CEP:SECURITY: none.
 // CEP:PORTABILITY: any target without a dedicated counter module.
 

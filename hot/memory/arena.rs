@@ -80,7 +80,7 @@ pub struct ArenaRange {
 // CEP:FAILURE: compilation fails when the layout changes.
 // CEP:ASSUMES: u32 is 4 bytes on all supported targets; enforced by target modules.
 // CEP:COST: compile-time only.
-// CEP:EVIDENCE: tests/unit/hot/arena_test.rs::range_layout.
+// CEP:EVIDENCE: unit/hot/arena_test.rs::range_layout.
 // CEP:SECURITY: layout drift would be an ABI break.
 const _: () = assert!(core::mem::size_of::<ArenaRange>() == 8);
 

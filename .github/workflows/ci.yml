@@ -20,10 +20,12 @@ jobs:
         run: ./tools/cep_lint/build.sh
       - name: Self-test manifest (50.6 gate 3)
         run: ./tools/cep_lint/build/cep_lint --self-test
-      - name: Self-lint gate (50.6 gate 2: zero severity 0 and 1)
+      - name: "Self-lint gate (50.6 gate 2: zero severity 0 and 1)"
         run: ./tools/cep_lint/build/cep_lint tools/cep_lint/src
       - name: Repository lint (all first-party sources, fail on severity 0 and 1)
         run: ./tools/cep_lint/build/cep_lint hot cold config target src tests benches scripts
+      - name: "Evidence chain check (Law 4: every CEP:EVIDENCE pointer must resolve)"
+        run: python3 scripts/check_evidence.py
 
   rust:
     name: rust (fmt, clippy -D warnings, tests debug+release, ignored-expensive)

@@ -60,7 +60,7 @@ pub const kSatLiteralSignBit: u32 = 1;
 /// CEP:FAILURE: none; this type IS the failure vocabulary.
 /// CEP:ASSUMES: none.
 /// CEP:COST: enum copy.
-/// CEP:EVIDENCE: security/literal_encoding_test.rs::out_of_range_variable_rejected.
+/// CEP:EVIDENCE: unit/hot/sat_literal_test.rs::out_of_range_variable_rejected.
 /// CEP:SECURITY: the variable bound is the memory-safety boundary for watch-head indexing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SatLiteralError {

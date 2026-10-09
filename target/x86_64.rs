@@ -36,7 +36,7 @@ pub fn read_cycle_counter() -> u64 {
 // CEP:FAILURE: none.
 // CEP:ASSUMES: none.
 // CEP:COST: constant.
-// CEP:EVIDENCE: benches/hot/bench_harness.rs.
+// CEP:EVIDENCE: benches/hot/harness.rs.
 // CEP:SECURITY: none.
 pub fn cycle_counter_is_accurate() -> bool {
     true
