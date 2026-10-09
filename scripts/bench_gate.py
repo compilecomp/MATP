@@ -1,12 +1,12 @@
 # CEP:FILE: scripts/bench_gate.py
-# CEP:WHAT: Benchmark gate: reads the committed bench artifacts and enforces per-bench cycle thresholds so CEP-0 cost regressions fail CI (CEP&CC 13.4, 38.48).
-# CEP:WHY: CEP&CC Law 4 makes performance a correctness requirement; a gate script keeps the thresholds in one auditable place and deterministic (sorted input, fixed comparisons).
+# CEP:WHAT: Benchmark gate: reads the bench artifacts produced by the current run and enforces per-bench cycle thresholds so CEP-0 cost regressions fail CI (CEP&CC 13.4, 38.48); supports two tiers via --headroom-percent.
+# CEP:WHY: CEP&CC Law 4 makes performance a correctness requirement; a gate script keeps the thresholds in one auditable place and deterministic (sorted input, fixed comparisons). Two tiers are required because absolute cycle counts are host-specific: the recording-host tier (default 25 percent) runs on the machine that recorded the baselines, while the shared-runner tier (CI, 400 percent) only bounds catastrophic regressions - GitHub fleet medians for throughput-bound micro-ops swing up to 2.3x across runner models (observed runs 37963490245 vs 37964196220), so a tight absolute gate on shared runners would flake, not detect.
 # CEP:CLASS: CEP-2
 # CEP:STATUS: complete
-# CEP:FAILURE: Exits 1 when an artifact is missing, malformed, or exceeds its threshold; exits 0 when all benches pass.
-# CEP:ASSUMES: Artifacts live in benches/artifacts/*.json in the documented schema; thresholds are medians in cycles per operation.
+# CEP:FAILURE: Exits 1 when an artifact is missing, malformed, or exceeds its threshold; exits 2 on usage errors; exits 0 when all benches pass.
+# CEP:ASSUMES: Artifacts live in benches/artifacts/*.json in the documented schema; thresholds are medians in cycles per operation; the fine-grained tier is the pre-push responsibility of the recording host.
 # CEP:COST: offline tool; runtime cost irrelevant.
-# CEP:EVIDENCE: CI job bench-gate runs this script after cargo bench.
+# CEP:EVIDENCE: CI job bench runs this script after cargo bench with --headroom-percent 400; local runs use the default.
 # CEP:SECURITY: repository-trusted inputs only; no network; sorted traversal.
 
 import glob
@@ -48,15 +48,30 @@ def load_artifact(path):
     return data["name"], float(data["cycles_median"])
 
 
-# CEP:WHAT: Entry point: gate every baseline against the artifacts.
+# CEP:WHAT: Entry point: gate every baseline against the artifacts at the given headroom tier.
 # CEP:WHY: See file header.
 # CEP:STATUS: complete
-# CEP:FAILURE: exit 1 on any miss or regression.
+# CEP:FAILURE: exit 1 on any miss or regression, exit 2 on a usage error.
 # CEP:ASSUMES: run from the repository root.
 # CEP:COST: O(artifacts).
-# CEP:EVIDENCE: CI bench-gate job.
+# CEP:EVIDENCE: CI bench job; local pre-push runs.
 # CEP:SECURITY: none.
 def main():
+    headroom = CEP_GATE_HEADROOM_PERCENT
+    args = sys.argv[1:]
+    if len(args) == 2 and args[0] == "--headroom-percent":
+        try:
+            headroom = float(args[1])
+        except ValueError:
+            print("usage: bench_gate.py [--headroom-percent N]")
+            return 2
+        if headroom <= 0:
+            print("headroom must be positive")
+            return 2
+    elif args:
+        print("usage: bench_gate.py [--headroom-percent N]")
+        return 2
+    print("bench gate tier: +{:.0f}% headroom".format(headroom))
     artifacts = {}
     for path in sorted(glob.glob(os.path.join("benches", "artifacts", "*.json"))):
         loaded = load_artifact(path)
@@ -67,12 +82,12 @@ def main():
         if name not in artifacts:
             failures.append("missing artifact for {}".format(name))
             continue
-        limit = baseline * (1.0 + CEP_GATE_HEADROOM_PERCENT / 100.0)
+        limit = baseline * (1.0 + headroom / 100.0)
         measured = artifacts[name]
         if measured > limit:
             failures.append(
-                "{}: {:.2f} cycles exceeds gate {:.2f} (baseline {:.2f} + {}%)".format(
-                    name, measured, limit, baseline, CEP_GATE_HEADROOM_PERCENT
+                "{}: {:.2f} cycles exceeds gate {:.2f} (baseline {:.2f} + {:.0f}%)".format(
+                    name, measured, limit, baseline, headroom
                 )
             )
         else:

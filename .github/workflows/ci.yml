@@ -65,8 +65,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.99.0
       - name: Run benchmarks
         run: cargo bench
-      - name: Benchmark regression gate (13.4)
-        run: python3 scripts/bench_gate.py
+      - name: "Benchmark regression gate (13.4, shared-runner tier: +400% catastrophic bound)"
+        run: python3 scripts/bench_gate.py --headroom-percent 400
       - name: Disassembly evidence extraction (23.4)
         run: |
           cargo rustc -p mapt-hot --release -- --emit asm

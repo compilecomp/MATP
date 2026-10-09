@@ -21,3 +21,4 @@ Work items referenced by CEP:TODO, CEP:OPTNOTE, and CEP:ASSUMES fields across th
 | CEP-1016 | mapt-team | hot/sat | Struct-of-arrays value+reason row to shorten BCP value evaluation; measure first | 2 |
 | CEP-1017 | mapt-team | hot/sat | Blocking-literal cache in watch lists (MiniSat blocker); measure first | 2 |
 | CEP-1018 | mapt-team | target | CI target matrix execution on arm64 and riscv64 runners | CI |
+| CEP-1019 | mapt-team | benches | Cross-host benchmark regression tier: dedicated measurement host or per-op reference normalization so the fine-grained 13.4 gate can run on shared CI runners without flaking (fleet medians for throughput-bound micro-ops swing up to 2.3x; observed runs 37963490245 vs 37964196220) | 2 |
