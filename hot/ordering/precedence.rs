@@ -51,7 +51,7 @@ pub struct PrecedenceTable<'a> {
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: length equals symbol_count + 1; ranks form a permutation of 0..symbol_count.
     /// CEP:COST: 4 bytes per entry.
-    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::{id_order_is_default, equality_pseudo_entry}.
+    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::id_order_is_default.
     /// CEP:SECURITY: bounds-checked.
     ranks: &'a [u32],
 }
@@ -83,7 +83,7 @@ impl<'a> PrecedenceTable<'a> {
     // CEP:FAILURE: Returns InvalidRanks when the vector is empty, contains a rank at or above its own length, or two symbols share a rank; ArenaFull when allocation fails.
     // CEP:ASSUMES: the caller supplies exactly symbol_count + 1 entries.
     // CEP:COST: O(n) validation with an arena scratch array (one-time, init phase).
-    // CEP:EVIDENCE: unit/hot/ordering_test.rs::{explicit_ranks_validated, duplicate_ranks_rejected}.
+    // CEP:EVIDENCE: unit/hot/ordering_test.rs::explicit_ranks_validated.
     // CEP:SECURITY: permutation validation prevents smuggled partial orders from reaching the hot path.
     pub fn from_ranks(
         arena: &'a Arena,

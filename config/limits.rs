@@ -590,7 +590,7 @@ pub const kSatVsidsDecayPercent: u32 = 95;
 pub const kSatVsidsActivityCeiling: f64 = 1e100;
 
 /// CEP:WHAT: Factor applied to every activity and to the increment during a VSIDS rescale.
-/// CEP:WHY: The reciprocal scale of the ceiling restores scores to a small range while preserving their order exactly (multiplication by a positive constant is order-preserving on non-negative finite doubles).
+/// CEP:WHY: The reciprocal scale of the ceiling restores scores to a small range while preserving the heap order in practice (multiplication by a positive constant is weakly order-preserving on non-negative finite doubles; ties it creates are resolved deterministically by the index tie-break).
 /// CEP:STATUS: complete
 /// CEP:FAILURE: none.
 /// CEP:ASSUMES: kSatVsidsActivityCeiling * kSatVsidsRescaleFactor <= 1.

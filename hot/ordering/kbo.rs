@@ -82,6 +82,15 @@ fn compare_bounded(
     }
     let left_view = terms.term(left).map_err(map_term_error)?;
     let right_view = terms.term(right).map_err(map_term_error)?;
+    // Higher-order heads are Phase 5 scope (ticket CEP-1033); the rejection precedes every
+    // other case so the reserved symbol field can never alias a real symbol's rank.
+    if left_view.tag() == TermTag::Application
+        || left_view.tag() == TermTag::Lambda
+        || right_view.tag() == TermTag::Application
+        || right_view.tag() == TermTag::Lambda
+    {
+        return Err(OrderingError::UnsupportedHead);
+    }
     let left_weight = left_view.weight();
     let right_weight = right_view.weight();
     if left_weight > right_weight {
@@ -101,13 +110,6 @@ fn compare_bounded(
     // Equal weights: variables never relate to anything (Spec 03 section 2 lemma).
     if left_view.tag() == TermTag::Variable || right_view.tag() == TermTag::Variable {
         return Ok(OrderingComparison::Incomparable);
-    }
-    if left_view.tag() == TermTag::Application
-        || left_view.tag() == TermTag::Lambda
-        || right_view.tag() == TermTag::Application
-        || right_view.tag() == TermTag::Lambda
-    {
-        return Err(OrderingError::UnsupportedHead);
     }
     let left_rank = head_rank(precedence, &left_view)?;
     let right_rank = head_rank(precedence, &right_view)?;

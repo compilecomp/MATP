@@ -102,7 +102,7 @@ pub enum RestartPolicy {
 /// CEP:FAILURE: none (saturating arithmetic everywhere; thresholds stop growing at u64 saturation).
 /// CEP:ASSUMES: driven by the solver loop once per conflict and once per restart.
 /// CEP:COST: 1 compare per conflict, O(log k) per restart.
-/// CEP:EVIDENCE: unit/hot/sat_restart_test.rs; unit/hot/sat_solver_test.rs::{restart_returns_to_level_zero, restart_preserves_learnts}.
+/// CEP:EVIDENCE: unit/hot/sat_restart_test.rs; unit/hot/sat_solver_test.rs::restart_returns_to_level_zero.
 /// CEP:SECURITY: none.
 pub struct RestartScheduler {
     /// CEP:WHAT: Configured policy.

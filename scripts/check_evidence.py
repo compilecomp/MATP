@@ -50,9 +50,9 @@ def main() -> int:
     test_fn_files = {fn: rel for rel, fns in tests.items() for fn in fns}
     test_paths = set(tests.keys())
 
-    # CEP:WHAT: Matches one CEP:EVIDENCE payload; pointers look like path.rs or path.rs::fn.
+    # CEP:WHAT: Matches one CEP:EVIDENCE payload; pointers look like path.rs, path.rs::fn, or path.rs::{fn_a, fn_b}.
     evidence_re = re.compile(r"CEP:EVIDENCE:\s*(.+)$")
-    pointer_re = re.compile(r"([\w/]+\.rs)(?:::(\w+))?")
+    pointer_re = re.compile(r"([\w/]+\.rs)(?:::\{([^}]+)\}|::(\w+))?")
 
     broken = []
     checked = 0
@@ -67,7 +67,16 @@ def main() -> int:
                 if not m:
                     continue
                 payload = m.group(1)
-                for path, fn in pointer_re.findall(payload):
+                expanded = []
+                for path, brace_set, single_fn in pointer_re.findall(payload):
+                    if brace_set:
+                        # Expand brace sets path.rs::{a, b} into one pointer per name so
+                        # every fn-level citation is checked exactly (Law 4).
+                        for name in brace_set.split(","):
+                            expanded.append((path, name.strip()))
+                    else:
+                        expanded.append((path, single_fn))
+                for path, fn in expanded:
                     if fn:
                         # function-level pointer: exact file+fn match required
                         if path in tests:

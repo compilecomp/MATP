@@ -26,7 +26,7 @@ use mapt_config::limits::{kMaxUnificationDepth, kMaxVariablesPerClause};
 // CEP:FAILURE: Propagates SubstitutionError from application (DepthExceeded on cyclic inputs, InvalidPointer, ArenaFull when the record does not fit); a cyclic input substitution is caller misuse and errors loudly rather than looping.
 // CEP:ASSUMES: both substitutions are over the same variable namespace and the same term store; identity mappings (x -> x) are dropped from the record per Spec 02 section 1.
 // CEP:COST: O(bound variables) with one or two application passes per composed entry; two arena allocations for the record.
-// CEP:EVIDENCE: unit/hot/unify_test.rs::{compose_union_of_domains, compose_drops_identity, compose_applies_tau_first}.
+// CEP:EVIDENCE: unit/hot/unify_test.rs::{compose_union_of_domains, compose_drops_identity}.
 // CEP:SECURITY: binding count bounded by kMaxVariablesPerClause; record writes bounds-checked.
 pub fn compose(
     sigma: &Substitution<'_>,
@@ -81,7 +81,7 @@ const _: () = assert!(kComposedPairBound == kMaxVariablesPerClause);
 // CEP:FAILURE: Ok(false) on clash, occurs-check failure, or arity/symbol mismatch (legitimate unification outcomes); SubstitutionError on depth, bounds, or structural failures; on Ok(false) every binding made by this call is undone.
 // CEP:ASSUMES: see file header; the caller observes the entry trail depth is preserved on failure.
 // CEP:COST: O(|s| + |t|) expected; one bind per newly touched variable; measured in bench CEP-BENCH-0006.
-// CEP:EVIDENCE: unit/hot/unify_test.rs::{unify_ground_identical, unify_one_binding, occurs_check_rejects_cycle, clash_returns_false, failure_unwinds_trail}; property/unify_property_test.rs::{mgu_is_unifier, mgu_is_idempotent}.
+// CEP:EVIDENCE: unit/hot/unify_test.rs::{unify_ground_identical, unify_one_binding, occurs_check_rejects_cycle, clash_returns_false, failure_unwinds_trail}; property/unify_property_test.rs::mgu_is_unifier_and_idempotent.
 // CEP:SECURITY: dereference chains and recursion are bounded by kMaxUnificationDepth.
 pub fn unify(
     terms: &TermStore<'_>,
@@ -298,6 +298,9 @@ fn match_bounded(
     let subject_view = terms.term(subject).map_err(map_term_error)?;
     match pattern_view.tag() {
         TermTag::Variable => match substitution.lookup(pattern_view.symbol())? {
+            // After deref the pattern variable is unbound, so the bound branch is
+            // defensive only (a bound variable would have been chased); kept for Law 6
+            // loudness if a future caller breaks the deref discipline.
             Some(bound) => Ok(bound == subject),
             None => match substitution.bind(pattern_view.symbol(), subject) {
                 Ok(()) => Ok(true),

@@ -500,3 +500,57 @@ fn invalid_terms_rejected() {
         Err(OrderingError::InvalidPointer)
     );
 }
+
+// CEP:WHAT: Verifies Application-headed terms are rejected as unsupported by both orderings.
+// CEP:WHY: Higher-order heads are Phase 5 scope (ticket CEP-1033); comparing them must fail loudly (Law 6) instead of aliasing the reserved symbol field onto a real symbol.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails if an Application head is compared or panics.
+// CEP:ASSUMES: intern_app constructs the higher-order application.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/ordering/mod.rs OrderingError.
+// CEP:SECURITY: reserved-symbol aliasing prevention.
+#[test]
+fn unsupported_heads_rejected() {
+    let (arena, symbols, builder, terms, _clauses) = make_term_fixture();
+    let precedence = default_precedence(arena, &builder);
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let app = terms.intern_app(&symbols, a, a).expect("App(a, a)");
+    assert_eq!(
+        compare_kbo(&terms, &precedence, app, a),
+        Err(OrderingError::UnsupportedHead)
+    );
+    assert_eq!(
+        compare_lpo(&terms, &precedence, app, a),
+        Err(OrderingError::UnsupportedHead)
+    );
+    assert_eq!(
+        compare_kbo(&terms, &precedence, a, app),
+        Err(OrderingError::UnsupportedHead)
+    );
+}
+
+// CEP:WHAT: Verifies the equality pseudo-entry is distinct from symbol zero and maximal in the default policy.
+// CEP:WHY: Equality atoms carry reserved symbol zero; the dedicated trailing slot must never alias symbol zero's rank (design 5.1, hot/ordering/precedence.rs).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails if the pseudo-rank equals any symbol rank in the default policy.
+// CEP:ASSUMES: ID-order default policy.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/ordering/precedence.rs file header.
+// CEP:SECURITY: pseudo-symbol aliasing prevention.
+#[test]
+fn equality_pseudo_entry() {
+    let (arena, _symbols, builder, _terms, _clauses) = make_term_fixture();
+    let precedence = default_precedence(arena, &builder);
+    let equality_rank = precedence.equality_rank();
+    for id in 0..builder.symbol_count() {
+        assert_ne!(
+            precedence.rank(id),
+            Ok(equality_rank),
+            "the equality pseudo-rank must not alias symbol {}",
+            id
+        );
+    }
+    assert_eq!(equality_rank, builder.symbol_count());
+}

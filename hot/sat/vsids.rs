@@ -38,7 +38,7 @@ const kPercentScaleF64: f64 = 100.0;
 // CEP:FAILURE: none.
 // CEP:ASSUMES: binary heap.
 // CEP:COST: compile-time only.
-// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{higher_activity_first, ties_broken_by_index}.
+// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, ties_broken_by_index}.
 // CEP:SECURITY: none.
 const kHeapArity: u32 = 2;
 
@@ -103,7 +103,7 @@ pub struct VsidsHeap<'a> {
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: entries below the variable count.
     /// CEP:COST: 4 bytes per variable.
-    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{higher_activity_first, ties_broken_by_index}.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, ties_broken_by_index}.
     /// CEP:SECURITY: bounds-checked.
     heap: &'a [Cell<u32>],
     /// CEP:WHAT: Heap position per variable (kNotInHeap when absent).
@@ -205,7 +205,7 @@ impl<'a> VsidsHeap<'a> {
     // CEP:FAILURE: none (out-of-range variables are clamped no-ops, deterministic).
     // CEP:ASSUMES: variable below the declared count in solver use.
     // CEP:COST: O(log n).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, higher_activity_first}.
+    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::bump_raises_activity.
     // CEP:SECURITY: clamped.
     pub fn bump(&self, variable: u32) {
         let index = variable as usize;
@@ -272,7 +272,7 @@ impl<'a> VsidsHeap<'a> {
     // CEP:FAILURE: none (None means every variable is assigned).
     // CEP:ASSUMES: the predicate reflects the caller's current assignment store.
     // CEP:COST: O(log n) amortized (each assigned top is discarded once per assignment epoch).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{higher_activity_first, ties_broken_by_index, pick_skips_assigned}.
+    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, ties_broken_by_index, pick_skips_assigned}.
     // CEP:SECURITY: none.
     pub fn pick_unassigned(&self, is_assigned: impl Fn(u32) -> bool) -> Option<u32> {
         while self.heap_size.get() > 0 {
@@ -290,7 +290,7 @@ impl<'a> VsidsHeap<'a> {
     // CEP:FAILURE: none (None on empty).
     // CEP:ASSUMES: heap invariant holds.
     // CEP:COST: O(log n).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{higher_activity_first, ties_broken_by_index}.
+    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, ties_broken_by_index}.
     // CEP:SECURITY: none.
     fn extract_max(&self) -> Option<u32> {
         let size = self.heap_size.get();
@@ -343,7 +343,7 @@ impl<'a> VsidsHeap<'a> {
     // CEP:FAILURE: none.
     // CEP:ASSUMES: position is inside the heap.
     // CEP:COST: O(log n).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{higher_activity_first, ties_broken_by_index}.
+    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, ties_broken_by_index}.
     // CEP:SECURITY: none.
     fn sift_down(&self, mut position: u32) {
         loop {
@@ -403,7 +403,7 @@ impl<'a> VsidsHeap<'a> {
 // CEP:FAILURE: none.
 // CEP:ASSUMES: exactly three states.
 // CEP:COST: compile-time only.
-// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, saved_phase_roundtrip}.
+// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, phase_table_roundtrip}.
 // CEP:SECURITY: none.
 const kPhaseUnset: u8 = 0;
 /// CEP:WHAT: Saved positive-phase encoding.
@@ -432,7 +432,7 @@ const kPhaseNegative: u8 = 2;
 /// CEP:FAILURE: none (reads are clamped to the default phase).
 /// CEP:ASSUMES: single-threaded; the solver saves phases when unassigning (cancel) and may reset on restart per configuration.
 /// CEP:COST: 1 byte per variable.
-/// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, saved_phase_roundtrip, reset_restores_default}.
+/// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, phase_table_roundtrip}.
 /// CEP:SECURITY: bounds-checked writes, clamped reads.
 pub struct PhaseTable<'a> {
     /// CEP:WHAT: Per-variable phase encoding: 0 unset, 1 positive, 2 negative.
@@ -477,7 +477,7 @@ impl<'a> PhaseTable<'a> {
     // CEP:FAILURE: none (clamped to the default for out-of-range variables).
     // CEP:ASSUMES: variable below the declared count in solver use.
     // CEP:COST: 1 bounds check + 1 load + 1 compare.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, saved_phase_roundtrip}.
+    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, phase_table_roundtrip}.
     // CEP:SECURITY: clamped read.
     pub fn phase(&self, variable: u32) -> bool {
         let index = variable as usize;

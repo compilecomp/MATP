@@ -10,13 +10,13 @@ References: Marques-Silva & Sakallah 1996 (GRASP, conflict-driven learning); Mos
 Trails, decision levels, watched literals, and BCP soundness are specified in Formal Spec 05 and unchanged. Phase 2 adds two per-variable arrays maintained by the core:
 
 - `level(v)`: the decision level at which `v` was assigned (0 for root assignments and unassigned variables),
-- `reason(v)`: the antecedent clause of `v` — the clause whose unit propagation assigned `v` — or "none" for decisions and root assignments.
+- `reason(v)`: the antecedent clause of `v` — the clause whose unit propagation assigned `v` — or "none" for decisions and for reasonless root assignments made through `assign` (the reasonless entry point used by decisions and asserting learnt units).
 
-**Invariant R1.** Every propagated literal's reason is the clause that propagated it, recorded at assignment time by BCP; decisions and level-0 assignments carry no reason. Cancelling to a level clears both arrays for every popped variable, keeping R1 invariant across backjumps.
+**Invariant R1.** Every propagated literal's reason is the clause that propagated it, recorded at assignment time by BCP and by unit-clause attachment; decisions and reasonless root assignments carry no reason. Level-0 *propagated* units do carry their unit clause as reason (the attaching clause), which is MiniSat-conformant and harmless: the analysis in section 3 never resolves a level-0 variable (its literals are excluded from learnt clauses entirely). Cancelling to a level clears both arrays for every popped variable, keeping R1 invariant across backjumps.
 
 ## 2. The implication graph
 
-For the current assignment, the **implication graph** is the directed graph whose nodes are the assigned literals and whose edges go from each literal of a reason clause (all false) to the literal the clause propagated. Decisions and level-0 assignments have no incoming edges; every path into a node stays within levels `<= level(node)`, and a propagated node's non-decision ancestors at the same level were assigned before it on the trail.
+For the current assignment, the **implication graph** is the directed graph whose nodes are the assigned literals and whose edges go from each literal of a reason clause (all false) to the literal the clause propagated. Decisions and reasonless root assignments have no incoming edges; every path into a node stays within levels `<= level(node)`, and a propagated node's non-decision ancestors at the same level were assigned before it on the trail.
 
 **Definition (conflict).** A clause is *violated* when all its literals are false. BCP reports the first violated clause it touches.
 

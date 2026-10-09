@@ -168,10 +168,10 @@ pub struct SatCore<'a> {
     /// CEP:FAILURE: none (infallible reads return 0 for unassigned variables).
     /// CEP:ASSUMES: sized for `variables`; kept consistent with the value array by assign/decide/cancel_until.
     /// CEP:COST: 4 bytes per variable; 1 load per analysis step.
-    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{levels_recorded, cancel_clears_levels}.
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{reasons_recorded, cancel_clears_levels}.
     /// CEP:SECURITY: bounds-checked writes; reads clamped.
     levels: &'a [core::cell::Cell<u32>],
-    /// CEP:WHAT: Antecedent (reason) clause offset per variable, kInvalidClauseOffset for decisions and root assignments (design 11.1 S18-S19 input).
+    /// CEP:WHAT: Antecedent (reason) clause offset per variable, kInvalidClauseOffset for decisions and reasonless root assignments made through assign (design 11.1 S18-S19 input).
     /// CEP:WHY: Conflict analysis resolves a propagated literal against its reason clause; recording the reason at assign time (BCP passes the propagating clause) is what makes the implication graph walkable in O(1) per variable.
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none (kInvalidClauseOffset marks "no reason").
@@ -280,7 +280,7 @@ impl<'a> SatCore<'a> {
     // CEP:FAILURE: Returns InvariantViolation when the literal is already false (caller bug surfaced loudly); propagates TrailFull and Assignment errors.
     // CEP:ASSUMES: callers assign only unassigned or true literals (BCP checks before calling; property-tested).
     // CEP:COST: 1 compare + 2 stores + trail push.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::{value_evaluation, propagation_drains_queue}; unit/hot/sat_cdcl_test.rs::root_assignment_has_no_reason.
+    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::propagation_drains_queue; unit/hot/sat_cdcl_test.rs::root_assignment_has_no_reason.
     // CEP:SECURITY: defensive invariant check retained in release.
     pub fn assign(&self, literal: SatLiteral) -> Result<(), SatCoreError> {
         self.assign_with_reason(literal, kInvalidClauseOffset)
@@ -292,7 +292,7 @@ impl<'a> SatCore<'a> {
     // CEP:FAILURE: as assign(); the reason offset is stored unvalidated (validated when read by analysis).
     // CEP:ASSUMES: reason is a clause offset of this core's storage or kInvalidClauseOffset.
     // CEP:COST: as assign() plus 2 stores (level, reason).
-    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{reasons_recorded, levels_recorded}.
+    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::reasons_recorded.
     // CEP:SECURITY: index bounds-checked.
     pub fn assign_with_reason(&self, literal: SatLiteral, reason: u32) -> Result<(), SatCoreError> {
         let variable = literal.variable().0 as usize;

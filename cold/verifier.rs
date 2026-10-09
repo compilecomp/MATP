@@ -84,7 +84,7 @@ pub enum VerificationError {
 // CEP:FAILURE: returns every violation found.
 // CEP:ASSUMES: the symbol table was frozen from the same builder.
 // CEP:COST: O(terms x arity).
-// CEP:EVIDENCE: unit/cold/verifier_test.rs::{valid_term_store_passes, violations_detected}.
+// CEP:EVIDENCE: unit/cold/verifier_test.rs::{valid_term_store_passes, term_corruption_detected}.
 // CEP:SECURITY: integrity check of CEP-1 construction output.
 pub fn verify_term_store(
     arena: &Arena,
@@ -274,7 +274,7 @@ fn handle_of(offset: u32) -> mapt_hot::ir::term::TermPtr {
 // CEP:FAILURE: returns every violation of this clause.
 // CEP:ASSUMES: the clause header is readable.
 // CEP:COST: O(literals).
-// CEP:EVIDENCE: unit/cold/verifier_test.rs::{valid_clauses_pass, clause_violations_detected}.
+// CEP:EVIDENCE: unit/cold/verifier_test.rs::{valid_clauses_pass, clause_corruption_detected}.
 // CEP:SECURITY: none.
 pub fn verify_clause(
     clause: &Clause,

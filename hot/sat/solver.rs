@@ -148,6 +148,15 @@ pub struct CdclSolver<'a> {
     /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::unit_conflict_at_root_is_unsat.
     /// CEP:SECURITY: none.
     root_conflict: Cell<bool>,
+    /// CEP:WHAT: Conflict budget for this solver (production: kSatMaxConflicts).
+    /// CEP:WHY: Design 20.1/20.2: the explicit denial-of-service bound; the injectable constructor lets security tests exercise the exhaustion path at small scales while sharing the entire loop code (CEP&CC 34.3: test the mechanism, not a copy).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: solve returns Indeterminate(CdclError::ConflictBudgetExceeded) past the budget.
+    /// CEP:ASSUMES: >= 1; fixed at construction.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
+    /// CEP:SECURITY: denial-of-service bound.
+    conflict_budget: u64,
 }
 
 impl<'a> CdclSolver<'a> {
@@ -164,6 +173,30 @@ impl<'a> CdclSolver<'a> {
         variables: u32,
         policy: RestartPolicy,
         reset_phases_on_restart: bool,
+    ) -> Result<CdclSolver<'a>, CdclError> {
+        CdclSolver::new_with_conflict_budget(
+            arena,
+            variables,
+            policy,
+            reset_phases_on_restart,
+            kSatMaxConflicts,
+        )
+    }
+
+    // CEP:WHAT: Constructs the solver with an explicit conflict budget (the production constructor delegates with kSatMaxConflicts).
+    // CEP:WHY: Security tests must exercise the ConflictBudgetExceeded path at small, fast scales; the explicit-budget constructor keeps the loop code identical for both paths (CEP&CC 34.3: test the mechanism).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: as new(); budgets below the instance's conflict count make solve return Indeterminate.
+    // CEP:ASSUMES: budget >= 1.
+    // CEP:COST: as new().
+    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
+    // CEP:SECURITY: denial-of-service bound enforcement.
+    pub fn new_with_conflict_budget(
+        arena: &'a Arena,
+        variables: u32,
+        policy: RestartPolicy,
+        reset_phases_on_restart: bool,
+        conflict_budget: u64,
     ) -> Result<CdclSolver<'a>, CdclError> {
         if variables == 0 || variables > kMaxSatVariables {
             return Err(CdclError::Storage(
@@ -193,6 +226,7 @@ impl<'a> CdclSolver<'a> {
             conflicts: Cell::new(0),
             reset_phases_on_restart,
             root_conflict: Cell::new(false),
+            conflict_budget,
         })
     }
 
@@ -304,7 +338,7 @@ impl<'a> CdclSolver<'a> {
                     }
                     let conflict_count = self.conflicts.get().saturating_add(1);
                     self.conflicts.set(conflict_count);
-                    if conflict_count > kSatMaxConflicts {
+                    if conflict_count > self.conflict_budget {
                         return SolveResult::Indeterminate(CdclError::ConflictBudgetExceeded);
                     }
                     self.restarts.note_conflict();
@@ -399,7 +433,7 @@ impl<'a> CdclSolver<'a> {
     // CEP:FAILURE: none.
     // CEP:ASSUMES: level <= current level.
     // CEP:COST: O(popped entries).
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{restart_returns_to_level_zero, restart_preserves_learnts}; unit/hot/sat_vsids_test.rs::insert_after_backtrack.
+    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero; unit/hot/sat_vsids_test.rs::insert_after_backtrack.
     // CEP:SECURITY: clamped level arithmetic in the core.
     fn backtrack(&self, level: u32) {
         let keep = self.core.trail().cancel_keep_index(level);

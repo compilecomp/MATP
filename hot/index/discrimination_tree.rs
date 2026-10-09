@@ -405,7 +405,7 @@ impl<'a> DiscriminationTree<'a> {
         payload: u64,
     ) -> Result<(), IndexError> {
         let mut flat = FlatBuffer::default();
-        flatten(terms, term, &mut flat)?;
+        flatten(terms, term, &mut flat, 0)?;
         let mut current = kRootNodeIndex;
         for symbol in flat.used() {
             current = self.find_or_create_child(current, *symbol)?;
@@ -429,7 +429,7 @@ impl<'a> DiscriminationTree<'a> {
     // CEP:FAILURE: Returns InvalidTerm for unreadable terms, TermTooLarge past the capacity, and PayloadMissing when the walk cannot reach a leaf or the payload is absent there.
     // CEP:ASSUMES: the term was inserted with this payload.
     // CEP:COST: O(term size) walk plus O(list length) unlink.
-    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{delete_removes_payload, delete_keeps_other_payloads}.
+    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{delete_removes_payload, delete_removes_payload}.
     // CEP:SECURITY: bounds-checked walk.
     pub fn delete(
         &self,
@@ -438,7 +438,7 @@ impl<'a> DiscriminationTree<'a> {
         payload: u64,
     ) -> Result<(), IndexError> {
         let mut flat = FlatBuffer::default();
-        flatten(terms, term, &mut flat)?;
+        flatten(terms, term, &mut flat, 0)?;
         let mut current = kRootNodeIndex;
         for symbol in flat.used() {
             current = match self.find_child(current, *symbol) {
@@ -485,7 +485,7 @@ impl<'a> DiscriminationTree<'a> {
         buffer: &mut [u64],
     ) -> Result<usize, IndexError> {
         let mut flat = FlatBuffer::default();
-        flatten(terms, query, &mut flat)?;
+        flatten(terms, query, &mut flat, 0)?;
         let mut count: usize = 0;
         self.walk(flat.used(), 0, kRootNodeIndex, buffer, &mut count)?;
         Ok(count)
@@ -735,8 +735,14 @@ fn flatten(
     terms: &TermStore<'_>,
     term: TermPtr,
     buffer: &mut FlatBuffer,
+    depth: u32,
 ) -> Result<(), IndexError> {
     if buffer.length >= kIndexTermCapacity as usize {
+        return Err(IndexError::TermTooLarge);
+    }
+    if depth > crate::ordering::kOrderingDepthLimit {
+        // Explicit recursion bound (CEP&CC 22.10); the intern-time depth cap already
+        // guarantees legal terms stay far below it, this guard contains forged states.
         return Err(IndexError::TermTooLarge);
     }
     let view = terms.term(term).map_err(|_| IndexError::InvalidTerm)?;
@@ -762,7 +768,7 @@ fn flatten(
     // buffer capacity above bounds the total symbol count (CEP&CC 22.10).
     for index in 0..view.child_count() {
         let child = view.child(index).map_err(|_| IndexError::InvalidTerm)?;
-        flatten(terms, child, buffer)?;
+        flatten(terms, child, buffer, depth + 1)?;
     }
     Ok(())
 }

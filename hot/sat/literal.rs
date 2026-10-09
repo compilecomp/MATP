@@ -75,7 +75,7 @@ impl SatLiteral {
     // CEP:FAILURE: Returns VariableOutOfRange when variable >= kMaxSatVariables.
     // CEP:ASSUMES: none.
     // CEP:COST: 1 compare + 1 shift + 1 or.
-    // CEP:EVIDENCE: security/literal_encoding_test.rs::{out_of_range_variable_rejected, encoding_roundtrip}.
+    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::{out_of_range_variable_rejected, encoding_roundtrip}.
     // CEP:SECURITY: bounds check retained in release (CEP&CC 23.7).
     pub fn new(variable: SatVar, positive: bool) -> Result<SatLiteral, SatLiteralError> {
         if variable.0 >= kMaxSatVariables {

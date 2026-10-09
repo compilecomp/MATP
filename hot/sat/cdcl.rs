@@ -424,7 +424,10 @@ impl<'a> ConflictAnalyzer<'a> {
             self.learnt[1].set(self.learnt[backjump_position].get());
             self.learnt[backjump_position].set(swap);
         }
-        // LBD: distinct levels across the whole learnt clause (design 11.1 S23).
+        // LBD: distinct levels across the whole learnt clause (design 11.1 S23). The
+        // minimize_generation counter doubles as the level-mark generation source: the
+        // level_generations array is distinct from every mark array, so sharing one
+        // strictly-increasing counter is safe and saves a field.
         let level_generation = self.minimize_generation.get().wrapping_add(1);
         self.minimize_generation.set(level_generation);
         let mut lbd: u32 = 0;

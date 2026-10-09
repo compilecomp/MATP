@@ -7,7 +7,7 @@
 // CEP:FAILURE: Returns OrderingError::StepBudgetExceeded past kMaxOrderingSteps, InvalidPointer for unreadable terms, UnknownSymbol for out-of-table heads, UnsupportedHead for Application/Lambda heads (Phase 5); never panics.
 // CEP:ASSUMES: the precedence table covers all symbols of the compared terms; variable occurrence checks are raw structural scans (no substitution is involved in ordering).
 // CEP:COST: the strict predicate recursion is bounded by the step budget; measured 22.22 cycles median for a nested ground subterm-case comparison on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, measured 2026-10-10, bench CEP-BENCH-0007, artifact benches/artifacts/ordering_lpo.json.
-// CEP:EVIDENCE: unit/hot/ordering_test.rs::{lpo_subterm_case, lpo_precedence_case, lpo_lexicographic_case, lpo_variable_case, lpo_ground_totality}; property/ordering_property_test.rs.
+// CEP:EVIDENCE: unit/hot/ordering_test.rs::{lpo_subterm_case, lpo_precedence_and_lex_cases, lpo_variable_case, lpo_ground_totality}; property/ordering_property_test.rs::subterm_property_both_orderings.
 // CEP:SECURITY: recursion depth and step count bounded (CEP&CC 22.10); all reads bounds-checked.
 // CEP:UNSAFE: none; this file is safe Rust.
 // CEP:HPC-DETERMINISM: deterministic; comparisons depend only on term structure and the frozen precedence, in index order.
@@ -26,7 +26,7 @@ use crate::ordering::{kOrderingDepthLimit, OrderingComparison, OrderingError, St
 /// CEP:FAILURE: see OrderingError; comparisons never panic.
 /// CEP:ASSUMES: see file header.
 /// CEP:COST: two strict-predicate evaluations in the worst case (both directions); measured in bench CEP-BENCH-0007.
-/// CEP:EVIDENCE: unit/hot/ordering_test.rs::{lpo_subterm_case, lpo_ground_totality}; property/ordering_property_test.rs::{ordering_irreflexive, ordering_transitive_ground, ordering_total_on_ground, lpo_subterm_property}.
+/// CEP:EVIDENCE: unit/hot/ordering_test.rs::{lpo_subterm_case, lpo_ground_totality}; property/ordering_property_test.rs::{ordering_irreflexive, ordering_transitive_ground, ordering_total_on_ground, subterm_property_both_orderings}.
 /// CEP:SECURITY: step budget bounds total work.
 pub fn compare_lpo(
     terms: &TermStore<'_>,
@@ -81,7 +81,7 @@ pub fn compare_lpo_with_budget(
 // CEP:FAILURE: propagates OrderingError; returns false when the relation does not hold (a comparison outcome, not an error).
 // CEP:ASSUMES: left != right as pointers (callers check).
 // CEP:COST: O(|left| x |right|) worst case, budget-bounded.
-// CEP:EVIDENCE: unit/hot/ordering_test.rs::{lpo_subterm_case, lpo_precedence_case, lpo_lexicographic_case, lpo_variable_case}.
+// CEP:EVIDENCE: unit/hot/ordering_test.rs::{lpo_subterm_case, lpo_precedence_and_lex_cases, lpo_variable_case}.
 // CEP:SECURITY: depth- and step-bounded recursion.
 fn lpo_greater(
     terms: &TermStore<'_>,

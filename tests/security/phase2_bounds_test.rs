@@ -35,11 +35,10 @@ use mapt_config::limits::{kIndexTermCapacity, kSatMaxConflicts};
 fn unification_depth_bound_enforced() {
     let (arena, symbols, builder, terms, _clauses) = common::make_term_fixture();
     let substitution = Substitution::new(arena);
-    // Build a chain x0 -> x1 -> x2 -> ... longer than kMaxUnificationDepth; the loop
-    // terminates because kMaxVariablesPerClause (64) is far below the guard, so the
-    // chain is built by rebinding fresh substitutions in sequence? No: bind refuses
-    // double binds, and only 64 variables exist, so the chain is at most 64 long --
-    // below the guard. Instead the cycle closes: x63 -> x0, making the chain infinite.
+    // Build the cycle x0 -> x1 -> ... -> x63 -> x0: only kMaxVariablesPerClause (64)
+    // variables exist and bind refuses double binds, so the longest acyclic chain is
+    // 63 links -- below the guard -- and only the closing edge x63 -> x0 makes the
+    // dereference chain infinite, which the depth guard must stop.
     for variable in 0..64u32 {
         let next = terms.intern_var((variable + 1) % 64).expect("next");
         substitution.bind(variable, next).expect("bind");

@@ -464,3 +464,39 @@ fn construction_requires_arena_room() {
     let arena = make_arena(64);
     assert!(ConflictAnalyzer::new(arena, kGraphVariables).is_err());
 }
+
+// CEP:WHAT: Verifies a conflict clause with no literal at the current level is rejected as malformed.
+// CEP:WHY: Caller discipline (clauses only at level 0) makes this state unreachable through the solver; the analyzer still refuses it loudly (Law 6) instead of walking the trail into an underflow.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails if the malformed conflict is analyzed.
+// CEP:ASSUMES: a fully level-0-falsified clause plus an unrelated level-1 decision.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/cdcl.rs CdclError.
+// CEP:SECURITY: caller-discipline enforcement.
+#[test]
+fn malformed_conflict_rejected() {
+    let arena = make_arena(kGraphArenaBytes);
+    let core = SatCore::new(arena, kGraphVariables).expect("core");
+    let analyzer = ConflictAnalyzer::new(arena, kGraphVariables).expect("analyzer");
+    let vsids = VsidsHeap::new(arena, kGraphVariables).expect("vsids");
+    // Level 0: units over 0 and 1, then a clause (-0, -1) that is fully falsified at
+    // level 0; attach succeeds (both watches false) and BCP never rescans it.
+    let _ = core.add_clause(&[lit(0, true)]).expect("unit 0");
+    let _ = core.add_clause(&[lit(1, true)]).expect("unit 1");
+    let attached = core
+        .add_clause(&[lit(0, false), lit(1, false)])
+        .expect("falsified clause");
+    let offset = match attached {
+        mapt::hot::sat::database::AttachOutcome::Attached(offset) => offset,
+        other => panic!("expected attach, got {:?}", other),
+    };
+    let _ = core.propagate().expect("propagate");
+    // Level 1: decide an unrelated variable; the analyzer is then handed the falsified
+    // clause directly, which has no literal at the current level.
+    core.decide(lit(5, true)).expect("decide 5");
+    let mut buffer = [lit(0, true); 64];
+    assert_eq!(
+        analyzer.analyze(&core, &vsids, offset, &mut buffer),
+        Err(CdclError::MalformedConflict)
+    );
+}

@@ -313,35 +313,98 @@ fn deterministic_across_repeated_solves() {
     assert_eq!(first.restarts_done(), second.restarts_done());
 }
 
-// CEP:WHAT: Verifies an unsatisfiable formula with a small custom budget returns Indeterminate.
-// CEP:WHY: Design 20.2: budget exhaustion is an explicit outcome, never a silent loop.
+// CEP:WHAT: Verifies budget exhaustion returns Indeterminate and a full-budget solve of the same instance refutes.
+// CEP:WHY: Design 20.2: exceeded limits are explicit results, never silent loops; the injected budget exercises the exhaustion path at a tiny scale while the production budget refutes the same instance normally (CEP&CC 34.3: test the mechanism).
 // CEP:STATUS: complete
-// CEP:FAILURE: test fails if the budget is ignored.
-// CEP:ASSUMES: kSatMaxConflicts is far above any test formula's need, so the budget is exercised only logically (the outcome must still terminate correctly here).
+// CEP:FAILURE: test fails if the budgeted solve terminates with a definite answer or the production-budget solve fails to refute.
+// CEP:ASSUMES: PHP(3,4) needs more than one conflict (verified by the full-budget run).
 // CEP:COST: constant.
 // CEP:EVIDENCE: cited by hot/sat/solver.rs solve and config/limits.rs kSatMaxConflicts.
 // CEP:SECURITY: denial-of-service bound.
 #[test]
 fn conflict_budget_returns_indeterminate() {
-    // A formula that is UNSAT; with the production budget it terminates with the refutation,
-    // proving the budget does not fire spuriously; the Indeterminate path itself is covered
-    // by the budget check being a named constant above every test instance.
+    // PHP(3,4): 12 variables, needs dozens of conflicts, so a one-conflict budget
+    // starves the search mid-refutation.
+    let build = |budget: u64| {
+        let arena = make_arena(kSolverArenaBytes);
+        let solver =
+            CdclSolver::new_with_conflict_budget(arena, 12, RestartPolicy::Luby, false, budget)
+                .expect("solver");
+        for pigeon in 0..4u32 {
+            let mut clause: Vec<SatLiteral> = Vec::new();
+            for hole in 0..3u32 {
+                clause.push(lit(pigeon * 3 + hole, true));
+            }
+            solver.add_clause(&clause).expect("pigeon clause");
+        }
+        for hole in 0..3u32 {
+            for first in 0..4u32 {
+                for second in (first + 1)..4u32 {
+                    solver
+                        .add_clause(&[lit(first * 3 + hole, false), lit(second * 3 + hole, false)])
+                        .expect("hole clause");
+                }
+            }
+        }
+        solver
+    };
+    // A one-conflict budget cannot absorb the refutation: the solve must stop with the
+    // explicit budget result, never a definite answer.
+    let starved = build(1);
+    assert_eq!(
+        starved.solve(),
+        SolveResult::Indeterminate(mapt::hot::sat::cdcl::CdclError::ConflictBudgetExceeded)
+    );
+    // Budget 1 lets the first conflict analyze and learn; the second exceeds it.
+    assert_eq!(starved.conflicts(), 2);
+    // The production budget refutes the same instance.
+    let full = build(mapt_config::limits::kSatMaxConflicts);
+    assert_eq!(full.solve(), SolveResult::Unsatisfiable);
+    assert!(
+        full.conflicts() > 1,
+        "the instance must need more than one conflict"
+    );
+    assert!(full.conflicts() < mapt_config::limits::kSatMaxConflicts);
+}
+
+// CEP:WHAT: Verifies the in-solve restart branch fires on a hard instance and the search still terminates correctly.
+// CEP:WHY: Design 11.1 S16 and 11.5: restarts bound bad search branches; the branch (cancel to level zero, advance the schedule, keep learnts) must actually execute during a solve and never break the outcome.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails if no restart fires or the outcome is wrong.
+// CEP:ASSUMES: PHP(6,7) needs more conflicts than one Luby base interval (deterministic for the pinned heuristics).
+// CEP:COST: one solve (hundreds of conflicts).
+// CEP:EVIDENCE: cited by hot/sat/solver.rs solve and hot/sat/restart.rs RestartScheduler.
+// CEP:SECURITY: none.
+#[test]
+fn restarts_fire_during_search() {
+    let holes: u32 = 6;
+    let pigeons: u32 = 7;
     let arena = make_arena(kSolverArenaBytes);
-    let solver = CdclSolver::new(arena, 4, RestartPolicy::Luby, false).expect("solver");
-    solver
-        .add_clause(&[lit(0, true), lit(1, true)])
-        .expect("c1");
-    solver
-        .add_clause(&[lit(0, false), lit(2, true)])
-        .expect("c2");
-    solver
-        .add_clause(&[lit(1, false), lit(2, true)])
-        .expect("c3");
-    solver
-        .add_clause(&[lit(2, false), lit(3, false)])
-        .expect("c4");
-    solver.add_clause(&[lit(3, true)]).expect("c5");
-    let outcome = solver.solve();
-    assert_eq!(outcome, SolveResult::Unsatisfiable);
-    assert!(solver.conflicts() < mapt_config::limits::kSatMaxConflicts);
+    let solver =
+        CdclSolver::new(arena, pigeons * holes, RestartPolicy::Luby, false).expect("solver");
+    for pigeon in 0..pigeons {
+        let mut clause: Vec<SatLiteral> = Vec::new();
+        for hole in 0..holes {
+            clause.push(lit(pigeon * holes + hole, true));
+        }
+        solver.add_clause(&clause).expect("pigeon clause");
+    }
+    for hole in 0..holes {
+        for first in 0..pigeons {
+            for second in (first + 1)..pigeons {
+                solver
+                    .add_clause(&[
+                        lit(first * holes + hole, false),
+                        lit(second * holes + hole, false),
+                    ])
+                    .expect("hole clause");
+            }
+        }
+    }
+    assert_eq!(solver.solve(), SolveResult::Unsatisfiable);
+    assert!(
+        solver.restarts_done() > 0,
+        "PHP(6,7) must cross at least one restart interval"
+    );
+    assert!(solver.conflicts() > 0);
 }
