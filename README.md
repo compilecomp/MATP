@@ -41,32 +41,4 @@ cargo rustc -p mapt-hot --release -- --emit asm
 python3 scripts/extract_disasm.py
 ```
 
-CI runs all of these on every push (`.github/workflows/ci.yml`), plus AddressSanitizer and UBSan builds (CEP&CC 6.6).
-
-## Repository layout (design section 4; CEP&CC 32)
-
-- `hot/` — CEP-0/HPC-0 hot-path engine code (`no_std`, zero dependencies, allocation-free after initialization)
-- `cold/` — CEP-1 deterministic runtime code (arena host, symbol builder, verifier, printer)
-- `config/` — named limits and target constants (CEP&CC 11, 32.11)
-- `target/` — ISA-specific code, isolated (CEP&CC 32.5)
-- `tests/` — unit, property, contract, fuzz, security, golden suites (133 tests)
-- `benches/` — deterministic benchmark harness and committed evidence artifacts
-- `tools/cep_lint/` — the mechanical enforcement tool of standard section 50
-- `.cep/` — lint configuration (data-driven rules)
-- `security/` — threat model, trust boundaries, FFI policy
-- `docs/formal/` — normative specifications cited by `CEP:HPC-PASS-LEGALITY` fields
-- `scripts/` — CEP-2 deterministic tooling (bench gate, determinism gate, disassembly extraction)
-- `quarantine/`, `generated/`, `third_party/` — policy READMEs; all empty in Phase 1
-
-## Standard compliance summary
-
-- Every first-party source file carries a full CEP header; every nontrivial function carries a full CEP comment block with measured `CEP:COST` and `CEP:EVIDENCE` (bench artifacts committed under `benches/artifacts/`).
-- Hot code is `no_std`, allocation-free after init, panic-free, lock-free, `dyn`-free; every banned-token class of CEP&CC 25.3 is mechanically enforced by `CEP-LINT-HOT-BANNED`.
-- All limits are named constants with static cross-checks (`config/limits.rs`).
-- All layouts are pinned by static assertions and golden tests.
-- Determinism: monotonic IDs, seedless hashing, sorted iteration; proven by the determinism gate.
-- Measurement: 8 benchmark artifacts with cycles-per-operation medians and disassembly extracts for every `CEP:OPTIMAL` claim.
-
-## Next phases
-
-Phases 2-6 (design section 26) are queued in `docs/tickets.md`: unification and ordering (Phase 2), search loops and CDCL (Phase 3), AVATAR and portfolio (Phase 4), theories (Phase 5), certification (Phase 6).
+CI runs all of these on every push (`.github/workflows/ci.yml`), plus AddressSanitizer and UBSan builds (CEP&CC 6.6)
