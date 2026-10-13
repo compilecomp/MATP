@@ -7,7 +7,7 @@
 # CEP:FAILURE: Exits nonzero when an assembly input is missing or a requested section is not found.
 # CEP:ASSUMES: Run after `cargo rustc -p mapt-hot --release -- --emit asm` and `cargo rustc --bench <name> --release -- --emit asm` for each bench.
 # CEP:COST: offline tool; runtime cost irrelevant.
-# CEP:EVIDENCE: outputs benches/artifacts/disasm_{arena,term,clause,substitution,sat}.txt cited by CEP:OPTPROOF and CEP:COST fields.
+# CEP:EVIDENCE: outputs benches/artifacts/disasm_{arena,term,clause,substitution,sat,unify,ordering,index,cdcl,atp,search,subsumption,sat_preprocess}.txt cited by CEP:OPTPROOF and CEP:COST fields.
 # CEP:SECURITY: repository-trusted input only; no network.
 
 import glob
@@ -61,6 +61,22 @@ TARGETS = {
         ("build/release/deps/cdcl_bench-*.s", "cdcl_bench4main,"),
         ("build/release/deps/mapt_hot-*.s", "16ConflictAnalyzer7analyze,"),
         ("build/release/deps/mapt_hot-*.s", "10CdclSolver5solve,"),
+    ],
+    "disasm_atp.txt": [
+        ("build/release/deps/atp_bench-*.s", "atp_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "10resolution7resolve,"),
+    ],
+    "disasm_search.txt": [
+        ("build/release/deps/search_bench-*.s", "search_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "11PassiveHeap4push,"),
+    ],
+    "disasm_subsumption.txt": [
+        ("build/release/deps/subsumption_bench-*.s", "subsumption_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "11subsumption8subsumes,"),
+    ],
+    "disasm_sat_preprocess.txt": [
+        ("build/release/deps/sat_preprocess_bench-*.s", "sat_preprocess_bench4main,"),
+        ("build/release/deps/mapt_hot-*.s", "preprocess8simplify"),
     ],
 }
 

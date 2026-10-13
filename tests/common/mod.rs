@@ -190,3 +190,62 @@ impl DeterministicRng {
         self.next_u64() % bound
     }
 }
+
+// CEP:WHAT: Looks up a fixture symbol's id by name.
+// CEP:WHY: Phase 3 inference and search tests build terms by symbol name for readability; the linear scan over the small fixture table is test-cheap.
+// CEP:CLASS: CEP-2
+// CEP:STATUS: complete
+// CEP:FAILURE: panics when the name is absent.
+// CEP:ASSUMES: the standard fixture vocabulary.
+// CEP:COST: O(symbol count).
+// CEP:EVIDENCE: used by the Phase 3 ATP test targets.
+// CEP:SECURITY: none.
+pub fn symbol_id(builder: &SymbolTableBuilder, name: &str) -> u32 {
+    for id in 0..builder.symbol_count() {
+        if builder.name_of(id) == Some(name) {
+            return id;
+        }
+    }
+    panic!("fixture symbol {} not found", name);
+}
+
+// CEP:WHAT: Arena capacity for ATP search fixtures (12 MiB).
+// CEP:WHY: One term hash table (8 MiB) plus small injected search capacities fits with slack; named instead of a magic number (CEP&CC 11.3).
+// CEP:CLASS: CEP-2
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: used by the Phase 3 ATP test targets.
+// CEP:SECURITY: none.
+pub const kAtpFixtureArenaBytes: u32 = 12_582_912;
+
+// CEP:WHAT: Builds the Phase 3 inference fixture: leaked arena, frozen symbol table, builder, term store, id-order precedence table, and shared substitution.
+// CEP:WHY: One call sets up the inference context stack for a test (the same pattern as make_term_fixture plus the ordering and substitution engines).
+// CEP:CLASS: CEP-2
+// CEP:STATUS: complete
+// CEP:FAILURE: panics on any construction failure.
+// CEP:ASSUMES: fresh arena.
+// CEP:COST: one arena plus the term hash table.
+// CEP:EVIDENCE: used by the Phase 3 ATP test targets.
+// CEP:SECURITY: none.
+pub fn make_inference_fixture() -> (
+    &'static Arena,
+    SymbolTable<'static>,
+    SymbolTableBuilder,
+    TermStore<'static>,
+    mapt::hot::ordering::precedence::PrecedenceTable<'static>,
+    mapt::hot::unification::substitution::Substitution<'static>,
+) {
+    let arena = make_arena(kAtpFixtureArenaBytes);
+    let builder = standard_symbols();
+    let symbols = builder.finalize(arena).expect("freeze failed");
+    let terms = TermStore::new(arena).expect("term store failed");
+    let precedence = mapt::hot::ordering::precedence::PrecedenceTable::from_id_order(
+        arena,
+        builder.symbol_count(),
+    )
+    .expect("precedence failed");
+    let substitution = mapt::hot::unification::substitution::Substitution::new(arena);
+    (arena, symbols, builder, terms, precedence, substitution)
+}

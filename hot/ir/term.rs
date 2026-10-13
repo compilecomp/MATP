@@ -263,15 +263,15 @@ impl TermPtr {
         self.0
     }
 
-    // CEP:WHAT: Constructs the invalid handle used for zero-filling unused clause literal slots.
-    // CEP:WHY: Unused inline slots need a deterministic filler whose dereference fails loudly; the invalid offset makes TermStore::term return InvalidPointer instead of reading garbage (CEP&CC 22.4 no uninitialized or misleading reads).
+    // CEP:WHAT: Constructs the invalid handle used for zero-filling unused clause literal slots and test buffers.
+    // CEP:WHY: Unused inline slots and Phase 3 test/generator filler buffers need a deterministic filler whose dereference fails loudly; the invalid offset makes TermStore::term return InvalidPointer instead of reading garbage (CEP&CC 22.4 no uninitialized or misleading reads); the constructor is public because test fixtures (external integration tests) build filler literals, and forging it is harmless - every dereference errors loudly.
     // CEP:STATUS: complete
     // CEP:FAILURE: dereferencing the result always returns TermError::InvalidPointer.
-    // CEP:ASSUMES: crate-internal use only; never stored as a real atom.
+    // CEP:ASSUMES: never stored as a real atom.
     // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::inline_slots_zeroed; unit/cold/verifier_test.rs.
+    // CEP:EVIDENCE: unit/hot/clause_test.rs::inline_slots_zeroed; unit/cold/verifier_test.rs; unit/hot/inference_test.rs::binary_resolution_ground.
     // CEP:SECURITY: loud-failure sentinel.
-    pub(crate) fn invalid() -> TermPtr {
+    pub fn invalid() -> TermPtr {
         TermPtr(kInvalidTermOffset)
     }
 

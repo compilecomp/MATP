@@ -699,6 +699,226 @@ pub const kInvalidIndexEntry: u32 = u32::MAX - 2;
 /// CEP:SECURITY: denial-of-service bound on index work per term.
 pub const kIndexTermCapacity: u32 = 1024;
 
+/// CEP:WHAT: Capacity of the SAT clause registry (problem plus learnt clause records, design 11.1 S4 enumerable database).
+/// CEP:WHY: CEP-1003 (Phase 3) requires an enumerable clause database for the learnt-clause deletion policy (S25/S26) and for SAT preprocessing enumeration; a named capacity keeps the registry a fixed arena allocation with a loud RegistryFull error at the bound instead of unbounded growth.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: clause registration returns SatCoreError::Storage(RegistryFull) past the capacity.
+/// CEP:ASSUMES: 262_144 live clause records cover production workloads (kSatMaxLearntClauses = 100_000 learnts plus problem clauses); the capacity is injectable for tests.
+/// CEP:COST: 16 bytes per entry plus 8 bytes of reduction scratch, 6 MiB together at the default capacity.
+/// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{registry_enumerates, capacity_enforced}; security/phase3_bounds_test.rs::registry_capacity_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on the tracked clause count.
+pub const kSatRegistryCapacity: u32 = 262_144;
+
+/// CEP:WHAT: Divisor of the learnt-clause reduction (the fraction of live learnts kept after a reduction round, design 11.6).
+/// CEP:WHY: MiniSat-style database reduction deletes the worst half when the learnt budget is reached; the divisor names that fraction so the policy is a documented constant rather than a magic 2.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: reduction never deletes more than live_count - live_count/divisor clauses; locked clauses are never deleted.
+/// CEP:ASSUMES: >= 2; enforced by static assertion.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_keeps_best_half, locked_clauses_survive}.
+/// CEP:SECURITY: none.
+pub const kSatLearntReduceDivisor: u32 = 2;
+
+/// CEP:WHAT: Clause-activity rescale ceiling for the SAT registry (design 11.1 S24 activity scores as f64).
+/// CEP:WHY: Unbounded activity counters overflow to infinity and destroy the deletion ordering; rescaling all scores when the maximum exceeds the ceiling keeps the ordering total and deterministic (same discipline as the VSIDs heap, kSatVsidsActivityCeiling).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: >= 1.0; enforced by static assertion.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::activity_rescale_preserves_order.
+/// CEP:SECURITY: none.
+pub const kSatClauseActivityCeiling: f64 = 1e100;
+
+/// CEP:WHAT: Clause-activity rescale factor for the SAT registry.
+/// CEP:WHY: Multiplier applied to every activity score on rescale; 1e-100 paired with the 1e100 ceiling keeps scores finite.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: ceiling * factor <= 1.0; enforced by static assertion.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::activity_rescale_preserves_order.
+/// CEP:SECURITY: none.
+pub const kSatClauseActivityRescaleFactor: f64 = 1e-100;
+
+/// CEP:WHAT: Capacity of the DRAT proof step buffer (design 11.1 S42, bounded by kMaxProofSteps as the count bound).
+/// CEP:WHY: Proof steps are recorded into a fixed arena buffer so proof logging is allocation-free on the hot path; the arena capacity is the structural bound while kMaxProofSteps (1e8) is the semantic count bound that a real proof cannot exceed before the arena does.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: recording returns ProofError::StepBufferFull past the capacity; the solver surfaces it as Indeterminate (never silent truncation, CEP&CC Law 6).
+/// CEP:ASSUMES: 1_048_576 steps cover production certificates (one add per learnt clause plus deletions); injectable for tests.
+/// CEP:COST: 12 bytes per step, 12 MiB at the default capacity.
+/// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{steps_recorded_in_order, capacity_enforced}; security/phase3_bounds_test.rs::proof_step_budget_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on proof size.
+pub const kSatProofStepCapacity: u32 = 1_048_576;
+
+/// CEP:WHAT: Capacity of the proof clause-offset to proof-id map.
+/// CEP:WHY: DRAT deletions reference clauses by their addition-time identity; the recorder maintains an append-only (clause offset, proof id) map keyed by monotonically increasing arena offsets, binary-searched on deletion.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: recording returns ProofError::MapFull past the capacity.
+/// CEP:ASSUMES: one map entry per added clause, so kSatProofMapCapacity >= the maximum clause count of any proof run (1_048_576); injectable for tests.
+/// CEP:COST: 8 bytes per entry, 8 MiB at the default capacity.
+/// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{ids_are_monotonic, deletion_resolves_id}.
+/// CEP:SECURITY: memory-exhaustion bound.
+pub const kSatProofMapCapacity: u32 = 1_048_576;
+
+/// CEP:WHAT: Capacity of the proof literal blob (concatenated clause literals of all recorded steps).
+/// CEP:WHY: Each step references its literals by (offset, length) into one flat arena blob, keeping the step records at a fixed 12 bytes regardless of clause length.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: recording returns ProofError::LiteralBlobFull past the capacity.
+/// CEP:ASSUMES: 4_194_304 literals (16 MiB) cover the default step capacity at an average clause length of 4; injectable for tests.
+/// CEP:COST: 4 bytes per literal.
+/// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{literals_stored_verbatim, capacity_enforced}.
+/// CEP:SECURITY: memory-exhaustion bound.
+pub const kSatProofLiteralCapacity: u32 = 4_194_304;
+
+/// CEP:WHAT: Sentinel proof id marking "no proof record" (clause added before proof recording was enabled or already deleted).
+/// CEP:WHY: The offset-to-id map stores dense u32 ids; a sentinel keeps the "unmapped" state representable without Option on the hot path.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: never a valid proof id (valid ids start at 1); enforced by static assertion against the id base.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::deletion_resolves_id.
+/// CEP:SECURITY: none.
+pub const kInvalidProofId: u32 = u32::MAX;
+
+/// CEP:WHAT: First proof id assigned to a recorded clause addition.
+/// CEP:WHY: Id 0 is reserved so kInvalidProofId (u32::MAX) and 0 never collide with valid ids and so DRAT ids are 1-based like the clause ids of the ATP side.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: fixed at 1.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::ids_are_monotonic.
+/// CEP:SECURITY: none.
+pub const kFirstProofId: u32 = 1;
+
+/// CEP:WHAT: Maximum number of assumption literals per incremental solve call (design 11.1 S38).
+/// CEP:WHY: Assumptions are pushed as decision levels and the failed-assumption core is collected into a fixed buffer; the named bound keeps both allocation-free with a loud error at the limit.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: solve_with_assumptions returns AssumptionError::TooManyAssumptions past the capacity.
+/// CEP:ASSUMES: 4_096 assumptions cover AVATAR component activations (Phase 4) and preprocessing probes; each assumption is a distinct variable or a repeat of a prior one (repeats are idempotent decisions).
+/// CEP:COST: 4 bytes per slot, 16 KiB at the default capacity.
+/// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{assumption_count_enforced, repeated_assumption_is_idempotent}.
+/// CEP:SECURITY: denial-of-service bound on assumption-driven level depth.
+pub const kMaxAssumptions: u32 = 4_096;
+
+/// CEP:WHAT: Pair budget of one SAT preprocessing subsumption round (design 11.1 S30).
+/// CEP:WHY: Pairwise subsumption is O(n^2); the budget bounds the work per round with an honest partial-round outcome (the pass stops and reports what it did) instead of unbounded scanning.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the subsumption round stops early with rounds_done < requested; the stats report the pairs examined (never silent, CEP&CC Law 6).
+/// CEP:ASSUMES: 262_144 pair checks per round cover production preprocessing sizes; injectable for tests.
+/// CEP:COST: one comparison-dominated check per pair.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{subsumption_deletes, pair_budget_stops_early}; security/phase3_bounds_test.rs::subsumption_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatSubsumptionPairBudget: u32 = 262_144;
+
+/// CEP:WHAT: Candidate budget of one SAT vivification round (design 11.1 S36).
+/// CEP:WHY: Each vivification candidate costs up to kSatVivifyPropagationBudget propagation steps; bounding the candidate count bounds the whole pass.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the vivification round stops early with candidates_checked < candidates; reported in stats.
+/// CEP:ASSUMES: 10_000 candidates per round cover production preprocessing; injectable for tests.
+/// CEP:COST: bounded by candidates x propagation budget.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{vivification_shortens_clause, candidate_budget_stops_early}.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatVivifyCandidateLimit: u32 = 10_000;
+
+/// CEP:WHAT: Propagation-step budget of one SAT vivification round.
+/// CEP:WHY: Vivification drives the BCP engine under assumed negations; the budget bounds total propagation work per round with a loud partial outcome.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the round stops early; stats report the budget exhaustion.
+/// CEP:ASSUMES: 100_000 propagation steps per round; injectable for tests.
+/// CEP:COST: one BCP step per budget unit.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{vivification_shortens_clause, propagation_budget_stops_early}; security/phase3_bounds_test.rs::vivify_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatVivifyPropagationBudget: u32 = 100_000;
+
+/// CEP:WHAT: Maximum clauses one RUP/RAT check step of the internal DRAT checker may scan (design 11.1 S43).
+/// CEP:WHY: A RAT check scans every clause containing the negated pivot; the named bound turns adversarial proof files into a loud CheckBudgetExceeded instead of unbounded scanning.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the checker reports the step as unverifiable (CheckBudgetExceeded) rather than silently passing it.
+/// CEP:ASSUMES: 65_536 candidate clauses per pivot cover real proofs; injectable for tests.
+/// CEP:COST: bounded scan per RAT step.
+/// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::{rat_step_verified, budget_enforced}.
+/// CEP:SECURITY: denial-of-service bound on proof checking.
+pub const kDratRatScanLimit: u32 = 65_536;
+
+/// CEP:WHAT: Capacity of the passive-set priority heap of the ATP clause database (design 8.4).
+/// CEP:WHY: The passive set is a flat binary heap in the arena; a named capacity keeps insertion allocation-free with a loud PassiveSetFull error at the bound.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: passive insertion returns SearchError::PassiveFull past the capacity.
+/// CEP:ASSUMES: 1_048_576 pending clauses cover production search runs (the kMaxClauses semantic bound remains 1e7); injectable for tests.
+/// CEP:COST: 24 bytes per entry, 24 MiB at the default capacity.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_key, capacity_enforced}; security/phase3_bounds_test.rs::passive_capacity_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on the search state.
+pub const kPassiveHeapCapacity: u32 = 1_048_576;
+
+/// CEP:WHAT: Capacity of the active-set clause array and its feature-vector index (design 8.4/9.3).
+/// CEP:WHY: The active set holds one dense slot per processed clause plus its sparse feature vector; named capacities keep both fixed arena allocations.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: active insertion returns SearchError::ActiveFull past the capacity.
+/// CEP:ASSUMES: 262_144 active clauses cover production search runs; injectable for tests.
+/// CEP:COST: 12 bytes per slot.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, capacity_enforced}.
+/// CEP:SECURITY: memory-exhaustion bound on the search state.
+pub const kActiveSetCapacity: u32 = 262_144;
+
+/// CEP:WHAT: Capacity of the feature-vector word pool backing the active set's feature-vector index (design 9.3).
+/// CEP:WHY: Feature vectors are sparse (symbol, count) pairs appended into one shared arena pool; the pool is never compacted on active-set deletion (swap-remove drops the reference; pool garbage is reclaimed only by arena reset), so the capacity bounds the worst case loudly.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: active insertion returns SearchError::FeaturePoolFull past the capacity.
+/// CEP:ASSUMES: 4_194_304 words (16 MiB) at an average of 10 words per clause cover the active capacity; injectable for tests.
+/// CEP:COST: 4 bytes per word.
+/// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::{vectors_store_counts, pool_capacity_enforced}.
+/// CEP:SECURITY: memory-exhaustion bound on the search state.
+pub const kFeatureVectorPoolWords: u32 = 4_194_304;
+
+/// CEP:WHAT: Maximum (symbol, count) pairs in one clause feature vector.
+/// CEP:WHY: A clause with more distinct symbols than the bound is unfilterable (its vector passes every filter, falling through to full verification) - a sound degradation documented here instead of a hard failure, because subsumption remains correct, only slower.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; build_feature_vector reports truncated = true and the filter passes such clauses.
+/// CEP:ASSUMES: 256 distinct symbols per clause cover realistic clauses (kMaxClauseLiterals x typical argument count).
+/// CEP:COST: 2 words per pair.
+/// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::{filter_is_sound_on_truncated_vectors, pair_bound_enforced}.
+/// CEP:SECURITY: none (sound degradation, not a resource bound).
+pub const kFeatureVectorSlots: u32 = 256;
+
+/// CEP:WHAT: Fixed-point scale of the age/weight selection ratio (design 15.2 "minimum age / weight ratio").
+/// CEP:WHY: The priority key is computed as age * scale / weight in u64 fixed point (deterministic integer division, no floating point on the selection path); the scale names the precision.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: 2^16 scale keeps priorities exact for weights up to 2^16 and one-sided error of at most 1 unit otherwise (ties broken by clause id, so determinism is preserved regardless).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{ratio_priority_order, tie_breaks_by_clause_id}.
+/// CEP:SECURITY: none.
+pub const kSelectionRatioScale: u64 = 65_536;
+
+/// CEP:WHAT: Maximum conclusions one given-clause generation step buffers before deferring to the next iteration (design 10.3).
+/// CEP:WHY: The inference generator emits into a fixed caller buffer; when the buffer fills or kMaxInferencesPerClause is reached, the generator returns its cursor and the loop defers the remainder to the next iteration, which is what bounds per-clause work.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none (deferral is the designed behavior, not a failure).
+/// CEP:ASSUMES: 64 conclusions per step keep the buffer at 64 x kMaxClauseLiterals literals worst case (32 KiB stack); injectable for tests via the buffer size itself.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{inference_deferral_resumes, per_clause_bound_enforced}.
+/// CEP:SECURITY: denial-of-service bound on per-iteration work.
+pub const kInferenceBufferClauses: usize = 64;
+
+/// CEP:WHAT: Maximum literals of one buffered inference conclusion.
+/// CEP:WHY: The generator's conclusion buffer holds kInferenceBufferClauses clauses inline; conclusions longer than this bound are structurally legal clauses (up to kMaxClauseLiterals) but pathological for search, and the generator counts and drops them loudly instead of sizing the whole buffer at the structural maximum (which would cost 256 KiB of stack).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the generator counts the dropped conclusion in its stats; the rules return InferenceError::ConclusionTooLong through the same path as the structural bound.
+/// CEP:ASSUMES: 64 literals cover realistic resolvents and demodulants (premises are bounded by kMaxClauseLiterals but search conclusions are typically single digits).
+/// CEP:COST: 8 bytes per literal slot, 32 KiB for the whole buffer at kInferenceBufferClauses.
+/// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{inference_deferral_resumes, per_clause_bound_enforced}.
+/// CEP:SECURITY: denial-of-service bound on per-conclusion buffering.
+pub const kInferenceClauseLiterals: usize = 64;
+
+/// CEP:WHAT: Maximum distinct variables shared by the premises of one ATP inference (standardize-apart namespace bound).
+/// CEP:WHY: The substitution engine namespaces variables by dense per-clause index below kMaxVariablesPerClause (Spec 02 section 5); two premises are renamed apart into one shared namespace at inference time, so vars(left) + vars(right) <= kMaxVariablesPerClause is a structural soundness precondition enforced loudly.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: inference generation returns InferenceError::VariableBudgetExceeded when the premises cannot share a namespace; the pair is skipped and counted.
+/// CEP:ASSUMES: real premise pairs satisfy the bound (clauses with more than kMaxVariablesPerClause/2 variables are pathological); premises are re-standardized to dense [0, n) namespaces at clause creation by the search loop.
+/// CEP:COST: one addition and comparison per candidate pair.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{premises_renamed_apart, namespace_budget_enforced}.
+/// CEP:SECURITY: soundness precondition, not a resource bound.
+pub const kMaxInferenceVariables: u32 = kMaxVariablesPerClause;
+
 // CEP:WHAT: Static invariant checks for limit constants.
 // CEP:WHY: CEP&CC Law 3 bans comment-only invariants; every cross-constant assumption above is enforced here at compile time.
 // CEP:STATUS: complete
@@ -758,4 +978,28 @@ const _: () = {
     assert!(kIndexEqualitySymbol < kInvalidSymbolId);
     assert!(kIndexEqualitySymbol != kInvalidIndexNode);
     assert!(kSatMaxConflicts >= 1);
+    assert!(kSatRegistryCapacity >= kSatMaxLearntClauses);
+    assert!(kSatLearntReduceDivisor >= 2);
+    assert!(kSatClauseActivityCeiling > 0.0);
+    assert!(kSatClauseActivityCeiling * kSatClauseActivityRescaleFactor <= 1.0);
+    assert!(kSatProofStepCapacity >= 1);
+    assert!(kSatProofMapCapacity >= 1);
+    assert!(kSatProofLiteralCapacity >= kSatProofStepCapacity);
+    assert!(kFirstProofId >= 1);
+    assert!(kFirstProofId != kInvalidProofId);
+    assert!(kMaxAssumptions >= 1);
+    assert!(kMaxAssumptions < kMaxSatVariables);
+    assert!(kSatSubsumptionPairBudget >= 1);
+    assert!(kSatVivifyCandidateLimit >= 1);
+    assert!(kSatVivifyPropagationBudget >= 1);
+    assert!(kDratRatScanLimit >= 1);
+    assert!(kPassiveHeapCapacity >= 1);
+    assert!(kActiveSetCapacity >= 1);
+    assert!(kFeatureVectorPoolWords >= kFeatureVectorSlots * 2);
+    assert!(kFeatureVectorSlots >= 1);
+    assert!(kSelectionRatioScale >= 1);
+    assert!(kInferenceBufferClauses >= 1);
+    assert!(kInferenceClauseLiterals >= kInlineClauseLiterals);
+    assert!(kInferenceClauseLiterals <= kMaxClauseLiterals as usize);
+    assert!(kMaxInferenceVariables == kMaxVariablesPerClause);
 };

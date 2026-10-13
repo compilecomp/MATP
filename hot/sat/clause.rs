@@ -56,6 +56,15 @@ pub enum SatClauseError {
     ArenaFull,
     /// CEP:WHAT: Clause offset unreadable or malformed.
     InvalidClauseOffset,
+    /// CEP:WHAT: A deletion-lifecycle call was made on a record whose flag state contradicts the call (marking a deleted record, unmarking a live one).
+    /// CEP:WHY: CEP&CC Law 6: the deletion discipline (registry tombstones, vivification isolation) is caller-owned sequencing; the storage layer surfaces lifecycle bugs loudly instead of silently double-deleting or resurrecting garbage.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::double_delete_rejected.
+    /// CEP:SECURITY: rejects corrupted deletion sequencing.
+    InvariantViolation,
 }
 
 /// CEP:WHAT: Clause flag bits.
@@ -77,6 +86,16 @@ pub const kSatClauseFlagLearnt: u16 = 1;
 /// CEP:EVIDENCE: reserved for Phase 2.
 /// CEP:SECURITY: none.
 pub const kSatClauseFlagLocked: u16 = 2;
+
+/// CEP:WHAT: Deleted bit marking a clause record as garbage (design 11.1 S25 deletion policy).
+/// CEP:WHY: Phase 3 database reduction removes learnt clauses; watch-list nodes are unlinked lazily (the intrusive singly-linked lists make eager unlinking O(list length) per clause), so BCP must skip records carrying this bit - the MiniSat deleted-mark discipline; the registry owns tombstone bookkeeping on top of the raw bit.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: set only by the registry (permanent deletion) or by preprocessing vivification (temporary isolation, always cleared before the pass returns).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, bcp_skips_deleted}; unit/hot/sat_preprocess_test.rs::vivification_shortens_clause.
+/// CEP:SECURITY: none.
+pub const kSatClauseFlagDeleted: u16 = 4;
 
 /// CEP:WHAT: Fixed clause header stored immediately before the literal array.
 /// CEP:WHY: Length, flags, LBD, and the two intrusive watch links must be readable without touching the literals; a 16-byte header keeps the record aligned and self-describing.
@@ -461,5 +480,133 @@ impl<'a> ClauseStorage<'a> {
         }
         headers[0].next_in_watch[slot as usize] = next;
         Ok(())
+    }
+
+    // CEP:WHAT: Sets the deleted flag on a clause record (design 11.1 S25; the raw mechanism under the registry's tombstone bookkeeping).
+    // CEP:WHY: Watch lists are intrusive singly-linked lists, so eager unlinking costs O(list length) per deleted clause; the deleted mark lets BCP skip garbage lazily (MiniSat discipline) while the registry entry tombstone keeps the database enumerable; the flag-keeping header write is one bounds-checked store.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records; deleting an already-deleted record is a caller bug surfaced as InvariantViolation.
+    // CEP:ASSUMES: offset came from new_clause and is not currently marked deleted; callers that need proof notification do it around this call (the storage layer never records proofs).
+    // CEP:COST: as header() plus 2 stores.
+    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, bcp_skips_deleted}.
+    // CEP:SECURITY: bounds checks retained in release.
+    pub fn mark_deleted(&self, offset: u32) -> Result<(), SatClauseError> {
+        let end = offset
+            .checked_add(core::mem::size_of::<SatClauseHeader>() as u32)
+            .ok_or(SatClauseError::InvalidClauseOffset)?;
+        if end > self.arena.used_bytes() {
+            return Err(SatClauseError::InvalidClauseOffset);
+        }
+        let range =
+            ArenaRange::new(offset, end).map_err(|_| SatClauseError::InvalidClauseOffset)?;
+        let headers = self
+            .arena
+            .array_mut::<SatClauseHeader>(range)
+            .map_err(|_| SatClauseError::InvalidClauseOffset)?;
+        if headers.is_empty() {
+            return Err(SatClauseError::InvalidClauseOffset);
+        }
+        if headers[0].flags & kSatClauseFlagDeleted != 0 {
+            return Err(SatClauseError::InvariantViolation);
+        }
+        headers[0].flags |= kSatClauseFlagDeleted;
+        if headers[0].flags & kSatClauseFlagLearnt != 0 {
+            // Live-learnt accounting: the creation budget kSatMaxLearntClauses counts live
+            // learnt clauses, so deletion must give the slot back (reduction only makes
+            // sense if the budget recovers; recorded as Phase 3 behavior, Spec 06 section 9).
+            let next = self.learnt_count.get().saturating_sub(1);
+            self.learnt_count.set(next);
+        }
+        Ok(())
+    }
+
+    // CEP:WHAT: Clears the deleted flag on a clause record (temporary isolation for vivification, design 11.1 S36).
+    // CEP:WHY: Vivification must propagate against the formula minus the candidate clause; the raw mark isolates the candidate for the duration of the check and is restored when the clause is kept; the registry is never involved in temporary isolation.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates InvalidClauseOffset; unmarking a live record is a caller bug surfaced as InvariantViolation.
+    // CEP:ASSUMES: offset is currently marked deleted by the same pass that unmarks it.
+    // CEP:COST: as header() plus 2 stores.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{vivification_shortens_clause, vivification_restores_unchanged_clause}.
+    // CEP:SECURITY: bounds checks retained in release.
+    pub fn unmark_deleted(&self, offset: u32) -> Result<(), SatClauseError> {
+        let end = offset
+            .checked_add(core::mem::size_of::<SatClauseHeader>() as u32)
+            .ok_or(SatClauseError::InvalidClauseOffset)?;
+        if end > self.arena.used_bytes() {
+            return Err(SatClauseError::InvalidClauseOffset);
+        }
+        let range =
+            ArenaRange::new(offset, end).map_err(|_| SatClauseError::InvalidClauseOffset)?;
+        let headers = self
+            .arena
+            .array_mut::<SatClauseHeader>(range)
+            .map_err(|_| SatClauseError::InvalidClauseOffset)?;
+        if headers.is_empty() {
+            return Err(SatClauseError::InvalidClauseOffset);
+        }
+        if headers[0].flags & kSatClauseFlagDeleted == 0 {
+            return Err(SatClauseError::InvariantViolation);
+        }
+        headers[0].flags &= !kSatClauseFlagDeleted;
+        if headers[0].flags & kSatClauseFlagLearnt != 0 {
+            let next = self.learnt_count.get().saturating_add(1);
+            if next > kSatMaxLearntClauses {
+                return Err(SatClauseError::LearntBudgetExceeded);
+            }
+            self.learnt_count.set(next);
+        }
+        Ok(())
+    }
+
+    // CEP:WHAT: Returns whether a clause record carries the deleted flag.
+    // CEP:WHY: BCP skips deleted records (Spec 05 section 6 amendment) and the registry enumerates only live entries; a single validated predicate keeps both callers honest.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
+    // CEP:ASSUMES: offset came from new_clause.
+    // CEP:COST: as header().
+    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, bcp_skips_deleted}.
+    // CEP:SECURITY: bounds checks retained in release.
+    pub fn is_deleted(&self, offset: u32) -> Result<bool, SatClauseError> {
+        Ok(self.header(offset)?.flags & kSatClauseFlagDeleted != 0)
+    }
+
+    // CEP:WHAT: Overwrites the flag word of a clause record.
+    // CEP:WHY: The registry's lock discipline (design 11.1 S29) sets and clears the lock bit around database reduction; a single validated mutator keeps every header write on the bounds-checked storage path instead of ad-hoc raw access (CEP&CC Law 3).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
+    // CEP:ASSUMES: callers preserve every bit they do not own (the deleted and learnt bits are managed only through mark_deleted/unmark_deleted and creation).
+    // CEP:COST: as header() plus 1 store.
+    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::locked_clauses_survive.
+    // CEP:SECURITY: bounds checks retained in release.
+    pub fn set_header_flags(&self, offset: u32, flags: u16) -> Result<(), SatClauseError> {
+        let end = offset
+            .checked_add(core::mem::size_of::<SatClauseHeader>() as u32)
+            .ok_or(SatClauseError::InvalidClauseOffset)?;
+        if end > self.arena.used_bytes() {
+            return Err(SatClauseError::InvalidClauseOffset);
+        }
+        let range =
+            ArenaRange::new(offset, end).map_err(|_| SatClauseError::InvalidClauseOffset)?;
+        let headers = self
+            .arena
+            .array_mut::<SatClauseHeader>(range)
+            .map_err(|_| SatClauseError::InvalidClauseOffset)?;
+        if headers.is_empty() {
+            return Err(SatClauseError::InvalidClauseOffset);
+        }
+        headers[0].flags = flags;
+        Ok(())
+    }
+
+    // CEP:WHAT: Returns the flag word of a clause record.
+    // CEP:WHY: The registry reads the lock and learnt bits through the same validated path as every other header consumer.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
+    // CEP:ASSUMES: offset came from new_clause.
+    // CEP:COST: as header().
+    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, locked_clauses_survive}.
+    // CEP:SECURITY: bounds checks retained in release.
+    pub fn header_flags(&self, offset: u32) -> Result<u16, SatClauseError> {
+        Ok(self.header(offset)?.flags)
     }
 }

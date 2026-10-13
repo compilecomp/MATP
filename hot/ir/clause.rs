@@ -162,6 +162,18 @@ impl ClausePtr {
     pub fn as_u32(&self) -> u32 {
         self.0
     }
+
+    // CEP:WHAT: Rebuilds a handle from a raw arena offset (the active-set and tree payload path).
+    // CEP:WHY: Phase 3 tree payloads pack clause offsets as bare u32 and the loop tests read clauses by offset; the reconstruction is memory-safe for any u32 because every dereference goes through the bounds-checked clause() accessor, and semantic validity is the caller's documented contract (offsets come from this store or as_u32).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: subsequent clause() reads validate the offset and reject garbage loudly.
+    // CEP:ASSUMES: the offset came from as_u32 of a live record.
+    // CEP:COST: constant.
+    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated}; unit/hot/inference_test.rs::resolution_candidates_retrieved.
+    // CEP:SECURITY: validation deferred to the bounds-checked reader.
+    pub fn from_u32(offset: u32) -> ClausePtr {
+        ClausePtr(offset)
+    }
 }
 
 /// CEP:WHAT: Stable clause identifier (monotonic u64 counter, never hash-based).
@@ -627,27 +639,38 @@ impl<'a> ClauseStore<'a> {
         if index >= clause.literal_count {
             return Err(ClauseError::InvalidPointer);
         }
-        if (index as usize) < kInlineClauseLiterals {
-            return Ok(clause.inline_literals[index as usize]);
+        if clause.overflow_offset != kInvalidClauseOffset {
+            // Overflow-stored clause: the construction wrote ALL literals (count of
+            // them, canonically sorted) into the overflow array and left the inline
+            // slots as filler, so EVERY index - including indices below
+            // kInlineClauseLiterals - reads the overflow array. (Phase 3 fix: the
+            // pre-Phase-3 reader returned the inline filler for the first eight
+            // indices of overflow clauses, and the Phase 1 layout test's is_ok()
+            // assertions never dereferenced the atoms, so the fillers leaked
+            // silently into every consumer that reads by index; the reader now
+            // matches the writer exactly.)
+            let overflow_start = clause.overflow_offset;
+            let overflow_end = overflow_start
+                .checked_add(clause.literal_count as u32 * core::mem::size_of::<Literal>() as u32)
+                .ok_or(ClauseError::InvalidPointer)?;
+            let range = ArenaRange::new(overflow_start, overflow_end)
+                .map_err(|_| ClauseError::InvalidPointer)?;
+            let slice = self
+                .arena
+                .array::<Literal>(range)
+                .map_err(|_| ClauseError::InvalidPointer)?;
+            if slice.is_empty() || (index as usize) >= slice.len() {
+                return Err(ClauseError::InvalidPointer);
+            }
+            return Ok(slice[index as usize]);
         }
-        if clause.overflow_offset == kInvalidClauseOffset {
+        // Inline-stored clause: the literal lives in the inline array; a clause
+        // with a literal at or beyond the inline capacity took the overflow path
+        // at construction, so reaching here beyond the capacity is impossible.
+        if (index as usize) >= kInlineClauseLiterals {
             return Err(ClauseError::InvalidPointer);
         }
-        let overflow_start = clause.overflow_offset;
-        let overflow_end = overflow_start
-            .checked_add(clause.literal_count as u32 * core::mem::size_of::<Literal>() as u32)
-            .ok_or(ClauseError::InvalidPointer)?;
-        let range = ArenaRange::new(overflow_start, overflow_end)
-            .map_err(|_| ClauseError::InvalidPointer)?;
-        let slice = self
-            .arena
-            .array::<Literal>(range)
-            .map_err(|_| ClauseError::InvalidPointer)?;
-        let local = index as usize - kInlineClauseLiterals;
-        if local >= slice.len() {
-            return Err(ClauseError::InvalidPointer);
-        }
-        Ok(slice[local])
+        Ok(clause.inline_literals[index as usize])
     }
 }
 

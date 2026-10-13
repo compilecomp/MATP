@@ -110,11 +110,18 @@ impl<'a> SatCore<'a> {
                     crate::sat::clause::SatClauseError::InvalidClauseOffset,
                 ));
             }
+            let header = self.clauses().header(current)?;
+            if header.flags & crate::sat::clause::kSatClauseFlagDeleted != 0 {
+                // Deleted record (Phase 3 database reduction, design 11.1 S25): watch-list
+                // unlinking is lazy, so garbage nodes are skipped here; Spec 05 section 6
+                // amendment. The record stays in the list until the arena resets.
+                cursor = WatchCursor::Node(current, slot);
+                continue;
+            }
             if self.value_of_literal(other) == SatValue::True {
                 cursor = WatchCursor::Node(current, slot);
                 continue;
             }
-            let header = self.clauses().header(current)?;
             let mut moved = false;
             let mut candidate_index: u32 = kWatchSearchStart;
             while candidate_index < header.length {

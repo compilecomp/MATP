@@ -23,9 +23,11 @@
 #![allow(non_upper_case_globals)]
 
 pub mod index;
+pub mod inference;
 pub mod ir;
 pub mod memory;
 pub mod ordering;
 pub mod result;
 pub mod sat;
+pub mod search;
 pub mod unification;

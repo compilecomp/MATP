@@ -2,11 +2,11 @@
   "bench": "CEP-BENCH-0005",
   "name": "sat_bcp_step",
   "iterations": 512,
-  "cycles_median": 54.9041095890411,
-  "cycles_min": 54.348336594911935,
+  "cycles_median": 53.96477495107632,
+  "cycles_min": 53.737769080234834,
   "rustc": "1.99.0",
   "profile": "release",
   "target": "x86-64",
   "cycle_counter": "serialized-rdtsc",
-  "date_unix": 1791574201
+  "date_unix": 1791918166
 }

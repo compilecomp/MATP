@@ -42,6 +42,33 @@ pub enum CdclError {
     LearntTooLong,
     /// CEP:WHAT: The conflict budget kSatMaxConflicts is exhausted.
     ConflictBudgetExceeded,
+    /// CEP:WHAT: More than kMaxAssumptions assumption literals were passed to solve_with_assumptions.
+    /// CEP:WHY: Design 11.1 S38 assumptions are pushed as decision levels with a fixed failed-core buffer; the bound is enforced loudly.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::assumption_count_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    TooManyAssumptions,
+    /// CEP:WHAT: A clause-registry failure (capacity, bookkeeping, storage read).
+    /// CEP:WHY: Phase 3 database management (CEP-1003) routes registry errors into the solver vocabulary; CEP&CC 33.18 one translation point.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::capacity_enforced.
+    /// CEP:SECURITY: capacity errors are the resource boundary.
+    Registry(crate::sat::registry::RegistryError),
+    /// CEP:WHAT: A proof-recorder failure (buffer capacity, unmapped deletion, storage read).
+    /// CEP:WHY: Phase 3 proof logging (S41/S42) must never truncate silently; exhaustion surfaces as Indeterminate (CEP&CC Law 6).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::capacity_enforced; security/phase3_bounds_test.rs::proof_step_budget_enforced.
+    /// CEP:SECURITY: capacity errors are the resource boundary.
+    Proof(crate::sat::proof::ProofError),
     /// CEP:WHAT: A SAT-core structural failure (unreadable clause or trail records).
     Storage(SatCoreError),
 }
@@ -623,5 +650,69 @@ impl<'a> ConflictAnalyzer<'a> {
         if index < self.minimize_marks.len() {
             self.minimize_marks[index].set(0);
         }
+    }
+
+    // CEP:WHAT: Final analysis: reduces a falsified clause over reason clauses to a fixpoint over the trail and collects the decision (assumption) literals that remain - the failed-assumption core (design 11.1 S38).
+    // CEP:WHY: MiniSat analyzeFinal semantics (Marques-Silva et al.; Spec 10 section 4): when a conflict occurs at or below the assumption root level, the levels cannot be undone (they are assumptions), so instead of learning, the conflict clause is resolved against the reason of every seen propagated variable in reverse trail order; reason literals always sit at strictly earlier trail positions (Spec 06 section 2), so one backward pass reaches the fixpoint; the remaining seen decision literals are exactly the assumptions whose conjunction with the formula is refuted, and their negation is entailed by the formula.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: returns CdclError on storage read failures or an undersized output buffer; never panics.
+    // CEP:ASSUMES: invoked at a conflict (or a falsified assumption) with the trail intact; every decision at levels 1..=root_level is an assumption pushed by solve_with_assumptions; level-0 literals are root-entailed and skipped.
+    // CEP:COST: one reverse trail pass with one reason scan per seen propagated variable; O(trail) plus O(total reason length of seen variables).
+    // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{failed_core_is_minimal_subset, core_negation_is_entailed, empty_core_means_unsat}; property/sat_incremental_property_test.rs::{assumption_solves_agree_with_brute_force, cores_are_valid}.
+    // CEP:SECURITY: all reads bounds-checked; the walk is bounded by the trail length.
+    // CEP:HPC-DETERMINISM: deterministic; trail order and index-ordered reason scans.
+    pub fn analyze_final(
+        &self,
+        core: &SatCore<'_>,
+        seed: &[SatLiteral],
+        output: &mut [SatLiteral],
+    ) -> Result<usize, CdclError> {
+        let generation = self.seen_generation.get().wrapping_add(1);
+        self.seen_generation.set(generation);
+        for literal in seed.iter() {
+            self.mark_seen(literal.variable().0, generation)?;
+        }
+        let mut core_count: usize = 0;
+        let mut index = core.trail().len();
+        while index > 0 {
+            index -= 1;
+            let literal = match core.trail().literal_at(index) {
+                Some(value) => value,
+                None => break,
+            };
+            let variable = literal.variable().0;
+            if core.level_of(variable) == 0 {
+                // Root-entailed: the negation of a level-0 literal is already a level-0
+                // consequence (Spec 06 section 3), so it never enters an assumption core.
+                continue;
+            }
+            if !self.is_seen(variable, generation) {
+                continue;
+            }
+            let reason = core.reason_of(variable);
+            if reason == kInvalidClauseOffset {
+                // Decision at a level >= 1: inside the assumption region these are exactly
+                // the pushed assumptions; emit the trail literal as a core member.
+                if core_count >= output.len() {
+                    return Err(CdclError::LearntTooLong);
+                }
+                output[core_count] = literal;
+                core_count += 1;
+                continue;
+            }
+            // Propagated: resolve the variable away by marking its reason's other literals;
+            // they are all false and assigned strictly earlier on the trail, so the
+            // backward walk will reach them (Spec 06 section 2 acyclicity).
+            let header = core.clauses().header(reason)?;
+            for slot in 0..header.length {
+                let other = core.clauses().literal(reason, slot)?;
+                let other_variable = other.variable().0;
+                if other_variable == variable {
+                    continue;
+                }
+                self.mark_seen(other_variable, generation)?;
+            }
+        }
+        Ok(core_count)
     }
 }

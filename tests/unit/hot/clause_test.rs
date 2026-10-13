@@ -303,6 +303,19 @@ fn inline_and_overflow_layout() {
         .expect("overflow clause");
     let overflow_clause = clauses.clause(overflow_ptr).expect("read");
     assert!(overflow_clause.overflow_offset != kInvalidClauseOffset);
+    // Phase 3 regression pin: every index of an overflow clause - including the
+    // first kInlineClauseLiterals indices - must return a readable atom (the
+    // pre-Phase-3 reader returned the inline filler for the first eight indices,
+    // and this test's is_ok assertions passed vacuously because they never
+    // dereferenced the atoms).
+    for index in 0..overflow_clause.literal_count {
+        let literal = clauses.literal(overflow_clause, index).expect("literal");
+        assert!(
+            terms.term(literal.atom()).is_ok(),
+            "overflow literal {} must carry a readable atom",
+            index
+        );
+    }
     for index in 0..overflow_clause.literal_count {
         assert!(clauses.literal(overflow_clause, index).is_ok());
     }

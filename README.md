@@ -1,8 +1,23 @@
 # MAPT
 
-MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phase 1: Foundations** (design section 26), built to the letter of the **CEP&CC 0.1** coding standard (`standard.md`).
+MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-3: Foundations, Core Engines, and Search Loops** (design section 26), built to the letter of the **CEP&CC 0.1** coding standard (`standard.md`).
 
-## Phase 1 contents (design section 26)
+## Phase 3 contents (design section 26)
+
+| Component | Status | Location |
+|---|---|---|
+| Given-clause loop (bounded, budget-injected) | complete | `hot/search/given_clause.rs` |
+| Passive set (age/weight ratio, weight, age strategies) | complete | `hot/search/passive.rs` |
+| Active set (atom tree, rule tree, feature-vector filter) | complete | `hot/search/active.rs`, `hot/index/feature_vector.rs` |
+| Superposition + resolution + factoring (+ equality resolution/factoring, demodulation, subsumption) | complete | `hot/inference/` |
+| Bounded inference generator (deferrable cursor) | complete | `hot/search/generate.rs` |
+| SAT: clause registry + learnt deletion (LBD/age policy) | complete | `hot/sat/registry.rs` |
+| SAT: preprocessing (subsumption, self-subsumption, tautology, duplicates, vivification) | complete | `hot/sat/preprocess.rs` |
+| SAT: incremental solving + assumptions with failed cores | complete | `hot/sat/solver.rs`, `hot/sat/cdcl.rs` |
+| SAT: DRAT proof recording, writer, internal RUP/RAT checker | complete | `hot/sat/proof.rs`, `cold/proof_output/` |
+| Formal specs 07-11 (rules, loop, preprocessing, assumptions, DRAT) | complete | `docs/formal/` |
+
+## Phase 1-2 contents (design section 26)
 
 | Component | Status | Location |
 |---|---|---|

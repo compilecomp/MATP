@@ -21,6 +21,7 @@ CEP_GATE_HEADROOM_PERCENT = 25.0
 # CEP:WHAT: Baseline medians (cycles per operation) recorded 2026-10-08 (Phase 1) and 2026-10-10 (Phase 2 additions) on x86-64 (Intel Xeon, virtualized), rustc 1.99.0, release.
 # CEP:WHY: The gate compares fresh measurements against these numbers; update them only with a benchmark evidence note (CEP&CC 13.1).
 # CEP:NOTE: sat_bcp_step was re-baselined 2026-10-10 from 44.53 to 54.90 cycles: Phase 2 conflict analysis requires per-assignment reason and level recording (SatCore::assign_with_reason adds two stores per propagation), an honest, measured cost of the implication-graph tracking (design 11.1 S18/S19).
+# CEP:NOTE: Phase 3 additions recorded 2026-10-14: atp_resolution_step (one full resolution inference: unification, MGU application, conclusion assembly), sat_registry_step (bump_activity over the offset map), atp_passive_step (a passive push/pop pair), atp_selection_flags (compute_selection_flags over a three-literal clause), atp_subsumption_filter and atp_subsumption_verify (the two tiers of one subsumption query), sat_preprocess_round (one full simplify pass over a 32-clause formula), sat_drat_record (one recorder step append).
 CEP_BASELINES = {
     "arena_alloc_bytes": 9.99,
     "clause_new_3lit": 20.36,
@@ -42,6 +43,15 @@ CEP_BASELINES = {
     "cdcl_analyze": 697.42,
     "cdcl_decide": 420.41,
     "cdcl_solve_per_conflict": 5372.33,
+    # Phase 3 additions (recorded 2026-10-14, same host class as above):
+    "atp_resolution_step": 241.68,
+    "sat_registry_step": 12.52,
+    "atp_passive_step": 5.39,
+    "atp_selection_flags": 461.58,
+    "atp_subsumption_filter": 9.04,
+    "atp_subsumption_verify": 136.35,
+    "sat_preprocess_round": 1235076.13,
+    "sat_drat_record": 1.19,
 }
 
 

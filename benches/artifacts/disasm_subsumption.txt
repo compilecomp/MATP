@@ -1,0 +1,4112 @@
+// MAPT disassembly evidence; extracted by scripts/extract_disasm.py
+// Toolchain: rustc 1.99.0, release profile, --emit asm (pre-LTO)
+// Library sections show the standalone hot functions; bench-main sections show
+// the inlined measurement loops (small accessors inline into their callers).
+// Do not edit manually.
+	.section	.text.unlikely._RNvCs6okcGS0KElL_17subsumption_bench4main,"ax",@progbits
+	.prefalign	4, .Lfunc_end3, nop
+	.type	_RNvCs6okcGS0KElL_17subsumption_bench4main,@function
+_RNvCs6okcGS0KElL_17subsumption_bench4main:
+.Lfunc_begin3:
+	.cfi_startproc
+	.cfi_personality 155, DW.ref.rust_eh_personality
+	.cfi_lsda 27, .Lexception0
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	pushq	%r15
+	.cfi_def_cfa_offset 24
+	pushq	%r14
+	.cfi_def_cfa_offset 32
+	pushq	%r13
+	.cfi_def_cfa_offset 40
+	pushq	%r12
+	.cfi_def_cfa_offset 48
+	pushq	%rbx
+	.cfi_def_cfa_offset 56
+	subq	$4096, %rsp
+	.cfi_adjust_cfa_offset 4096
+	movq	$0, (%rsp)
+	subq	$4096, %rsp
+	.cfi_adjust_cfa_offset 4096
+	movq	$0, (%rsp)
+	subq	$4096, %rsp
+	.cfi_adjust_cfa_offset 4096
+	movq	$0, (%rsp)
+	subq	$4096, %rsp
+	.cfi_adjust_cfa_offset 4096
+	movq	$0, (%rsp)
+	subq	$904, %rsp
+	.cfi_def_cfa_offset 17344
+	.cfi_offset %rbx, -56
+	.cfi_offset %r12, -48
+	.cfi_offset %r13, -40
+	.cfi_offset %r14, -32
+	.cfi_offset %r15, -24
+	.cfi_offset %rbp, -16
+	.cfi_escape 0x2e, 0x00
+	leaq	632(%rsp), %r12
+	movq	%r12, %rdi
+	callq	_RNvNtCs9LrTosJql9Q_9mapt_cold10arena_host16alloc_zeroed_vec
+	movq	632(%rsp), %rax
+	cmpq	$-1, %rax
+	je	.LBB3_814
+	movq	640(%rsp), %r14
+	movq	648(%rsp), %rbx
+	movq	%r14, %r15
+	cmpq	%rbx, %rax
+	jbe	.LBB3_6
+	testq	%rbx, %rbx
+	je	.LBB3_5
+	.cfi_escape 0x2e, 0x00
+	movq	%r14, %rdi
+	movq	%rbx, %rsi
+	callq	*realloc@GOTPCREL(%rip)
+	movq	%rax, %r15
+	testq	%rax, %rax
+	jne	.LBB3_6
+.Ltmp0:
+	.cfi_escape 0x2e, 0x00
+	movl	$1, %edi
+	movq	%rbx, %rsi
+	callq	_RNvNtCs1C1lLj4PWSY_5alloc7raw_vec12handle_error
+.Ltmp1:
+	jmp	.LBB3_846
+.LBB3_5:
+	.cfi_escape 0x2e, 0x00
+	movq	%r14, %rdi
+	callq	*free@GOTPCREL(%rip)
+	movl	$1, %r15d
+.LBB3_6:
+	leaq	63(%r14), %rdi
+	andq	$-64, %rdi
+	subq	%r14, %rdi
+	leaq	12582912(%rdi), %rsi
+	cmpq	%rbx, %rsi
+	ja	.LBB3_815
+	cmpq	$-12582912, %rdi
+	jae	.LBB3_789
+	addq	%rdi, %r15
+	testb	$63, %r15b
+	jne	.LBB3_817
+	.cfi_escape 0x2e, 0x00
+	movl	$24, %edi
+	callq	*malloc@GOTPCREL(%rip)
+	testq	%rax, %rax
+	je	.LBB3_791
+	movq	%r15, (%rax)
+	movq	$12582912, 8(%rax)
+	movl	$0, 16(%rax)
+	movq	$0, 480(%rsp)
+	movq	$8, 488(%rsp)
+	movq	$0, 496(%rsp)
+	movq	$0, 632(%rsp)
+	movq	$8, 640(%rsp)
+	movq	$0, 648(%rsp)
+	cmpb	$1, %fs:_RNvNCNKNvNvMNtNtCsgHYyB3hU8Ec_3std4hash6randomNtBa_11RandomState3new4KEYS0s_023___RUST_STD_INTERNAL_VAL@TPOFF+16
+	movq	%rax, 24(%rsp)
+	jne	.LBB3_792
+	movq	%fs:_RNvNCNKNvNvMNtNtCsgHYyB3hU8Ec_3std4hash6randomNtBa_11RandomState3new4KEYS0s_023___RUST_STD_INTERNAL_VAL@TPOFF, %rax
+	movq	%fs:_RNvNCNKNvNvMNtNtCsgHYyB3hU8Ec_3std4hash6randomNtBa_11RandomState3new4KEYS0s_023___RUST_STD_INTERNAL_VAL@TPOFF+8, %rdx
+.LBB3_12:
+	leaq	1(%rax), %rcx
+	leaq	2(%rax), %rsi
+	movq	%rsi, %fs:_RNvNCNKNvNvMNtNtCsgHYyB3hU8Ec_3std4hash6randomNtBa_11RandomState3new4KEYS0s_023___RUST_STD_INTERNAL_VAL@TPOFF
+	movups	480(%rsp), %xmm0
+	movaps	%xmm0, 144(%rsp)
+	movq	496(%rsp), %rsi
+	movq	%rsi, 160(%rsp)
+	movups	632(%rsp), %xmm0
+	movups	%xmm0, 168(%rsp)
+	movq	648(%rsp), %rsi
+	movq	%rsi, 184(%rsp)
+	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1(%rip), %xmm0
+	movdqu	%xmm0, 200(%rsp)
+	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1+16(%rip), %xmm1
+	movdqu	%xmm1, 216(%rsp)
+	movq	%rax, 232(%rsp)
+	movq	%rdx, 240(%rsp)
+	movdqu	%xmm0, 248(%rsp)
+	movdqu	%xmm1, 264(%rsp)
+	movq	%rcx, 280(%rsp)
+	movq	%rdx, 288(%rsp)
+	movl	$0, 192(%rsp)
+.Ltmp6:
+	.cfi_escape 0x2e, 0x20
+	subq	$16, %rsp
+	.cfi_adjust_cfa_offset 16
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.9(%rip), %r15
+	leaq	160(%rsp), %rdi
+	movl	$1, %edx
+	movl	$4, %r9d
+	movq	%rdi, 104(%rsp)
+	movq	%r15, %rsi
+	movl	$2, %ecx
+	xorl	%r8d, %r8d
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder14declare_symbol
+	addq	$32, %rsp
+	.cfi_adjust_cfa_offset -32
+.Ltmp7:
+	movq	%rax, %rbx
+	testb	$1, %bl
+	jne	.LBB3_818
+	.cfi_escape 0x2e, 0x00
+	movl	$1, %edi
+	callq	*malloc@GOTPCREL(%rip)
+	testq	%rax, %rax
+	je	.LBB3_812
+	leaq	248(%rsp), %r14
+	shrq	$32, %rbx
+	movb	$83, (%rax)
+	movq	$1, 632(%rsp)
+	movq	%rax, 640(%rsp)
+	movq	$1, 648(%rsp)
+.Ltmp8:
+	.cfi_escape 0x2e, 0x00
+	leaq	632(%rsp), %r12
+	movq	%r14, %rdi
+	movq	%r12, %rsi
+	movl	%ebx, %edx
+	callq	_RNvMs1_NtCskibSv91bgl1_9hashbrown3mapINtB5_7HashMapNtNtCs1C1lLj4PWSY_5alloc6string6StringmNtNtNtCsgHYyB3hU8Ec_3std4hash6random11RandomStateE6insertCs9LrTosJql9Q_9mapt_cold
+.Ltmp9:
+.Ltmp10:
+	.cfi_escape 0x2e, 0x20
+	subq	$16, %rsp
+	.cfi_adjust_cfa_offset 16
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.11(%rip), %r15
+	leaq	160(%rsp), %rdi
+	movl	$1, %edx
+	movl	$4, %r9d
+	movq	%r15, %rsi
+	movl	$2, %ecx
+	xorl	%r8d, %r8d
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder14declare_symbol
+	addq	$32, %rsp
+	.cfi_adjust_cfa_offset -32
+.Ltmp11:
+	movq	%rax, %r13
+	testb	$1, %al
+	jne	.LBB3_819
+	.cfi_escape 0x2e, 0x00
+	movl	$1, %edi
+	callq	*malloc@GOTPCREL(%rip)
+	testq	%rax, %rax
+	je	.LBB3_812
+	movq	%r13, %rdx
+	shrq	$32, %rdx
+	movb	$84, (%rax)
+	movq	$1, 632(%rsp)
+	movq	%rax, 640(%rsp)
+	movq	$1, 648(%rsp)
+.Ltmp12:
+	.cfi_escape 0x2e, 0x00
+	leaq	632(%rsp), %r12
+	movq	%r14, %rdi
+	movq	%r12, %rsi
+	movq	%rdx, %r13
+	callq	_RNvMs1_NtCskibSv91bgl1_9hashbrown3mapINtB5_7HashMapNtNtCs1C1lLj4PWSY_5alloc6string6StringmNtNtNtCsgHYyB3hU8Ec_3std4hash6random11RandomStateE6insertCs9LrTosJql9Q_9mapt_cold
+.Ltmp13:
+.Ltmp14:
+	.cfi_escape 0x2e, 0x20
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.13(%rip), %rsi
+	leaq	152(%rsp), %r14
+	movl	$1, %edx
+	movl	$4, %r9d
+	movq	%r14, %rdi
+	xorl	%ecx, %ecx
+	xorl	%r8d, %r8d
+	pushq	%rbx
+	.cfi_adjust_cfa_offset 8
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder14declare_symbol
+	addq	$32, %rsp
+	.cfi_adjust_cfa_offset -32
+.Ltmp15:
+	testb	$1, %al
+	jne	.LBB3_790
+.Ltmp16:
+	.cfi_escape 0x2e, 0x20
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.14(%rip), %rsi
+	leaq	152(%rsp), %rdi
+	movl	$1, %edx
+	movl	$4, %r9d
+	xorl	%ecx, %ecx
+	xorl	%r8d, %r8d
+	pushq	%rbx
+	.cfi_adjust_cfa_offset 8
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder14declare_symbol
+	addq	$32, %rsp
+	.cfi_adjust_cfa_offset -32
+.Ltmp17:
+	testb	$1, %al
+	jne	.LBB3_790
+	movl	%ebx, 328(%rsp)
+.Ltmp19:
+	.cfi_escape 0x2e, 0x20
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.15(%rip), %r15
+	leaq	152(%rsp), %rdi
+	leaq	336(%rsp), %r9
+	movl	$1, %edx
+	movq	%r15, %rsi
+	xorl	%ecx, %ecx
+	movl	$1, %r8d
+	pushq	%rbx
+	.cfi_adjust_cfa_offset 8
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder14declare_symbol
+	addq	$32, %rsp
+	.cfi_adjust_cfa_offset -32
+.Ltmp20:
+	testb	$1, %al
+	jne	.LBB3_794
+	movl	%ebx, 632(%rsp)
+.Ltmp21:
+	.cfi_escape 0x2e, 0x20
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.17(%rip), %r15
+	leaq	152(%rsp), %rdi
+	leaq	640(%rsp), %r9
+	movl	$1, %edx
+	movq	%r15, %rsi
+	xorl	%ecx, %ecx
+	movl	$1, %r8d
+	pushq	%rbx
+	.cfi_adjust_cfa_offset 8
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder14declare_symbol
+	addq	$32, %rsp
+	.cfi_adjust_cfa_offset -32
+.Ltmp22:
+	testb	$1, %al
+	jne	.LBB3_796
+	movl	%ebx, 632(%rsp)
+	movl	%ebx, 636(%rsp)
+.Ltmp23:
+	.cfi_escape 0x2e, 0x20
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.19(%rip), %r15
+	leaq	152(%rsp), %rdi
+	leaq	640(%rsp), %r9
+	movl	$1, %edx
+	movq	%r15, %rsi
+	xorl	%ecx, %ecx
+	movl	$2, %r8d
+	pushq	%rbx
+	.cfi_adjust_cfa_offset 8
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	pushq	$2
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder14declare_symbol
+	addq	$32, %rsp
+	.cfi_adjust_cfa_offset -32
+.Ltmp24:
+	testb	$1, %al
+	jne	.LBB3_797
+	movl	%ebx, 632(%rsp)
+.Ltmp25:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.21(%rip), %rsi
+	leaq	144(%rsp), %rdi
+	leaq	632(%rsp), %rcx
+	movl	$1, %r8d
+	movl	$1, %edx
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder17declare_predicate
+.Ltmp26:
+	testb	$1, %al
+	jne	.LBB3_798
+	movl	%ebx, 632(%rsp)
+	movl	%r13d, 636(%rsp)
+.Ltmp27:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.23(%rip), %r15
+	leaq	144(%rsp), %rdi
+	leaq	632(%rsp), %r12
+	movl	$2, %r8d
+	movq	%r15, %rsi
+	movl	$2, %edx
+	movq	%r12, %rcx
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder17declare_predicate
+.Ltmp28:
+	testb	$1, %al
+	jne	.LBB3_799
+.Ltmp29:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.25(%rip), %rsi
+	leaq	144(%rsp), %rdi
+	movl	$4, %ecx
+	xorl	%edx, %edx
+	xorl	%r8d, %r8d
+	callq	_RNvMNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builderNtB2_18SymbolTableBuilder17declare_predicate
+.Ltmp30:
+	testb	$1, %al
+	movq	24(%rsp), %rbx
+	jne	.LBB3_801
+	movq	152(%rsp), %rax
+	movq	160(%rsp), %r14
+	movq	$0, 96(%rsp)
+	movq	$4, 104(%rsp)
+	movq	$0, 112(%rsp)
+	testq	%r14, %r14
+	je	.LBB3_54
+	movq	%rax, 16(%rsp)
+	leaq	(,%r14,4), %rax
+	leaq	(%rax,%rax,4), %rbx
+	.cfi_escape 0x2e, 0x00
+	movq	%rbx, %rdi
+	callq	*malloc@GOTPCREL(%rip)
+	testq	%rax, %rax
+	je	.LBB3_845
+	movq	%rax, %r12
+	movq	%r14, 480(%rsp)
+	movq	%rax, 488(%rsp)
+	movq	$0, 496(%rsp)
+	shlq	$3, %r14
+	leaq	(%r14,%r14,4), %r13
+	movl	$4, %eax
+	movq	%rax, 136(%rsp)
+	movl	$16, %r14d
+	movq	$0, (%rsp)
+	xorl	%ebx, %ebx
+	jmp	.LBB3_40
+	.p2align	4
+.LBB3_39:
+	movb	%r15b, -16(%r12,%r14)
+	movdqa	304(%rsp), %xmm0
+	movd	%xmm0, -14(%r12,%r14)
+	movl	%ebp, -8(%r12,%r14)
+	movl	%ebx, -4(%r12,%r14)
+	movq	32(%rsp), %rax
+	movw	%ax, (%r12,%r14)
+	movw	$0, 2(%r12,%r14)
+	movq	(%rsp), %rcx
+	incq	%rcx
+	movq	%rcx, (%rsp)
+	movq	%rcx, 496(%rsp)
+	addq	$20, %r14
+	movq	80(%rsp), %r15
+	movq	%r15, %rbx
+	addq	$-40, %r13
+	je	.LBB3_50
+.LBB3_40:
+	movq	16(%rsp), %rax
+	movq	-24(%rax,%r14,2), %rcx
+	movq	-16(%rax,%r14,2), %r15
+	movq	96(%rsp), %rax
+	subq	%rbx, %rax
+	cmpq	%rax, %r15
+	ja	.LBB3_48
+	testq	%r15, %r15
+	je	.LBB3_44
+	movq	%rcx, 80(%rsp)
+	movq	%rbx, %rbp
+.LBB3_43:
+	movq	136(%rsp), %rax
+	leaq	(%rax,%rbp,4), %rdi
+	leaq	(,%r15,4), %rdx
+	.cfi_escape 0x2e, 0x00
+	movq	80(%rsp), %rsi
+	callq	*memcpy@GOTPCREL(%rip)
+	movq	16(%rsp), %rax
+	movq	-16(%rax,%r14,2), %rcx
+	movq	%rcx, 32(%rsp)
+	jmp	.LBB3_45
+	.p2align	4
+.LBB3_44:
+	movq	$0, 32(%rsp)
+	movq	%rbx, %rbp
+	movq	16(%rsp), %rax
+.LBB3_45:
+	addq	%r15, %rbp
+	movq	%rbp, 80(%rsp)
+	movq	%rbp, 112(%rsp)
+	movzbl	(%rax,%r14,2), %r15d
+	movd	-4(%rax,%r14,2), %xmm0
+	movdqa	%xmm0, 304(%rsp)
+	movl	-8(%rax,%r14,2), %ebp
+	movq	(%rsp), %rax
+	cmpq	480(%rsp), %rax
+	jne	.LBB3_39
+.Ltmp33:
+	.cfi_escape 0x2e, 0x00
+	leaq	480(%rsp), %rdi
+	callq	_RNvMs4_NtCs1C1lLj4PWSY_5alloc7raw_vecINtB5_6RawVecNtNtNtCs2cMd1J3MRfy_8mapt_hot2ir12symbol_table10SymbolInfoE8grow_oneCs9LrTosJql9Q_9mapt_cold
+.Ltmp34:
+	movq	488(%rsp), %r12
+	jmp	.LBB3_39
+.LBB3_48:
+.Ltmp31:
+	movq	%rcx, 80(%rsp)
+	.cfi_escape 0x2e, 0x00
+	movl	$4, %ecx
+	movl	$4, %r8d
+	leaq	96(%rsp), %rdi
+	movq	%rbx, %rsi
+	movq	%r15, %rdx
+	callq	_RINvNvMs2_NtCs1C1lLj4PWSY_5alloc7raw_vecINtB8_11RawVecInnerpE7reserve21do_reserve_and_handleNtNtBa_5alloc6GlobalECs9LrTosJql9Q_9mapt_cold
+.Ltmp32:
+	movq	104(%rsp), %rax
+	movq	%rax, 136(%rsp)
+	movq	112(%rsp), %rbp
+	jmp	.LBB3_43
+.LBB3_50:
+	movq	(%rsp), %rsi
+	cmpl	$13421772, %esi
+	movq	24(%rsp), %rbx
+	ja	.LBB3_59
+	leal	(,%rsi,4), %eax
+	leal	(%rax,%rax,4), %r13d
+	movl	12(%rbx), %r12d
+	testl	%r13d, %r13d
+	je	.LBB3_55
+	addl	$3, %r12d
+	andl	$-4, %r12d
+	movl	8(%rbx), %eax
+	movl	%eax, %ecx
+	subl	%r12d, %ecx
+	setb	%dl
+	cmpl	%ecx, %r13d
+	seta	%cl
+	orb	%dl, %cl
+	jne	.LBB3_59
+	addl	%r12d, %r13d
+	movl	%r13d, 12(%rbx)
+	cmpl	%eax, %r13d
+	jbe	.LBB3_56
+	jmp	.LBB3_59
+.LBB3_54:
+	movq	$0, 480(%rsp)
+	movq	$4, 488(%rsp)
+	movq	$0, 496(%rsp)
+	movl	12(%rbx), %r12d
+	xorl	%r15d, %r15d
+	xorl	%esi, %esi
+.LBB3_55:
+	movl	8(%rbx), %eax
+	movl	%r12d, %r13d
+	cmpl	%eax, %r13d
+	ja	.LBB3_59
+.LBB3_56:
+	movl	%r13d, %ecx
+	subl	%r12d, %ecx
+	je	.LBB3_58
+	movl	%r12d, %eax
+	andl	$3, %eax
+	jne	.LBB3_59
+.LBB3_58:
+	imull	$-858993459, %ecx, %eax
+	rorl	$2, %eax
+	cmpl	$214748364, %eax
+	jbe	.LBB3_760
+.LBB3_59:
+	cmpq	$0, 480(%rsp)
+	je	.LBB3_61
+	movq	488(%rsp), %rdi
+	.cfi_escape 0x2e, 0x00
+	callq	*free@GOTPCREL(%rip)
+.LBB3_61:
+	cmpq	$0, 96(%rsp)
+	je	.LBB3_823
+	movb	$5, 16(%rsp)
+	xorl	%edx, %edx
+.LBB3_63:
+	movq	104(%rsp), %rdi
+	.cfi_escape 0x2e, 0x00
+	movq	%rdx, %r14
+	callq	*free@GOTPCREL(%rip)
+	movq	%r14, %rdx
+.LBB3_64:
+	testq	%rdx, %rdx
+	je	.LBB3_824
+	movq	367(%rsp), %rax
+	movq	%rax, 63(%rsp)
+	movdqa	352(%rsp), %xmm0
+	movdqa	%xmm0, 48(%rsp)
+	movl	8(%rbx), %ebp
+	movl	12(%rbx), %r12d
+	leal	3(%r12), %r14d
+	andl	$-4, %r14d
+	movl	%ebp, %ecx
+	movb	$6, %al
+	subl	%r14d, %ecx
+	jb	.LBB3_811
+	cmpl	$8388608, %ecx
+	jb	.LBB3_811
+	leal	8388608(%r14), %r15d
+	movl	%r15d, 12(%rbx)
+	movb	$7, %al
+	cmpl	%ebp, %r15d
+	ja	.LBB3_811
+	movq	(%rbx), %r13
+	testq	%r13, %r13
+	je	.LBB3_811
+	movq	%rdx, (%rsp)
+	movl	%r14d, %ebx
+	addq	%r13, %rbx
+	.cfi_escape 0x2e, 0x00
+	movl	$8388608, %edx
+	movq	%rbx, %rdi
+	movl	$255, %esi
+	callq	*memset@GOTPCREL(%rip)
+	movq	160(%rsp), %rax
+	leal	-65537(%rax), %ecx
+	cmpl	$-65536, %ecx
+	jb	.LBB3_820
+	addl	$8388611, %r12d
+	andl	$-4, %r12d
+	movl	%ebp, %edx
+	movb	$2, %cl
+	subl	%r12d, %edx
+	jb	.LBB3_821
+	leal	4(,%rax,4), %esi
+	cmpl	%edx, %esi
+	ja	.LBB3_821
+	leal	(%r12,%rsi), %edx
+	movq	24(%rsp), %rdi
+	movl	%edx, 12(%rdi)
+	cmpl	%ebp, %edx
+	ja	.LBB3_821
+	movl	%eax, %edi
+	shrl	$2, %esi
+	leaq	-1(%rdi), %rcx
+	cmpq	%rcx, %rsi
+	cmovbq	%rsi, %rcx
+	cmpq	$7, %rcx
+	ja	.LBB3_75
+	xorl	%ecx, %ecx
+	jmp	.LBB3_77
+.LBB3_75:
+	incq	%rcx
+	movl	%ecx, %edx
+	andl	$7, %edx
+	movl	$8, %r8d
+	cmovneq	%rdx, %r8
+	subq	%r8, %rcx
+	leaq	(%r12,%r13), %rdx
+	addq	$16, %rdx
+	movdqa	.LCPI3_0(%rip), %xmm0
+	xorl	%r8d, %r8d
+	movdqa	.LCPI3_1(%rip), %xmm1
+	movdqa	.LCPI3_2(%rip), %xmm2
+	.p2align	4
+.LBB3_76:
+	movdqa	%xmm0, %xmm3
+	paddd	%xmm1, %xmm3
+	movdqu	%xmm0, -16(%rdx,%r8,4)
+	movdqu	%xmm3, (%rdx,%r8,4)
+	addq	$8, %r8
+	paddd	%xmm2, %xmm0
+	cmpq	%r8, %rcx
+	jne	.LBB3_76
+.LBB3_77:
+	addq	%r12, %r13
+	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.81(%rip), %rdx
+	.p2align	4
+.LBB3_78:
+	cmpq	%rcx, %rsi
+	je	.LBB3_807
+	movl	%ecx, (%r13,%rcx,4)
+	incq	%rcx
+	cmpq	%rcx, %rdi
+	jne	.LBB3_78
+	cmpl	%eax, %esi
+	jbe	.LBB3_822
+	movl	%eax, (%r13,%rdi,4)
+	pcmpeqd	%xmm0, %xmm0
+	movdqu	%xmm0, 880(%rsp)
+	movdqu	%xmm0, 864(%rsp)
+	movdqu	%xmm0, 848(%rsp)
+	movdqu	%xmm0, 832(%rsp)
+	movdqu	%xmm0, 816(%rsp)
+	movdqu	%xmm0, 800(%rsp)
+	movdqu	%xmm0, 784(%rsp)
+	movdqu	%xmm0, 768(%rsp)
+	movdqu	%xmm0, 752(%rsp)
+	movdqu	%xmm0, 736(%rsp)
+	movdqu	%xmm0, 720(%rsp)
+	movdqu	%xmm0, 704(%rsp)
+	movdqu	%xmm0, 688(%rsp)
+	movdqu	%xmm0, 672(%rsp)
+	movdqu	%xmm0, 656(%rsp)
+	movdqu	%xmm0, 640(%rsp)
+	leaq	896(%rsp), %rdi
+	.cfi_escape 0x2e, 0x00
+	movl	$16384, %edx
+	xorl	%esi, %esi
+	callq	*memset@GOTPCREL(%rip)
+	.cfi_escape 0x2e, 0x00
+	leaq	480(%rsp), %rdi
+	leaq	144(%rsp), %rsi
+	movl	$152, %edx
+	movq	%rdi, 88(%rsp)
+	callq	*memcpy@GOTPCREL(%rip)
+	movq	(%rsp), %rsi
+	movq	%rsi, 352(%rsp)
+	movzbl	16(%rsp), %eax
+	movb	%al, 360(%rsp)
+	movapd	48(%rsp), %xmm0
+	movupd	%xmm0, 361(%rsp)
+	movq	63(%rsp), %rax
+	movq	%rax, 376(%rsp)
+	movq	24(%rsp), %rax
+	movq	%rax, 96(%rsp)
+	movq	%rbx, 104(%rsp)
+	movq	$2097152, 112(%rsp)
+	movl	%r14d, 120(%rsp)
+	movl	%r15d, 124(%rsp)
+	movl	$0, 128(%rsp)
+	movq	%rax, 632(%rsp)
+	movl	$0, 17280(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.13(%rip), %r14
+	movq	%r14, 48(%rsp)
+	movq	$1, 56(%rsp)
+	movl	496(%rsp), %r15d
+	testq	%r15, %r15
+	je	.LBB3_758
+	movq	512(%rsp), %r12
+	movq	520(%rsp), %r13
+	leaq	16(%r12), %rax
+	xorl	%edx, %edx
+	jmp	.LBB3_84
+	.p2align	4
+.LBB3_83:
+	incq	%rdx
+	addq	$24, %rax
+	cmpq	%rdx, %r15
+	je	.LBB3_758
+.LBB3_84:
+	cmpq	%rdx, %r13
+	jbe	.LBB3_83
+	cmpq	$1, (%rax)
+	jne	.LBB3_83
+	movq	-8(%rax), %rcx
+	cmpb	$97, (%rcx)
+	jne	.LBB3_83
+	movq	360(%rsp), %rbp
+	movl	$1, %eax
+	cmpq	%rdx, %rbp
+	jbe	.LBB3_828
+	leaq	(%rdx,%rdx,4), %rax
+	cmpb	$0, (%rsi,%rax,4)
+	jne	.LBB3_825
+	leaq	(%rsi,%rax,4), %rax
+	cmpw	$0, 2(%rax)
+	jne	.LBB3_826
+	movl	8(%rax), %r9d
+	cmpl	$1073741824, %r9d
+	ja	.LBB3_827
+	cmpl	$1, %r9d
+	adcl	$0, %r9d
+.Ltmp42:
+	.cfi_escape 0x2e, 0x10
+	leaq	96(%rsp), %rdi
+	movl	$4, %ecx
+	movl	$1, %esi
+	xorl	%r8d, %r8d
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMs0_NtNtCs2cMd1J3MRfy_8mapt_hot2ir4termNtB5_9TermStore6intern
+	addq	$16, %rsp
+	.cfi_adjust_cfa_offset -16
+.Ltmp43:
+	testb	$1, %al
+	movq	(%rsp), %rsi
+	jne	.LBB3_828
+	shrq	$32, %rax
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.15(%rip), %rcx
+	movq	%rcx, 48(%rsp)
+	movq	$1, 56(%rsp)
+	leaq	16(%r12), %rcx
+	xorl	%r8d, %r8d
+	jmp	.LBB3_95
+	.p2align	4
+.LBB3_94:
+	incq	%r8
+	addq	$24, %rcx
+	cmpq	%r8, %r15
+	je	.LBB3_758
+.LBB3_95:
+	cmpq	%r8, %r13
+	jbe	.LBB3_94
+	cmpq	$1, (%rcx)
+	jne	.LBB3_94
+	movq	-8(%rcx), %rdx
+	cmpb	$102, (%rdx)
+	jne	.LBB3_94
+	movl	%eax, 144(%rsp)
+	cmpq	%r8, %rbp
+	jbe	.LBB3_829
+	leaq	(%r8,%r8,4), %rax
+	cmpb	$0, (%rsi,%rax,4)
+	jne	.LBB3_830
+	leaq	(%rsi,%rax,4), %rax
+	cmpw	$1, 2(%rax)
+	jne	.LBB3_831
+.Ltmp44:
+	.cfi_escape 0x2e, 0x10
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	104(%rsp), %rdi
+	leaq	152(%rsp), %r14
+	movq	%rbp, %rdx
+	movl	$1, %ecx
+	movq	%r14, %r9
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMs0_NtNtCs2cMd1J3MRfy_8mapt_hot2ir4termNtB5_9TermStore13intern_tagged
+	addq	$16, %rsp
+	.cfi_adjust_cfa_offset -16
+.Ltmp45:
+	movq	%rax, %rbx
+	testb	$1, %al
+	jne	.LBB3_832
+.Ltmp46:
+	.cfi_escape 0x2e, 0x10
+	leaq	96(%rsp), %rdi
+	movl	$4, %ecx
+	xorl	%esi, %esi
+	xorl	%edx, %edx
+	xorl	%r8d, %r8d
+	movl	$1, %r9d
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMs0_NtNtCs2cMd1J3MRfy_8mapt_hot2ir4termNtB5_9TermStore6intern
+	addq	$16, %rsp
+	.cfi_adjust_cfa_offset -16
+.Ltmp47:
+	testb	$1, %al
+	jne	.LBB3_803
+	shrq	$32, %rbx
+	shrq	$32, %rax
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.21(%rip), %rcx
+	movq	%rcx, 48(%rsp)
+	movq	$1, 56(%rsp)
+	leaq	16(%r12), %rcx
+	xorl	%r8d, %r8d
+	movq	(%rsp), %rsi
+	jmp	.LBB3_107
+	.p2align	4
+.LBB3_106:
+	incq	%r8
+	addq	$24, %rcx
+	cmpq	%r8, %r15
+	je	.LBB3_757
+.LBB3_107:
+	cmpq	%r8, %r13
+	jbe	.LBB3_106
+	cmpq	$1, (%rcx)
+	jne	.LBB3_106
+	movq	-8(%rcx), %rdx
+	cmpb	$112, (%rdx)
+	jne	.LBB3_106
+	movl	%eax, 144(%rsp)
+	cmpq	%r8, %rbp
+	jbe	.LBB3_833
+	leaq	(%r8,%r8,4), %rax
+	cmpb	$1, (%rsi,%rax,4)
+	jne	.LBB3_834
+	leaq	(%rsi,%rax,4), %rax
+	cmpw	$1, 2(%rax)
+	jne	.LBB3_835
+.Ltmp48:
+	.cfi_escape 0x2e, 0x10
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	104(%rsp), %rdi
+	leaq	152(%rsp), %r14
+	movq	%rbp, %rdx
+	movl	$2, %ecx
+	movq	%r14, %r9
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMs0_NtNtCs2cMd1J3MRfy_8mapt_hot2ir4termNtB5_9TermStore13intern_tagged
+	addq	$16, %rsp
+	.cfi_adjust_cfa_offset -16
+.Ltmp49:
+	movq	%rax, %rdx
+	testb	$1, %dl
+	jne	.LBB3_836
+	shrq	$32, %rdx
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.21(%rip), %rax
+	movq	%rax, 48(%rsp)
+	movq	$1, 56(%rsp)
+	leaq	16(%r12), %rax
+	xorl	%r8d, %r8d
+	movq	(%rsp), %rsi
+	jmp	.LBB3_117
+	.p2align	4
+.LBB3_116:
+	incq	%r8
+	addq	$24, %rax
+	cmpq	%r8, %r15
+	je	.LBB3_757
+.LBB3_117:
+	cmpq	%r8, %r13
+	jbe	.LBB3_116
+	cmpq	$1, (%rax)
+	jne	.LBB3_116
+	movq	-8(%rax), %rcx
+	cmpb	$112, (%rcx)
+	jne	.LBB3_116
+	movl	%ebx, 144(%rsp)
+	cmpq	%r8, %rbp
+	jbe	.LBB3_837
+	movq	%rdx, 16(%rsp)
+	leaq	(%r8,%r8,4), %rax
+	cmpb	$1, (%rsi,%rax,4)
+	jne	.LBB3_838
+	leaq	(%rsi,%rax,4), %rax
+	cmpw	$1, 2(%rax)
+	jne	.LBB3_839
+.Ltmp50:
+	.cfi_escape 0x2e, 0x10
+	subq	$8, %rsp
+	.cfi_adjust_cfa_offset 8
+	leaq	104(%rsp), %rdi
+	leaq	152(%rsp), %r14
+	movq	%rbp, %rdx
+	movl	$2, %ecx
+	movq	%r14, %r9
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMs0_NtNtCs2cMd1J3MRfy_8mapt_hot2ir4termNtB5_9TermStore13intern_tagged
+	addq	$16, %rsp
+	.cfi_adjust_cfa_offset -16
+.Ltmp51:
+	movq	%rax, %rcx
+	testb	$1, %cl
+	jne	.LBB3_840
+	shrq	$32, %rcx
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.25(%rip), %rax
+	movq	%rax, 48(%rsp)
+	movq	$1, 56(%rsp)
+	addq	$16, %r12
+	xorl	%edx, %edx
+	movq	(%rsp), %rsi
+	jmp	.LBB3_127
+	.p2align	4
+.LBB3_126:
+	incq	%rdx
+	addq	$24, %r12
+	cmpq	%rdx, %r15
+	je	.LBB3_757
+.LBB3_127:
+	cmpq	%rdx, %r13
+	jbe	.LBB3_126
+	cmpq	$1, (%r12)
+	jne	.LBB3_126
+	movq	-8(%r12), %rax
+	cmpb	$114, (%rax)
+	jne	.LBB3_126
+	movq	%rcx, 80(%rsp)
+	movl	$1, %eax
+	cmpq	%rdx, %rbp
+	jbe	.LBB3_844
+	leaq	(%rdx,%rdx,4), %rax
+	cmpb	$1, (%rsi,%rax,4)
+	jne	.LBB3_841
+	leaq	(%rsi,%rax,4), %rax
+	cmpw	$0, 2(%rax)
+	jne	.LBB3_842
+	movl	8(%rax), %r9d
+	cmpl	$1073741824, %r9d
+	ja	.LBB3_843
+	cmpl	$1, %r9d
+	adcl	$0, %r9d
+.Ltmp52:
+	.cfi_escape 0x2e, 0x10
+	leaq	96(%rsp), %rdi
+	movl	$4, %ecx
+	movl	$2, %esi
+	xorl	%r8d, %r8d
+	pushq	$1
+	.cfi_adjust_cfa_offset 8
+	pushq	$0
+	.cfi_adjust_cfa_offset 8
+	callq	_RNvMs0_NtNtCs2cMd1J3MRfy_8mapt_hot2ir4termNtB5_9TermStore6intern
+	addq	$16, %rsp
+	.cfi_adjust_cfa_offset -16
+.Ltmp53:
+	movq	%rax, %rcx
+	testb	$1, %cl
+	jne	.LBB3_844
+	movq	24(%rsp), %rdx
+	movl	8(%rdx), %ecx
+	movl	12(%rdx), %edi
+	addl	$3, %edi
+	andl	$-4, %edi
+	movl	%ecx, %r9d
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.46(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.60(%rip), %r12
+	leaq	15(%rsp), %rdx
+	movl	$5, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.45(%rip), %r14
+	subl	%edi, %r9d
+	jb	.LBB3_806
+	cmpl	$16384, %r9d
+	jb	.LBB3_806
+	leal	16384(%rdi), %r9d
+	movq	24(%rsp), %r11
+	movl	%r9d, 12(%r11)
+	cmpl	%ecx, %r9d
+	movq	16(%rsp), %r9
+	movq	80(%rsp), %r10
+	ja	.LBB3_806
+	movq	(%r11), %rcx
+	testq	%rcx, %rcx
+	je	.LBB3_806
+	movq	%rax, %r8
+	shrq	$32, %r8
+	movl	%edi, %eax
+	addq	%rax, %rcx
+	movq	%rcx, 48(%rsp)
+	movq	$4096, 56(%rsp)
+	movl	$0, 64(%rsp)
+	movl	%r9d, 344(%rsp)
+	movl	$1, 348(%rsp)
+	movl	%r10d, 328(%rsp)
+	movl	$1, 332(%rsp)
+	movq	%r8, 136(%rsp)
+	movl	%r8d, 336(%rsp)
+	movl	$1, 340(%rsp)
+.Ltmp54:
+	.cfi_escape 0x2e, 0x00
+	leaq	384(%rsp), %rdi
+	leaq	48(%rsp), %rsi
+	leaq	96(%rsp), %rdx
+	leaq	344(%rsp), %rcx
+	movl	$1, %r8d
+	callq	_RNvMNtNtCs2cMd1J3MRfy_8mapt_hot5index14feature_vectorNtB2_18FeatureVectorIndex5build
+.Ltmp55:
+	movzbl	396(%rsp), %ebx
+	movl	$6, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.47(%rip), %r14
+	cmpb	$2, %bl
+	je	.LBB3_804
+	movl	384(%rsp), %r15d
+	movl	388(%rsp), %eax
+	movl	%eax, (%rsp)
+	movl	392(%rsp), %ebp
+.Ltmp56:
+	.cfi_escape 0x2e, 0x00
+	leaq	400(%rsp), %rdi
+	leaq	48(%rsp), %rsi
+	leaq	96(%rsp), %rdx
+	leaq	328(%rsp), %rcx
+	movl	$2, %r8d
+	callq	_RNvMNtNtCs2cMd1J3MRfy_8mapt_hot5index14feature_vectorNtB2_18FeatureVectorIndex5build
+.Ltmp57:
+	movzbl	412(%rsp), %r13d
+	cmpb	$2, %r13b
+	je	.LBB3_805
+	movl	400(%rsp), %r14d
+	movl	404(%rsp), %r12d
+	movl	408(%rsp), %eax
+	movl	%eax, 32(%rsp)
+	.cfi_escape 0x2e, 0x00
+	movl	$120, %edi
+	callq	*malloc@GOTPCREL(%rip)
+	testq	%rax, %rax
+	je	.LBB3_813
+	movq	$15, 144(%rsp)
+	movq	%rax, 152(%rsp)
+	movq	$0, 160(%rsp)
+	orb	%r13b, %bl
+	setne	%sil
+	cmpl	32(%rsp), %ebp
+	seta	%cl
+	cmpl	$0, (%rsp)
+	sete	%dl
+	testl	%r12d, %r12d
+	sete	%dil
+	orb	%sil, %cl
+	orb	%dl, %dil
+	orb	%cl, %dil
+	movb	%dil, 32(%rsp)
+	xorb	$1, %cl
+	orb	%sil, %cl
+	movzbl	%cl, %ecx
+	movq	%rcx, 304(%rsp)
+	leaq	(,%r14,4), %rcx
+	movq	%rcx, 440(%rsp)
+	incq	%r14
+	movq	$0, 24(%rsp)
+	leaq	40(%rsp), %rbp
+	jmp	.LBB3_147
+	.p2align	4
+.LBB3_146:
+	movq	24(%rsp), %rcx
+	movapd	416(%rsp), %xmm0
+	movsd	%xmm0, (%rax,%rcx,8)
+	incq	%rcx
+	movq	%rcx, 160(%rsp)
+	movq	%rcx, 24(%rsp)
+	cmpq	$15, %rcx
+	je	.LBB3_166
+.LBB3_147:
+	movq	%rax, 448(%rsp)
+	#APP
+
+	lfence
+
+	#NO_APP
+	rdtsc
+	shlq	$32, %rdx
+	orq	%rax, %rdx
+	movq	%rdx, 416(%rsp)
+	movq	48(%rsp), %rax
+	movq	56(%rsp), %rdx
+	movq	440(%rsp), %rcx
+	leaq	(%rax,%rcx), %r8
+	xorl	%edi, %edi
+	xorl	%r9d, %r9d
+	jmp	.LBB3_150
+.LBB3_162:
+	xorl	%r10d, %r10d
+	.p2align	4
+.LBB3_148:
+	movq	%rbx, %r14
+.LBB3_149:
+	incl	%r9d
+	movq	%r10, 40(%rsp)
+	#APP
+	#NO_APP
+	addq	40(%rsp), %rdi
+	cmpl	$200000, %r9d
+	je	.LBB3_163
+.LBB3_150:
+	movl	%r9d, 40(%rsp)
+	#APP
+	#NO_APP
+	movq	304(%rsp), %r10
+	cmpb	$0, 32(%rsp)
+	jne	.LBB3_149
+	xorl	%r11d, %r11d
+	movl	$1, %r10d
+	movq	%r14, %rcx
+	movl	$1, %esi
+	.p2align	4
+.LBB3_152:
+	movq	%r14, %rbx
+	movl	%r11d, %r13d
+	leaq	(%r15,%r13,2), %r14
+	incq	%r14
+	cmpq	%rdx, %r14
+	jae	.LBB3_148
+	cmpq	%rdx, %rcx
+	jae	.LBB3_148
+	leaq	(%r15,%r13,2), %r13
+	movl	-8(%r8,%rsi,8), %r14d
+	cmpl	%r14d, (%rax,%r13,4)
+	jne	.LBB3_157
+	movl	4(%rax,%r13,4), %r14d
+	cmpl	-4(%r8,%rsi,8), %r14d
+	ja	.LBB3_162
+	incl	%r11d
+	movq	%rbx, %r14
+	jmp	.LBB3_158
+	.p2align	4
+.LBB3_157:
+	movq	%rbx, %r14
+	jbe	.LBB3_161
+.LBB3_158:
+	cmpl	(%rsp), %r11d
+	jae	.LBB3_149
+	addq	$2, %rcx
+	cmpq	%r12, %rsi
+	leaq	1(%rsi), %rsi
+	jb	.LBB3_152
+	jmp	.LBB3_149
+.LBB3_161:
+	xorl	%r10d, %r10d
+	jmp	.LBB3_149
+	.p2align	4
+.LBB3_163:
+	#APP
+
+	lfence
+
+	#NO_APP
+	rdtsc
+	shlq	$32, %rdx
+	orq	%rax, %rdx
+	subq	416(%rsp), %rdx
+	movl	$0, %eax
+	cmovaeq	%rdx, %rax
+	movq	%rdi, 40(%rsp)
+	#APP
+	#NO_APP
+	movq	%rax, %xmm0
+	punpckldq	.LCPI3_3(%rip), %xmm0
+	subpd	.LCPI3_4(%rip), %xmm0
+	movapd	%xmm0, %xmm1
+	unpckhpd	%xmm0, %xmm1
+	addsd	%xmm0, %xmm1
+	divsd	.LCPI3_5(%rip), %xmm1
+	movapd	%xmm1, 416(%rsp)
+	movq	24(%rsp), %rax
+	cmpq	144(%rsp), %rax
+	movq	448(%rsp), %rax
+	jne	.LBB3_146
+.Ltmp58:
+	.cfi_escape 0x2e, 0x00
+	leaq	144(%rsp), %rdi
+	callq	_RNvMs4_NtCs1C1lLj4PWSY_5alloc7raw_vecINtB5_6RawVecdE8grow_oneCs6okcGS0KElL_17subsumption_bench
+.Ltmp59:
+	movq	152(%rsp), %rax
+	jmp	.LBB3_146
+.LBB3_166:
+	movq	152(%rsp), %rdi
+	movsd	(%rdi), %xmm1
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm1, %xmm0
+	jp	.LBB3_781
+	ucomisd	%xmm0, %xmm1
+	jbe	.LBB3_169
+	movsd	%xmm1, 8(%rdi)
+	movsd	%xmm0, (%rdi)
+.LBB3_169:
+	movsd	8(%rdi), %xmm0
+	movsd	16(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_175
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_174
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_174:
+	movsd	%xmm2, (%r14)
+.LBB3_175:
+	movsd	16(%rdi), %xmm0
+	movsd	24(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_184
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_183
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_182
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_182:
+	movapd	%xmm2, %xmm1
+.LBB3_183:
+	movsd	%xmm1, (%r14)
+.LBB3_184:
+	movsd	24(%rdi), %xmm0
+	movsd	32(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_195
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_194
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_194
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_193
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_193:
+	movapd	%xmm2, %xmm1
+.LBB3_194:
+	movsd	%xmm1, (%r14)
+.LBB3_195:
+	movsd	32(%rdi), %xmm0
+	movsd	40(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_208
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_207
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_207
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_207
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_206
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_206:
+	movapd	%xmm2, %xmm1
+.LBB3_207:
+	movsd	%xmm1, (%r14)
+.LBB3_208:
+	movsd	40(%rdi), %xmm0
+	movsd	48(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_223
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_222
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_222
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_222
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_222
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_221
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_221:
+	movapd	%xmm2, %xmm1
+.LBB3_222:
+	movsd	%xmm1, (%r14)
+.LBB3_223:
+	movsd	48(%rdi), %xmm0
+	movsd	56(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_240
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_239
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_239
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_239
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_239
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_239
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_238
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_238:
+	movapd	%xmm2, %xmm1
+.LBB3_239:
+	movsd	%xmm1, (%r14)
+.LBB3_240:
+	movsd	56(%rdi), %xmm0
+	movsd	64(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_259
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_258
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_258
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_258
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_258
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_258
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_258
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_257
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_257:
+	movapd	%xmm2, %xmm1
+.LBB3_258:
+	movsd	%xmm1, (%r14)
+.LBB3_259:
+	movsd	64(%rdi), %xmm0
+	movsd	72(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_280
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_279
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_279
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_279
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_279
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_279
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_279
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_279
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_278
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_278:
+	movapd	%xmm2, %xmm1
+.LBB3_279:
+	movsd	%xmm1, (%r14)
+.LBB3_280:
+	movsd	72(%rdi), %xmm0
+	movsd	80(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_303
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_302
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_301
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_301:
+	movapd	%xmm2, %xmm1
+.LBB3_302:
+	movsd	%xmm1, (%r14)
+.LBB3_303:
+	movsd	80(%rdi), %xmm0
+	movsd	88(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_328
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_327
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_326
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_326:
+	movapd	%xmm2, %xmm1
+.LBB3_327:
+	movsd	%xmm1, (%r14)
+.LBB3_328:
+	movsd	88(%rdi), %xmm0
+	movsd	96(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_355
+	leaq	88(%rdi), %r14
+	movsd	%xmm0, 96(%rdi)
+	movsd	80(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_354
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_353
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_353:
+	movapd	%xmm2, %xmm1
+.LBB3_354:
+	movsd	%xmm1, (%r14)
+.LBB3_355:
+	movsd	96(%rdi), %xmm0
+	movsd	104(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_384
+	leaq	96(%rdi), %r14
+	movsd	%xmm0, 104(%rdi)
+	movsd	88(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	88(%rdi), %r14
+	movsd	%xmm0, 96(%rdi)
+	movsd	80(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_383
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_382
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_382:
+	movapd	%xmm2, %xmm1
+.LBB3_383:
+	movsd	%xmm1, (%r14)
+.LBB3_384:
+	movsd	104(%rdi), %xmm0
+	movsd	112(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_781
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_415
+	leaq	104(%rdi), %r14
+	movsd	%xmm0, 112(%rdi)
+	movsd	96(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	96(%rdi), %r14
+	movsd	%xmm0, 104(%rdi)
+	movsd	88(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	88(%rdi), %r14
+	movsd	%xmm0, 96(%rdi)
+	movsd	80(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_414
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_783
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_413
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_413:
+	movapd	%xmm2, %xmm1
+.LBB3_414:
+	movsd	%xmm1, (%r14)
+.LBB3_415:
+	movsd	(%rdi), %xmm0
+	movsd	56(%rdi), %xmm1
+	cmpq	$0, 144(%rsp)
+	je	.LBB3_417
+	.cfi_escape 0x2e, 0x00
+	movsd	%xmm0, (%rsp)
+	movsd	%xmm1, 32(%rsp)
+	callq	*free@GOTPCREL(%rip)
+	movsd	32(%rsp), %xmm1
+	movsd	(%rsp), %xmm0
+.LBB3_417:
+	movsd	%xmm1, 456(%rsp)
+	movsd	%xmm0, 464(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.50(%rip), %rax
+	movq	%rax, 144(%rsp)
+	movq	$14, 152(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.51(%rip), %rax
+	movq	%rax, 160(%rsp)
+	movq	$22, 168(%rsp)
+	movl	$200000, 192(%rsp)
+	movsd	%xmm1, 176(%rsp)
+	movsd	%xmm0, 184(%rsp)
+.Ltmp61:
+	.cfi_escape 0x2e, 0x00
+	leaq	144(%rsp), %rdi
+	callq	_RNvNtCs6okcGS0KElL_17subsumption_bench7harness14write_artifact
+.Ltmp62:
+	leaq	456(%rsp), %rax
+	movq	%rax, 144(%rsp)
+	leaq	_RNvXs7_NtNtCsevLNFiNqfJP_4core3fmt5floatdNtB7_7Display3fmt(%rip), %rcx
+	movq	%rcx, 152(%rsp)
+	leaq	464(%rsp), %rax
+	movq	%rax, 160(%rsp)
+	movq	%rcx, 168(%rsp)
+.Ltmp63:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.52(%rip), %rdi
+	leaq	144(%rsp), %rsi
+	callq	_RNvNtNtCsgHYyB3hU8Ec_3std2io5stdio6__print
+.Ltmp64:
+	.cfi_escape 0x2e, 0x00
+	movl	$120, %edi
+	callq	*malloc@GOTPCREL(%rip)
+	testq	%rax, %rax
+	je	.LBB3_813
+	movq	$15, 144(%rsp)
+	movq	%rax, 152(%rsp)
+	movq	$0, 160(%rsp)
+	xorl	%r14d, %r14d
+	leaq	40(%rsp), %rbx
+	leaq	632(%rsp), %r12
+	jmp	.LBB3_422
+	.p2align	4
+.LBB3_421:
+	movapd	304(%rsp), %xmm0
+	movsd	%xmm0, (%rax,%r13,8)
+	movq	%r14, 160(%rsp)
+	cmpq	$15, %r14
+	je	.LBB3_503
+.LBB3_422:
+	movq	%rax, (%rsp)
+	movq	%r14, 32(%rsp)
+	#APP
+
+	lfence
+
+	#NO_APP
+	rdtsc
+	shlq	$32, %rdx
+	orq	%rax, %rdx
+	movq	%rdx, 304(%rsp)
+	xorl	%ebp, %ebp
+	xorl	%r13d, %r13d
+	jmp	.LBB3_424
+	.p2align	4
+.LBB3_423:
+	movl	%edi, 17280(%rsp)
+	incl	%r13d
+	movq	%rcx, 40(%rsp)
+	movq	%r15, %rbx
+	#APP
+	#NO_APP
+	addq	40(%rsp), %rbp
+	cmpl	$100000, %r13d
+	je	.LBB3_500
+.LBB3_424:
+	movl	%r13d, 40(%rsp)
+	movq	%rbx, %r15
+	#APP
+	#NO_APP
+	movl	17280(%rsp), %ebx
+.Ltmp65:
+	.cfi_escape 0x2e, 0x00
+	leaq	96(%rsp), %rdi
+	movq	%r12, %rsi
+	movq	16(%rsp), %rdx
+	movq	80(%rsp), %rcx
+	xorl	%r8d, %r8d
+	callq	_RNvNtNtCs2cMd1J3MRfy_8mapt_hot11unification5unify13match_bounded
+.Ltmp66:
+	movl	%ebx, %r14d
+	testb	$1, %al
+	jne	.LBB3_446
+	testb	$1, %dl
+	je	.LBB3_441
+.Ltmp67:
+	.cfi_escape 0x2e, 0x00
+	movq	%r12, %rdi
+	leaq	96(%rsp), %rsi
+	movq	16(%rsp), %rdx
+	leaq	352(%rsp), %rcx
+	xorl	%r8d, %r8d
+	callq	_RNvMNtNtCs2cMd1J3MRfy_8mapt_hot11unification12substitutionNtB2_12Substitution13apply_bounded
+.Ltmp68:
+	movl	17280(%rsp), %edi
+	testb	$1, %al
+	je	.LBB3_465
+	cmpl	%ebx, %edi
+	ja	.LBB3_438
+.LBB3_430:
+	andl	$65280, %eax
+	movl	%edi, 17280(%rsp)
+	cmpl	$512, %eax
+	jne	.LBB3_492
+	.p2align	4
+	cmpl	%ebx, %edi
+	jbe	.LBB3_443
+.LBB3_432:
+	movl	%edi, %r14d
+	jmp	.LBB3_434
+	.p2align	4
+.LBB3_433:
+	movl	$0, 896(%rsp,%r14,4)
+	cmpq	%rbx, %r14
+	jbe	.LBB3_444
+.LBB3_434:
+	cmpq	$4096, %r14
+	ja	.LBB3_780
+	decq	%r14
+	movl	896(%rsp,%r14,4), %eax
+	cmpq	$63, %rax
+	ja	.LBB3_433
+	movl	$-1, 640(%rsp,%rax,4)
+	jmp	.LBB3_433
+	.p2align	4
+.LBB3_437:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rbx, %rdi
+	jbe	.LBB3_430
+.LBB3_438:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %ecx
+	cmpq	$63, %rcx
+	ja	.LBB3_437
+	movl	$-1, 640(%rsp,%rcx,4)
+	jmp	.LBB3_437
+	.p2align	4
+.LBB3_441:
+	movl	17280(%rsp), %edi
+	cmpl	%ebx, %edi
+	ja	.LBB3_453
+.LBB3_442:
+	movl	%edi, 17280(%rsp)
+	cmpl	%ebx, %edi
+	ja	.LBB3_432
+.LBB3_443:
+	movl	%edi, %r14d
+.LBB3_444:
+	movl	%r14d, 17280(%rsp)
+.Ltmp69:
+	.cfi_escape 0x2e, 0x00
+	leaq	96(%rsp), %rdi
+	movq	%r12, %rsi
+	movq	16(%rsp), %rdx
+	movq	136(%rsp), %rcx
+	xorl	%r8d, %r8d
+	callq	_RNvNtNtCs2cMd1J3MRfy_8mapt_hot11unification5unify13match_bounded
+.Ltmp70:
+	testb	$1, %al
+	je	.LBB3_456
+.LBB3_446:
+	movl	17280(%rsp), %edi
+	cmpl	%r14d, %edi
+	jbe	.LBB3_491
+	movl	%r14d, %eax
+	jmp	.LBB3_449
+	.p2align	4
+.LBB3_448:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rax, %rdi
+	jbe	.LBB3_491
+.LBB3_449:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %ecx
+	cmpq	$64, %rcx
+	jae	.LBB3_448
+	movl	$-1, 640(%rsp,%rcx,4)
+	jmp	.LBB3_448
+	.p2align	4
+.LBB3_452:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rbx, %rdi
+	jbe	.LBB3_442
+.LBB3_453:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %eax
+	cmpq	$63, %rax
+	ja	.LBB3_452
+	movl	$-1, 640(%rsp,%rax,4)
+	jmp	.LBB3_452
+.LBB3_456:
+	testb	$1, %dl
+	je	.LBB3_471
+.Ltmp71:
+	.cfi_escape 0x2e, 0x00
+	movq	%r12, %rdi
+	leaq	96(%rsp), %rsi
+	movq	16(%rsp), %rdx
+	leaq	352(%rsp), %rcx
+	xorl	%r8d, %r8d
+	callq	_RNvMNtNtCs2cMd1J3MRfy_8mapt_hot11unification12substitutionNtB2_12Substitution13apply_bounded
+.Ltmp72:
+	movl	17280(%rsp), %edi
+	testb	$1, %al
+	je	.LBB3_477
+	cmpl	%r14d, %edi
+	jbe	.LBB3_499
+	movl	%r14d, %ecx
+	jmp	.LBB3_462
+	.p2align	4
+.LBB3_461:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rcx, %rdi
+	jbe	.LBB3_499
+.LBB3_462:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %edx
+	cmpq	$63, %rdx
+	ja	.LBB3_461
+	movl	$-1, 640(%rsp,%rdx,4)
+	jmp	.LBB3_461
+.LBB3_465:
+	shrq	$32, %rax
+	movl	$1, %ecx
+	cmpl	%eax, 80(%rsp)
+	je	.LBB3_493
+	cmpl	%ebx, %edi
+	ja	.LBB3_468
+	jmp	.LBB3_442
+	.p2align	4
+.LBB3_467:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rbx, %rdi
+	jbe	.LBB3_442
+.LBB3_468:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %eax
+	cmpq	$63, %rax
+	ja	.LBB3_467
+	movl	$-1, 640(%rsp,%rax,4)
+	jmp	.LBB3_467
+.LBB3_471:
+	movl	17280(%rsp), %edi
+	cmpl	%r14d, %edi
+	jbe	.LBB3_484
+	movl	%r14d, %eax
+	jmp	.LBB3_474
+	.p2align	4
+.LBB3_473:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rax, %rdi
+	jbe	.LBB3_484
+.LBB3_474:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %ecx
+	cmpq	$63, %rcx
+	ja	.LBB3_473
+	movl	$-1, 640(%rsp,%rcx,4)
+	jmp	.LBB3_473
+.LBB3_477:
+	shrq	$32, %rax
+	movl	$1, %ecx
+	cmpl	%eax, 136(%rsp)
+	je	.LBB3_493
+	cmpl	%r14d, %edi
+	jbe	.LBB3_484
+	movl	%r14d, %eax
+	jmp	.LBB3_481
+	.p2align	4
+.LBB3_480:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rax, %rdi
+	jbe	.LBB3_484
+.LBB3_481:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %ecx
+	cmpq	$63, %rcx
+	ja	.LBB3_480
+	movl	$-1, 640(%rsp,%rcx,4)
+	jmp	.LBB3_480
+.LBB3_484:
+	movl	%edi, 17280(%rsp)
+.LBB3_485:
+	cmpl	%r14d, %edi
+	jbe	.LBB3_491
+	movl	%edi, %edi
+	movl	%r14d, %eax
+	jmp	.LBB3_488
+	.p2align	4
+.LBB3_487:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rax, %rdi
+	jbe	.LBB3_491
+.LBB3_488:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %ecx
+	cmpq	$63, %rcx
+	ja	.LBB3_487
+	movl	$-1, 640(%rsp,%rcx,4)
+	jmp	.LBB3_487
+	.p2align	4
+.LBB3_491:
+	movl	%edi, 17280(%rsp)
+.LBB3_492:
+	xorl	%ecx, %ecx
+.LBB3_493:
+	cmpl	%ebx, %edi
+	jbe	.LBB3_423
+	movl	%edi, %edi
+	jmp	.LBB3_496
+	.p2align	4
+.LBB3_495:
+	movl	$0, 896(%rsp,%rdi,4)
+	cmpq	%rbx, %rdi
+	jbe	.LBB3_423
+.LBB3_496:
+	cmpq	$4096, %rdi
+	ja	.LBB3_767
+	decq	%rdi
+	movl	896(%rsp,%rdi,4), %eax
+	cmpq	$63, %rax
+	ja	.LBB3_495
+	movl	$-1, 640(%rsp,%rax,4)
+	jmp	.LBB3_495
+.LBB3_499:
+	andl	$65280, %eax
+	movl	%edi, 17280(%rsp)
+	cmpl	$512, %eax
+	je	.LBB3_485
+	jmp	.LBB3_492
+	.p2align	4
+.LBB3_500:
+	#APP
+
+	lfence
+
+	#NO_APP
+	rdtsc
+	shlq	$32, %rdx
+	orq	%rax, %rdx
+	subq	304(%rsp), %rdx
+	movl	$0, %eax
+	cmovaeq	%rdx, %rax
+	movq	%rbp, 40(%rsp)
+	#APP
+	#NO_APP
+	movq	%rax, %xmm0
+	punpckldq	.LCPI3_3(%rip), %xmm0
+	subpd	.LCPI3_4(%rip), %xmm0
+	movapd	%xmm0, %xmm1
+	unpckhpd	%xmm0, %xmm1
+	addsd	%xmm0, %xmm1
+	divsd	.LCPI3_6(%rip), %xmm1
+	movapd	%xmm1, 304(%rsp)
+	movq	32(%rsp), %r13
+	cmpq	144(%rsp), %r13
+	movq	(%rsp), %rax
+	leaq	1(%r13), %r14
+	jne	.LBB3_421
+.Ltmp77:
+	.cfi_escape 0x2e, 0x00
+	leaq	144(%rsp), %rdi
+	callq	_RNvMs4_NtCs1C1lLj4PWSY_5alloc7raw_vecINtB5_6RawVecdE8grow_oneCs6okcGS0KElL_17subsumption_bench
+.Ltmp78:
+	movq	152(%rsp), %rax
+	jmp	.LBB3_421
+.LBB3_503:
+	movq	152(%rsp), %rdi
+	movsd	(%rdi), %xmm1
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm1, %xmm0
+	jp	.LBB3_782
+	ucomisd	%xmm0, %xmm1
+	jbe	.LBB3_506
+	movsd	%xmm1, 8(%rdi)
+	movsd	%xmm0, (%rdi)
+.LBB3_506:
+	movsd	8(%rdi), %xmm0
+	movsd	16(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_512
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_511
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_511:
+	movsd	%xmm2, (%r14)
+.LBB3_512:
+	movsd	16(%rdi), %xmm0
+	movsd	24(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_521
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_520
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_519
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_519:
+	movapd	%xmm2, %xmm1
+.LBB3_520:
+	movsd	%xmm1, (%r14)
+.LBB3_521:
+	movsd	24(%rdi), %xmm0
+	movsd	32(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_532
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_531
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_531
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_530
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_530:
+	movapd	%xmm2, %xmm1
+.LBB3_531:
+	movsd	%xmm1, (%r14)
+.LBB3_532:
+	movsd	32(%rdi), %xmm0
+	movsd	40(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_545
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_544
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_544
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_544
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_543
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_543:
+	movapd	%xmm2, %xmm1
+.LBB3_544:
+	movsd	%xmm1, (%r14)
+.LBB3_545:
+	movsd	40(%rdi), %xmm0
+	movsd	48(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_560
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_559
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_559
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_559
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_559
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_558
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_558:
+	movapd	%xmm2, %xmm1
+.LBB3_559:
+	movsd	%xmm1, (%r14)
+.LBB3_560:
+	movsd	48(%rdi), %xmm0
+	movsd	56(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_577
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_576
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_576
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_576
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_576
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_576
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_575
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_575:
+	movapd	%xmm2, %xmm1
+.LBB3_576:
+	movsd	%xmm1, (%r14)
+.LBB3_577:
+	movsd	56(%rdi), %xmm0
+	movsd	64(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_596
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_595
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_595
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_595
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_595
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_595
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_595
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_594
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_594:
+	movapd	%xmm2, %xmm1
+.LBB3_595:
+	movsd	%xmm1, (%r14)
+.LBB3_596:
+	movsd	64(%rdi), %xmm0
+	movsd	72(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_617
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_616
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_616
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_616
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_616
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_616
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_616
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_616
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_615
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_615:
+	movapd	%xmm2, %xmm1
+.LBB3_616:
+	movsd	%xmm1, (%r14)
+.LBB3_617:
+	movsd	72(%rdi), %xmm0
+	movsd	80(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_640
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_639
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_638
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_638:
+	movapd	%xmm2, %xmm1
+.LBB3_639:
+	movsd	%xmm1, (%r14)
+.LBB3_640:
+	movsd	80(%rdi), %xmm0
+	movsd	88(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_665
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_664
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_663
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_663:
+	movapd	%xmm2, %xmm1
+.LBB3_664:
+	movsd	%xmm1, (%r14)
+.LBB3_665:
+	movsd	88(%rdi), %xmm0
+	movsd	96(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_692
+	leaq	88(%rdi), %r14
+	movsd	%xmm0, 96(%rdi)
+	movsd	80(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_691
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_690
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_690:
+	movapd	%xmm2, %xmm1
+.LBB3_691:
+	movsd	%xmm1, (%r14)
+.LBB3_692:
+	movsd	96(%rdi), %xmm0
+	movsd	104(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_721
+	leaq	96(%rdi), %r14
+	movsd	%xmm0, 104(%rdi)
+	movsd	88(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	88(%rdi), %r14
+	movsd	%xmm0, 96(%rdi)
+	movsd	80(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_720
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_719
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_719:
+	movapd	%xmm2, %xmm1
+.LBB3_720:
+	movsd	%xmm1, (%r14)
+.LBB3_721:
+	movsd	104(%rdi), %xmm0
+	movsd	112(%rdi), %xmm1
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_782
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_752
+	leaq	104(%rdi), %r14
+	movsd	%xmm0, 112(%rdi)
+	movsd	96(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	96(%rdi), %r14
+	movsd	%xmm0, 104(%rdi)
+	movsd	88(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	88(%rdi), %r14
+	movsd	%xmm0, 96(%rdi)
+	movsd	80(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	80(%rdi), %r14
+	movsd	%xmm0, 88(%rdi)
+	movsd	72(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	72(%rdi), %r14
+	movsd	%xmm0, 80(%rdi)
+	movsd	64(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	64(%rdi), %r14
+	movsd	%xmm0, 72(%rdi)
+	movsd	56(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	56(%rdi), %r14
+	movsd	%xmm0, 64(%rdi)
+	movsd	48(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	48(%rdi), %r14
+	movsd	%xmm0, 56(%rdi)
+	movsd	40(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	40(%rdi), %r14
+	movsd	%xmm0, 48(%rdi)
+	movsd	32(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	32(%rdi), %r14
+	movsd	%xmm0, 40(%rdi)
+	movsd	24(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	24(%rdi), %r14
+	movsd	%xmm0, 32(%rdi)
+	movsd	16(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	16(%rdi), %r14
+	movsd	%xmm0, 24(%rdi)
+	movsd	8(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_751
+	leaq	8(%rdi), %r14
+	movsd	%xmm0, 16(%rdi)
+	movsd	(%rdi), %xmm0
+	ucomisd	%xmm0, %xmm1
+	jp	.LBB3_784
+	movapd	%xmm1, %xmm2
+	ucomisd	%xmm1, %xmm0
+	jbe	.LBB3_750
+	movsd	%xmm0, (%r14)
+	movq	%rdi, %r14
+.LBB3_750:
+	movq	%r15, %rbx
+	movapd	%xmm2, %xmm1
+.LBB3_751:
+	movsd	%xmm1, (%r14)
+.LBB3_752:
+	movsd	(%rdi), %xmm0
+	movq	56(%rdi), %xmm1
+	cmpq	$0, 144(%rsp)
+	je	.LBB3_754
+	.cfi_escape 0x2e, 0x00
+	movsd	%xmm0, (%rsp)
+	movq	%xmm1, 16(%rsp)
+	callq	*free@GOTPCREL(%rip)
+	movq	16(%rsp), %xmm1
+	movsd	(%rsp), %xmm0
+.LBB3_754:
+	movq	%xmm1, 472(%rsp)
+	movsd	%xmm0, 40(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.50(%rip), %rax
+	movq	%rax, 144(%rsp)
+	movq	$14, 152(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.53(%rip), %rax
+	movq	%rax, 160(%rsp)
+	movq	$22, 168(%rsp)
+	movl	$100000, 192(%rsp)
+	movq	%xmm1, 176(%rsp)
+	movsd	%xmm0, 184(%rsp)
+.Ltmp80:
+	.cfi_escape 0x2e, 0x00
+	leaq	144(%rsp), %rdi
+	callq	_RNvNtCs6okcGS0KElL_17subsumption_bench7harness14write_artifact
+.Ltmp81:
+	leaq	472(%rsp), %rax
+	movq	%rax, 144(%rsp)
+	leaq	_RNvXs7_NtNtCsevLNFiNqfJP_4core3fmt5floatdNtB7_7Display3fmt(%rip), %rax
+	movq	%rax, 152(%rsp)
+	movq	%rbx, 160(%rsp)
+	movq	%rax, 168(%rsp)
+.Ltmp82:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.54(%rip), %rdi
+	leaq	144(%rsp), %rsi
+	callq	_RNvNtNtCsgHYyB3hU8Ec_3std2io5stdio6__print
+.Ltmp83:
+	.cfi_escape 0x2e, 0x00
+	leaq	480(%rsp), %rdi
+	callq	_RINvNtCsevLNFiNqfJP_4core3ptr9drop_glueNtNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builder18SymbolTableBuilderECs6okcGS0KElL_17subsumption_bench
+	addq	$17288, %rsp
+	.cfi_def_cfa_offset 56
+	popq	%rbx
+	.cfi_def_cfa_offset 48
+	popq	%r12
+	.cfi_def_cfa_offset 40
+	popq	%r13
+	.cfi_def_cfa_offset 32
+	popq	%r14
+	.cfi_def_cfa_offset 24
+	popq	%r15
+	.cfi_def_cfa_offset 16
+	popq	%rbp
+	.cfi_def_cfa_offset 8
+	retq
+.LBB3_757:
+	.cfi_def_cfa_offset 17344
+	leaq	48(%rsp), %rax
+	movq	%rax, 144(%rsp)
+	jmp	.LBB3_759
+.LBB3_758:
+	leaq	48(%rsp), %rax
+	movq	%rax, 144(%rsp)
+	leaq	144(%rsp), %r14
+.LBB3_759:
+	leaq	_RNvXs1i_NtCsevLNFiNqfJP_4core3fmtReNtB6_7Display3fmtCs6okcGS0KElL_17subsumption_bench(%rip), %rax
+	movq	%rax, 8(%r14)
+.Ltmp100:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.55(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.56(%rip), %rdx
+	movq	%r14, %rsi
+	callq	_RNvNtCsevLNFiNqfJP_4core9panicking9panic_fmt
+.Ltmp101:
+	jmp	.LBB3_846
+.LBB3_760:
+	movq	(%rbx), %rax
+	testq	%rax, %rax
+	je	.LBB3_59
+	movl	$3435973837, %edx
+	imulq	%rcx, %rdx
+	shrq	$36, %rdx
+	movl	%edx, %edi
+	cmpq	%rdi, %rsi
+	jne	.LBB3_809
+	movl	%r12d, %ecx
+	addq	%rcx, %rax
+	movq	488(%rsp), %r14
+	shlq	$2, %rsi
+	leaq	(%rsi,%rsi,4), %rdx
+	.cfi_escape 0x2e, 0x00
+	movq	%rax, %rdi
+	movq	%r14, %rsi
+	callq	*memcpy@GOTPCREL(%rip)
+	cmpl	$67108864, %r15d
+	ja	.LBB3_59
+	leal	(,%r15,4), %r9d
+	movl	12(%rbx), %r8d
+	testl	%r9d, %r9d
+	je	.LBB3_769
+	addl	$3, %r8d
+	andl	$-4, %r8d
+	movl	8(%rbx), %eax
+	subl	%r8d, %eax
+	jb	.LBB3_59
+	cmpl	%eax, %r9d
+	ja	.LBB3_59
+	addl	%r8d, %r9d
+	movl	%r9d, 12(%rbx)
+	jmp	.LBB3_770
+.LBB3_767:
+	decq	%rdi
+.LBB3_768:
+.Ltmp74:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.11(%rip), %rdx
+	movl	$4096, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check
+.Ltmp75:
+	jmp	.LBB3_846
+.LBB3_769:
+	movl	%r8d, %r9d
+.LBB3_770:
+	testq	%r15, %r15
+	je	.LBB3_778
+	cmpl	8(%rbx), %r9d
+	ja	.LBB3_59
+	movl	%r9d, %edi
+	subl	%r8d, %edi
+	je	.LBB3_774
+	movl	%r8d, %eax
+	andl	$3, %eax
+	jne	.LBB3_59
+.LBB3_774:
+	testb	$3, %dil
+	jne	.LBB3_59
+	movq	(%rbx), %rax
+	testq	%rax, %rax
+	je	.LBB3_59
+	shrl	$2, %edi
+	cmpq	%rdi, %r15
+	jne	.LBB3_847
+	movl	%r9d, %ebx
+	movl	%r8d, %ecx
+	addq	%rcx, %rax
+	movq	104(%rsp), %rsi
+	shlq	$2, %r15
+	.cfi_escape 0x2e, 0x00
+	movq	%rax, %rdi
+	movq	%r15, %rdx
+	movl	%r8d, %ebp
+	callq	*memcpy@GOTPCREL(%rip)
+	movl	%ebp, %r8d
+	movl	%ebx, %r9d
+	movq	24(%rsp), %rbx
+.LBB3_778:
+	.cfi_escape 0x2e, 0x00
+	leaq	632(%rsp), %rdi
+	movq	%rbx, %rsi
+	movl	%r12d, %edx
+	movl	%r13d, %ecx
+	callq	_RNvMNtNtCs2cMd1J3MRfy_8mapt_hot2ir12symbol_tableNtB2_11SymbolTable6freeze
+	movq	632(%rsp), %rdx
+	testq	%rdx, %rdx
+	je	.LBB3_785
+	movzbl	640(%rsp), %eax
+	movb	%al, 16(%rsp)
+	movdqu	641(%rsp), %xmm0
+	movdqa	%xmm0, 352(%rsp)
+	movq	656(%rsp), %rax
+	movq	%rax, 367(%rsp)
+	jmp	.LBB3_786
+.LBB3_780:
+	decq	%r14
+	movq	%r14, %rdi
+	jmp	.LBB3_768
+.LBB3_781:
+.Ltmp93:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.2(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.3(%rip), %rdx
+	movl	$18, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core6option13expect_failed
+.Ltmp94:
+	jmp	.LBB3_846
+.LBB3_782:
+.Ltmp87:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.2(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.3(%rip), %rdx
+	movl	$18, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core6option13expect_failed
+.Ltmp88:
+	jmp	.LBB3_846
+.LBB3_783:
+	movsd	%xmm1, (%rsp)
+.Ltmp90:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.2(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.3(%rip), %rdx
+	movl	$18, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core6option13expect_failed
+.Ltmp91:
+	jmp	.LBB3_846
+.LBB3_784:
+	movsd	%xmm1, (%rsp)
+.Ltmp84:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.2(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.3(%rip), %rdx
+	movl	$18, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core6option13expect_failed
+.Ltmp85:
+	jmp	.LBB3_846
+.LBB3_785:
+	movb	$5, 16(%rsp)
+	xorl	%edx, %edx
+.LBB3_786:
+	cmpq	$0, 480(%rsp)
+	je	.LBB3_788
+	.cfi_escape 0x2e, 0x00
+	movq	%r14, %rdi
+	movq	%rdx, %r14
+	callq	*free@GOTPCREL(%rip)
+	movq	%r14, %rdx
+.LBB3_788:
+	cmpq	$0, 96(%rsp)
+	jne	.LBB3_63
+	jmp	.LBB3_64
+.LBB3_789:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.13(%rip), %rcx
+	movq	%rbx, %rdx
+	callq	_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail
+.LBB3_790:
+	movb	%ah, 632(%rsp)
+.Ltmp105:
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.33(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.58(%rip), %rcx
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.34(%rip), %r8
+	leaq	632(%rsp), %rdx
+	movl	$1, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core6result13unwrap_failed
+.Ltmp106:
+	jmp	.LBB3_846
+.LBB3_791:
+	.cfi_escape 0x2e, 0x00
+	movl	$8, %edi
+	movl	$24, %esi
+	callq	_RNvNtCs1C1lLj4PWSY_5alloc5alloc18handle_alloc_error
+.LBB3_792:
+.Ltmp3:
+	.cfi_escape 0x2e, 0x00
+	callq	_RNvNtNtNtCsgHYyB3hU8Ec_3std3sys6random5linux19hashmap_random_keys
+.Ltmp4:
+	movq	%rdx, %fs:_RNvNCNKNvNvMNtNtCsgHYyB3hU8Ec_3std4hash6randomNtBa_11RandomState3new4KEYS0s_023___RUST_STD_INTERNAL_VAL@TPOFF+8
+	movb	$1, %fs:_RNvNCNKNvNvMNtNtCsgHYyB3hU8Ec_3std4hash6randomNtBa_11RandomState3new4KEYS0s_023___RUST_STD_INTERNAL_VAL@TPOFF+16
+	jmp	.LBB3_12
+.LBB3_794:
+	movb	%ah, 632(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.16(%rip), %r8
+.LBB3_795:
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.58(%rip), %rcx
+	movl	$1, %esi
+	jmp	.LBB3_802
+.LBB3_796:
+	movb	%ah, 480(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.18(%rip), %r8
+	jmp	.LBB3_800
+.LBB3_797:
+	movb	%ah, 480(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.20(%rip), %r8
+	jmp	.LBB3_800
+.LBB3_798:
+	movb	%ah, 480(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.22(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.58(%rip), %rcx
+	leaq	480(%rsp), %r12
+	movl	$1, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.21(%rip), %r15
+	jmp	.LBB3_802
+.LBB3_799:
+	movb	%ah, 480(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.24(%rip), %r8
+.LBB3_800:
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.58(%rip), %rcx
+	leaq	480(%rsp), %r12
+	movl	$1, %esi
+	jmp	.LBB3_802
+.LBB3_801:
+	movb	%ah, 632(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.26(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.58(%rip), %rcx
+	movl	$1, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.25(%rip), %r15
+.LBB3_802:
+.Ltmp110:
+	.cfi_escape 0x2e, 0x00
+	movq	%r15, %rdi
+	movq	%r12, %rdx
+	callq	_RNvNtCsevLNFiNqfJP_4core6result13unwrap_failed
+.Ltmp111:
+	jmp	.LBB3_846
+.LBB3_803:
+	movb	%ah, 144(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.39(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.59(%rip), %r12
+	leaq	144(%rsp), %rdx
+	movl	$1, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.38(%rip), %r14
+	jmp	.LBB3_806
+.LBB3_804:
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.48(%rip), %r8
+	leaq	15(%rsp), %rdx
+	jmp	.LBB3_806
+.LBB3_805:
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.49(%rip), %r8
+	leaq	15(%rsp), %rdx
+	movl	$6, %esi
+.LBB3_806:
+.Ltmp98:
+	.cfi_escape 0x2e, 0x00
+	movq	%r14, %rdi
+	movq	%r12, %rcx
+	callq	_RNvNtCsevLNFiNqfJP_4core6result13unwrap_failed
+.Ltmp99:
+	jmp	.LBB3_846
+.LBB3_807:
+	movq	%rsi, %rdi
+.LBB3_808:
+.Ltmp103:
+	.cfi_escape 0x2e, 0x00
+	callq	_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check
+.Ltmp104:
+	jmp	.LBB3_846
+.LBB3_809:
+	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.5(%rip), %rdx
+.LBB3_810:
+.Ltmp39:
+	.cfi_escape 0x2e, 0x00
+	callq	_RNvNvNtCsevLNFiNqfJP_4core5slice20copy_from_slice_impl17len_mismatch_fail
+.Ltmp40:
+	jmp	.LBB3_846
+.LBB3_811:
+	movb	%al, 632(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.30(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.59(%rip), %rcx
+	movl	$5, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.29(%rip), %r15
+	leaq	632(%rsp), %r12
+	jmp	.LBB3_802
+.LBB3_812:
+.Ltmp108:
+	.cfi_escape 0x2e, 0x00
+	movl	$1, %edi
+	movl	$1, %esi
+	callq	_RNvNtCs1C1lLj4PWSY_5alloc7raw_vec12handle_error
+.Ltmp109:
+	jmp	.LBB3_846
+.LBB3_813:
+.Ltmp96:
+	.cfi_escape 0x2e, 0x00
+	movl	$8, %edi
+	movl	$120, %esi
+	callq	_RNvNtCs1C1lLj4PWSY_5alloc7raw_vec12handle_error
+.Ltmp97:
+	jmp	.LBB3_846
+.LBB3_814:
+	movzbl	640(%rsp), %eax
+	jmp	.LBB3_816
+.LBB3_815:
+	movb	$1, %al
+.LBB3_816:
+	movb	%al, 632(%rsp)
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.4(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.63(%rip), %rcx
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.6(%rip), %r8
+	leaq	632(%rsp), %rdx
+	movl	$6, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core6result13unwrap_failed
+.LBB3_817:
+	movb	$1, 632(%rsp)
+	.cfi_escape 0x2e, 0x00
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.7(%rip), %rdi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.61(%rip), %rcx
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.8(%rip), %r8
+	leaq	632(%rsp), %rdx
+	movl	$5, %esi
+	callq	_RNvNtCsevLNFiNqfJP_4core6result13unwrap_failed
+.LBB3_818:
+	movb	%bh, 632(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.10(%rip), %r8
+	jmp	.LBB3_795
+.LBB3_819:
+	movq	%r13, %rax
+	movb	%ah, 632(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.12(%rip), %r8
+	jmp	.LBB3_795
+.LBB3_820:
+	movb	$1, %cl
+.LBB3_821:
+	movb	%cl, 632(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.32(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.62(%rip), %rcx
+	movl	$4, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.31(%rip), %r15
+	leaq	632(%rsp), %r12
+	jmp	.LBB3_802
+.LBB3_822:
+	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.80(%rip), %rdx
+	jmp	.LBB3_808
+.LBB3_823:
+	movb	$5, 16(%rsp)
+.LBB3_824:
+	movzbl	16(%rsp), %eax
+	movb	%al, 632(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.28(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.58(%rip), %rcx
+	movl	$6, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.27(%rip), %r15
+	leaq	632(%rsp), %r12
+	jmp	.LBB3_802
+.LBB3_825:
+	movl	$257, %eax
+	jmp	.LBB3_828
+.LBB3_826:
+	movl	$513, %eax
+	jmp	.LBB3_828
+.LBB3_827:
+	movl	$1025, %eax
+.LBB3_828:
+	movb	%ah, 144(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.35(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.59(%rip), %r12
+	leaq	144(%rsp), %rdx
+	movl	$1, %esi
+	jmp	.LBB3_806
+.LBB3_829:
+	movl	$1, %ebx
+	jmp	.LBB3_832
+.LBB3_830:
+	movl	$257, %ebx
+	jmp	.LBB3_832
+.LBB3_831:
+	movl	$513, %ebx
+.LBB3_832:
+	movb	%bh, 48(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.37(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.59(%rip), %r12
+	leaq	48(%rsp), %rdx
+	movl	$4, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.36(%rip), %r14
+	jmp	.LBB3_806
+.LBB3_833:
+	movl	$1, %edx
+	jmp	.LBB3_836
+.LBB3_834:
+	movl	$257, %edx
+	jmp	.LBB3_836
+.LBB3_835:
+	movl	$513, %edx
+.LBB3_836:
+	movb	%dh, 48(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.41(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.59(%rip), %r12
+	leaq	48(%rsp), %rdx
+	movl	$4, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.40(%rip), %r14
+	jmp	.LBB3_806
+.LBB3_837:
+	movl	$1, %ecx
+	jmp	.LBB3_840
+.LBB3_838:
+	movl	$257, %ecx
+	jmp	.LBB3_840
+.LBB3_839:
+	movl	$513, %ecx
+.LBB3_840:
+	movb	%ch, 48(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.43(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.59(%rip), %r12
+	leaq	48(%rsp), %rdx
+	movl	$7, %esi
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.42(%rip), %r14
+	jmp	.LBB3_806
+.LBB3_841:
+	movl	$257, %eax
+	jmp	.LBB3_844
+.LBB3_842:
+	movl	$513, %eax
+	jmp	.LBB3_844
+.LBB3_843:
+	movl	$1025, %eax
+.LBB3_844:
+	movb	%ah, 144(%rsp)
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.44(%rip), %r8
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.59(%rip), %r12
+	leaq	144(%rsp), %rdx
+	leaq	.Lanon.9d9fecf9115fb4fd0ae8481f2dc9b5be.25(%rip), %r14
+	movl	$1, %esi
+	jmp	.LBB3_806
+.LBB3_845:
+.Ltmp36:
+	.cfi_escape 0x2e, 0x00
+	movl	$4, %edi
+	movq	%rbx, %rsi
+	callq	_RNvNtCs1C1lLj4PWSY_5alloc7raw_vec12handle_error
+.Ltmp37:
+.LBB3_846:
+	ud2
+.LBB3_847:
+	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.6(%rip), %rdx
+	movq	%r15, %rsi
+	jmp	.LBB3_810
+.LBB3_848:
+.Ltmp5:
+	movq	%rax, %rbx
+	.cfi_escape 0x2e, 0x00
+	leaq	632(%rsp), %rdi
+	callq	_RINvNtCsevLNFiNqfJP_4core3ptr9drop_glueINtNtCs1C1lLj4PWSY_5alloc3vec3VecNtNtBG_6string6StringEECs9LrTosJql9Q_9mapt_cold
+	.cfi_escape 0x2e, 0x00
+	leaq	480(%rsp), %rdi
+	callq	_RINvNtCsevLNFiNqfJP_4core3ptr9drop_glueINtNtCs1C1lLj4PWSY_5alloc3vec3VecNtNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builder11SymbolDraftEEB1c_
+	.cfi_escape 0x2e, 0x00
+	movq	%rbx, %rdi
+	callq	_Unwind_Resume@PLT
+.LBB3_849:
+.Ltmp2:
+	movq	%rax, %rbx
+	.cfi_escape 0x2e, 0x00
+	movq	%r14, %rdi
+	callq	*free@GOTPCREL(%rip)
+	.cfi_escape 0x2e, 0x00
+	movq	%rbx, %rdi
+	callq	_Unwind_Resume@PLT
+.LBB3_850:
+.Ltmp38:
+	movq	%rax, %rbx
+	jmp	.LBB3_858
+.LBB3_851:
+.Ltmp18:
+	jmp	.LBB3_862
+.LBB3_852:
+.Ltmp35:
+	jmp	.LBB3_856
+.LBB3_853:
+.Ltmp79:
+	jmp	.LBB3_872
+.LBB3_854:
+.Ltmp60:
+	jmp	.LBB3_872
+.LBB3_855:
+.Ltmp41:
+.LBB3_856:
+	movq	%rax, %rbx
+	cmpq	$0, 480(%rsp)
+	je	.LBB3_858
+	movq	488(%rsp), %rdi
+	.cfi_escape 0x2e, 0x00
+	callq	*free@GOTPCREL(%rip)
+.LBB3_858:
+	cmpq	$0, 96(%rsp)
+	je	.LBB3_860
+	movq	104(%rsp), %rdi
+	.cfi_escape 0x2e, 0x00
+	callq	*free@GOTPCREL(%rip)
+.LBB3_860:
+	leaq	144(%rsp), %rax
+	movq	%rax, 88(%rsp)
+	.cfi_escape 0x2e, 0x00
+	movq	88(%rsp), %rdi
+	callq	_RINvNtCsevLNFiNqfJP_4core3ptr9drop_glueNtNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builder18SymbolTableBuilderECs6okcGS0KElL_17subsumption_bench
+	.cfi_escape 0x2e, 0x00
+	movq	%rbx, %rdi
+	callq	_Unwind_Resume@PLT
+.LBB3_861:
+.Ltmp107:
+.LBB3_862:
+	movq	%rax, %rbx
+	movq	%r14, 88(%rsp)
+	.cfi_escape 0x2e, 0x00
+	movq	88(%rsp), %rdi
+	callq	_RINvNtCsevLNFiNqfJP_4core3ptr9drop_glueNtNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builder18SymbolTableBuilderECs6okcGS0KElL_17subsumption_bench
+	.cfi_escape 0x2e, 0x00
+	movq	%rbx, %rdi
+	callq	_Unwind_Resume@PLT
+.LBB3_863:
+.Ltmp73:
+	jmp	.LBB3_872
+.LBB3_864:
+.Ltmp86:
+	jmp	.LBB3_866
+.LBB3_865:
+.Ltmp92:
+.LBB3_866:
+	movq	%rax, %rbx
+	movsd	(%rsp), %xmm0
+	movsd	%xmm0, (%r14)
+	jmp	.LBB3_873
+.LBB3_867:
+.Ltmp89:
+	jmp	.LBB3_872
+.LBB3_868:
+.Ltmp95:
+	jmp	.LBB3_872
+.LBB3_869:
+.Ltmp112:
+	jmp	.LBB3_870
+.LBB3_871:
+.Ltmp76:
+.LBB3_872:
+	movq	%rax, %rbx
+.LBB3_873:
+	cmpq	$0, 144(%rsp)
+	je	.LBB3_875
+	movq	152(%rsp), %rdi
+	.cfi_escape 0x2e, 0x00
+	callq	*free@GOTPCREL(%rip)
+.LBB3_875:
+	.cfi_escape 0x2e, 0x00
+	movq	88(%rsp), %rdi
+	callq	_RINvNtCsevLNFiNqfJP_4core3ptr9drop_glueNtNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builder18SymbolTableBuilderECs6okcGS0KElL_17subsumption_bench
+	.cfi_escape 0x2e, 0x00
+	movq	%rbx, %rdi
+	callq	_Unwind_Resume@PLT
+.LBB3_876:
+.Ltmp102:
+.LBB3_870:
+	movq	%rax, %rbx
+	.cfi_escape 0x2e, 0x00
+	movq	88(%rsp), %rdi
+	callq	_RINvNtCsevLNFiNqfJP_4core3ptr9drop_glueNtNtCs9LrTosJql9Q_9mapt_cold20symbol_table_builder18SymbolTableBuilderECs6okcGS0KElL_17subsumption_bench
+	.cfi_escape 0x2e, 0x00
+	movq	%rbx, %rdi
+	callq	_Unwind_Resume@PLT
+.Lfunc_end3:
+	.size	_RNvCs6okcGS0KElL_17subsumption_bench4main, .Lfunc_end3-_RNvCs6okcGS0KElL_17subsumption_bench4main
+	.cfi_endproc
+	.section	.gcc_except_table._RNvCs6okcGS0KElL_17subsumption_bench4main,"a",@progbits
+	.p2align	2, 0x0
+GCC_except_table3:
+.Lexception0:
+	.byte	255
+	.byte	255
+	.byte	1
+	.uleb128 .Lcst_end0-.Lcst_begin0
+.Lcst_begin0:
+	.uleb128 .Ltmp0-.Lfunc_begin3
+	.uleb128 .Ltmp1-.Ltmp0
+	.uleb128 .Ltmp2-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp6-.Lfunc_begin3
+	.uleb128 .Ltmp13-.Ltmp6
+	.uleb128 .Ltmp112-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp14-.Lfunc_begin3
+	.uleb128 .Ltmp17-.Ltmp14
+	.uleb128 .Ltmp18-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp19-.Lfunc_begin3
+	.uleb128 .Ltmp30-.Ltmp19
+	.uleb128 .Ltmp112-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp30-.Lfunc_begin3
+	.uleb128 .Ltmp33-.Ltmp30
+	.byte	0
+	.byte	0
+	.uleb128 .Ltmp33-.Lfunc_begin3
+	.uleb128 .Ltmp32-.Ltmp33
+	.uleb128 .Ltmp35-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp32-.Lfunc_begin3
+	.uleb128 .Ltmp42-.Ltmp32
+	.byte	0
+	.byte	0
+	.uleb128 .Ltmp42-.Lfunc_begin3
+	.uleb128 .Ltmp57-.Ltmp42
+	.uleb128 .Ltmp102-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp58-.Lfunc_begin3
+	.uleb128 .Ltmp59-.Ltmp58
+	.uleb128 .Ltmp60-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp61-.Lfunc_begin3
+	.uleb128 .Ltmp64-.Ltmp61
+	.uleb128 .Ltmp102-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp65-.Lfunc_begin3
+	.uleb128 .Ltmp72-.Ltmp65
+	.uleb128 .Ltmp73-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp77-.Lfunc_begin3
+	.uleb128 .Ltmp78-.Ltmp77
+	.uleb128 .Ltmp79-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp80-.Lfunc_begin3
+	.uleb128 .Ltmp101-.Ltmp80
+	.uleb128 .Ltmp102-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp101-.Lfunc_begin3
+	.uleb128 .Ltmp74-.Ltmp101
+	.byte	0
+	.byte	0
+	.uleb128 .Ltmp74-.Lfunc_begin3
+	.uleb128 .Ltmp75-.Ltmp74
+	.uleb128 .Ltmp76-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp75-.Lfunc_begin3
+	.uleb128 .Ltmp93-.Ltmp75
+	.byte	0
+	.byte	0
+	.uleb128 .Ltmp93-.Lfunc_begin3
+	.uleb128 .Ltmp94-.Ltmp93
+	.uleb128 .Ltmp95-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp87-.Lfunc_begin3
+	.uleb128 .Ltmp88-.Ltmp87
+	.uleb128 .Ltmp89-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp90-.Lfunc_begin3
+	.uleb128 .Ltmp91-.Ltmp90
+	.uleb128 .Ltmp92-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp84-.Lfunc_begin3
+	.uleb128 .Ltmp85-.Ltmp84
+	.uleb128 .Ltmp86-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp85-.Lfunc_begin3
+	.uleb128 .Ltmp105-.Ltmp85
+	.byte	0
+	.byte	0
+	.uleb128 .Ltmp105-.Lfunc_begin3
+	.uleb128 .Ltmp106-.Ltmp105
+	.uleb128 .Ltmp107-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp106-.Lfunc_begin3
+	.uleb128 .Ltmp3-.Ltmp106
+	.byte	0
+	.byte	0
+	.uleb128 .Ltmp3-.Lfunc_begin3
+	.uleb128 .Ltmp4-.Ltmp3
+	.uleb128 .Ltmp5-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp110-.Lfunc_begin3
+	.uleb128 .Ltmp111-.Ltmp110
+	.uleb128 .Ltmp112-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp98-.Lfunc_begin3
+	.uleb128 .Ltmp99-.Ltmp98
+	.uleb128 .Ltmp102-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp103-.Lfunc_begin3
+	.uleb128 .Ltmp104-.Ltmp103
+	.uleb128 .Ltmp112-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp39-.Lfunc_begin3
+	.uleb128 .Ltmp40-.Ltmp39
+	.uleb128 .Ltmp41-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp108-.Lfunc_begin3
+	.uleb128 .Ltmp109-.Ltmp108
+	.uleb128 .Ltmp112-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp96-.Lfunc_begin3
+	.uleb128 .Ltmp97-.Ltmp96
+	.uleb128 .Ltmp102-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp97-.Lfunc_begin3
+	.uleb128 .Ltmp36-.Ltmp97
+	.byte	0
+	.byte	0
+	.uleb128 .Ltmp36-.Lfunc_begin3
+	.uleb128 .Ltmp37-.Ltmp36
+	.uleb128 .Ltmp38-.Lfunc_begin3
+	.byte	0
+	.uleb128 .Ltmp37-.Lfunc_begin3
+	.uleb128 .Lfunc_end3-.Ltmp37
+	.byte	0
+	.byte	0
+.Lcst_end0:
+	.p2align	2, 0x0
+
+
+	.section	.text._RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes,"ax",@progbits
+	.globl	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes
+	.prefalign	4, .Lfunc_end154, nop
+	.type	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes,@function
+_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes:
+	.cfi_startproc
+	pushq	%r14
+	.cfi_def_cfa_offset 16
+	pushq	%rbx
+	.cfi_def_cfa_offset 24
+	pushq	%rax
+	.cfi_def_cfa_offset 32
+	.cfi_offset %rbx, -24
+	.cfi_offset %r14, -16
+	movq	%r8, %r9
+	movq	%rcx, %r8
+	movq	%rdx, %rcx
+	xorl	%edx, %edx
+	movl	$0, %eax
+	cmpq	%r9, %rcx
+	ja	.LBB154_4
+	testq	%rcx, %rcx
+	je	.LBB154_9
+	movq	16(%rdi), %rbx
+	movl	16648(%rbx), %r14d
+	movq	%rcx, %rdx
+	xorl	%ecx, %ecx
+	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption14assign_literal
+	movl	16648(%rbx), %edi
+	cmpl	%r14d, %edi
+	ja	.LBB154_6
+.LBB154_3:
+	movl	%edi, 16648(%rbx)
+.LBB154_4:
+	addq	$8, %rsp
+	.cfi_def_cfa_offset 24
+	popq	%rbx
+	.cfi_def_cfa_offset 16
+	popq	%r14
+	.cfi_def_cfa_offset 8
+	retq
+	.p2align	4
+.LBB154_5:
+	.cfi_def_cfa_offset 32
+	movl	$0, 260(%rbx,%rdi,4)
+	decq	%rdi
+	cmpq	%r14, %rdi
+	jbe	.LBB154_3
+.LBB154_6:
+	cmpq	$4096, %rdi
+	ja	.LBB154_10
+	movl	260(%rbx,%rdi,4), %ecx
+	cmpq	$64, %rcx
+	jae	.LBB154_5
+	movl	$-1, 8(%rbx,%rcx,4)
+	jmp	.LBB154_5
+.LBB154_9:
+	movb	$1, %dl
+	xorl	%eax, %eax
+	addq	$8, %rsp
+	.cfi_def_cfa_offset 24
+	popq	%rbx
+	.cfi_def_cfa_offset 16
+	popq	%r14
+	.cfi_def_cfa_offset 8
+	retq
+.LBB154_10:
+	.cfi_def_cfa_offset 32
+	decq	%rdi
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.11(%rip), %rdx
+	movl	$4096, %esi
+	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
+.Lfunc_end154:
+	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes, .Lfunc_end154-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes
+	.cfi_endproc
+
+

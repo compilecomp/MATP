@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0011",
+  "name": "atp_passive_step",
+  "iterations": 200000,
+  "cycles_median": 5.39191,
+  "cycles_min": 5.3315,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1791918167
+}

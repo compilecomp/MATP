@@ -113,9 +113,9 @@ _RNvCsbePAPT21nf5_11index_bench4main:
 	movups	%xmm0, 328(%rsp)
 	movq	528(%rsp), %rsi
 	movq	%rsi, 344(%rsp)
-	movupd	.Lanon.fb225689142c22c8730121b2b89e0161.1(%rip), %xmm0
+	movupd	.Lanon.133af2d7c339746ebbe9339949d489fe.1(%rip), %xmm0
 	movupd	%xmm0, 360(%rsp)
-	movupd	.Lanon.fb225689142c22c8730121b2b89e0161.1+16(%rip), %xmm1
+	movupd	.Lanon.133af2d7c339746ebbe9339949d489fe.1+16(%rip), %xmm1
 	movupd	%xmm1, 376(%rsp)
 	movq	%rax, 392(%rsp)
 	movq	%rdx, 400(%rsp)
@@ -1723,6 +1723,7 @@ _RNvCsbePAPT21nf5_11index_bench4main:
 	leaq	192(%rsp), %rdi
 	movl	%r14d, %esi
 	movq	%r15, %rdx
+	xorl	%ecx, %ecx
 	callq	_RNvNtNtCs2cMd1J3MRfy_8mapt_hot5index19discrimination_tree7flatten
 .Ltmp54:
 	cmpb	$-1, %al
@@ -2682,7 +2683,7 @@ _RNvCsbePAPT21nf5_11index_bench4main:
 	.cfi_def_cfa_offset 8768
 .Ltmp55:
 	.cfi_escape 0x2e, 0x00
-	leaq	.Lanon.da2da389710c11e58653cdcccbe543d0.90(%rip), %rcx
+	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.152(%rip), %rcx
 	movq	%rdx, %rsi
 	movl	$1024, %edx
 	xorl	%edi, %edi
@@ -2863,7 +2864,7 @@ _RNvCsbePAPT21nf5_11index_bench4main:
 	jmp	.LBB3_694
 .LBB3_667:
 	.cfi_escape 0x2e, 0x00
-	leaq	.Lanon.fb225689142c22c8730121b2b89e0161.10(%rip), %rcx
+	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.13(%rip), %rcx
 	movq	%rbx, %rdx
 	callq	_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail
 .LBB3_668:
@@ -2944,7 +2945,7 @@ _RNvCsbePAPT21nf5_11index_bench4main:
 .Ltmp74:
 	jmp	.LBB3_694
 .LBB3_680:
-	leaq	.Lanon.fb225689142c22c8730121b2b89e0161.5(%rip), %rdx
+	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.5(%rip), %rdx
 .LBB3_681:
 .Ltmp24:
 	.cfi_escape 0x2e, 0x00
@@ -3033,7 +3034,7 @@ _RNvCsbePAPT21nf5_11index_bench4main:
 .LBB3_694:
 	ud2
 .LBB3_695:
-	leaq	.Lanon.fb225689142c22c8730121b2b89e0161.6(%rip), %rdx
+	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.6(%rip), %rdx
 	movq	%r12, %rsi
 	jmp	.LBB3_681
 .LBB3_696:
@@ -3326,7 +3327,7 @@ GCC_except_table3:
 
 	.section	.text._RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert,"ax",@progbits
 	.globl	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert
-	.prefalign	4, .Lfunc_end34, nop
+	.prefalign	4, .Lfunc_end40, nop
 	.type	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert,@function
 _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert:
 	.cfi_startproc
@@ -3368,10 +3369,11 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	movq	%r12, %rdi
 	movl	%ebp, %esi
 	movq	%r15, %rdx
+	xorl	%ecx, %ecx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_tree7flatten
 	cmpb	$-1, %al
-	je	.LBB34_1
-.LBB34_19:
+	je	.LBB40_1
+.LBB40_19:
 	addq	$8200, %rsp
 	.cfi_def_cfa_offset 56
 	popq	%rbx
@@ -3387,45 +3389,45 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB34_1:
+.LBB40_1:
 	.cfi_def_cfa_offset 8256
 	movq	8192(%rsp), %rsi
 	cmpq	$1025, %rsi
-	jae	.LBB34_27
+	jae	.LBB40_27
 	xorl	%edi, %edi
 	testq	%rsi, %rsi
-	je	.LBB34_14
+	je	.LBB40_14
 	leaq	(%rsp,%rsi,8), %rdx
-	jmp	.LBB34_4
+	jmp	.LBB40_4
 	.p2align	4
-.LBB34_25:
+.LBB40_25:
 	movq	(%rbx), %rax
 	movq	%r12, (%rax,%r8,4)
 	movl	%edi, 8(%rax,%r8,4)
 	movq	%rcx, 12(%rax,%r8,4)
 	leal	1(%rdi), %eax
 	movl	%eax, 32(%rbx)
-.LBB34_12:
+.LBB40_12:
 	addq	$8, %r15
 	cmpq	%rdx, %r15
-	je	.LBB34_13
-.LBB34_4:
+	je	.LBB40_13
+.LBB40_4:
 	movl	%edi, %eax
 	movq	8(%rbx), %rsi
 	cmpq	%rax, %rsi
-	jbe	.LBB34_7
+	jbe	.LBB40_7
 	movq	(%r15), %r10
 	movq	(%rbx), %r9
 	leaq	(%rax,%rax,4), %r8
 	movl	8(%r9,%r8,4), %r11d
 	cmpl	$-3, %r11d
-	jne	.LBB34_6
-.LBB34_21:
+	jne	.LBB40_6
+.LBB40_21:
 	movl	32(%rbx), %edi
 	cmpl	%esi, %edi
-	jae	.LBB34_22
+	jae	.LBB40_22
 	cmpq	%rdi, %rsi
-	jbe	.LBB34_28
+	jbe	.LBB40_28
 	leaq	(%r9,%r8,4), %rcx
 	movq	(%rcx), %r12
 	movq	12(%rcx), %rcx
@@ -3444,10 +3446,10 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	movl	$-3, 16(%r9,%r13,4)
 	movq	8(%rbx), %rsi
 	cmpq	%rax, %rsi
-	ja	.LBB34_25
-	jmp	.LBB34_26
+	ja	.LBB40_25
+	jmp	.LBB40_26
 	.p2align	4
-.LBB34_6:
+.LBB40_6:
 	movq	%r10, %rcx
 	shrq	$40, %rcx
 	andl	$1, %ecx
@@ -3456,38 +3458,38 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	andl	$65280, %r12d
 	orl	%ecx, %r12d
 	movl	%r11d, %edi
-	jmp	.LBB34_9
+	jmp	.LBB40_9
 	.p2align	4
-.LBB34_8:
+.LBB40_8:
 	leaq	(%r9,%rcx,4), %rcx
 	movl	12(%rcx), %edi
 	cmpl	$-3, %edi
-	je	.LBB34_21
-.LBB34_9:
+	je	.LBB40_21
+.LBB40_9:
 	movl	%edi, %ecx
 	cmpq	%rcx, %rsi
-	jbe	.LBB34_20
+	jbe	.LBB40_20
 	leaq	(%rcx,%rcx,4), %rcx
 	cmpl	%r12d, 4(%r9,%rcx,4)
-	jne	.LBB34_8
+	jne	.LBB40_8
 	cmpl	%r10d, (%r9,%rcx,4)
-	jne	.LBB34_8
-	jmp	.LBB34_12
-.LBB34_13:
+	jne	.LBB40_8
+	jmp	.LBB40_12
+.LBB40_13:
 	movl	%edi, %edi
-.LBB34_14:
+.LBB40_14:
 	movl	36(%rbx), %ecx
 	movq	24(%rbx), %rsi
 	movb	$1, %al
 	cmpl	%esi, %ecx
-	jae	.LBB34_19
+	jae	.LBB40_19
 	leal	1(%rcx), %eax
 	movl	%eax, 36(%rbx)
 	movq	8(%rbx), %rax
 	cmpq	%rdi, %rax
-	jbe	.LBB34_29
+	jbe	.LBB40_29
 	cmpq	%rcx, %rsi
-	jbe	.LBB34_30
+	jbe	.LBB40_30
 	leaq	(%rdi,%rdi,4), %rax
 	movq	(%rbx), %rdx
 	movq	16(%rbx), %rsi
@@ -3499,53 +3501,53 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	movl	$0, 12(%rsi,%r8)
 	movq	8(%rbx), %rsi
 	cmpq	%rdi, %rsi
-	jbe	.LBB34_31
+	jbe	.LBB40_31
 	movq	(%rbx), %rdx
 	movl	%ecx, 16(%rdx,%rax,4)
 	movb	$-1, %al
-	jmp	.LBB34_19
-.LBB34_22:
+	jmp	.LBB40_19
+.LBB40_22:
 	xorl	%eax, %eax
-	jmp	.LBB34_19
-.LBB34_27:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.90(%rip), %rcx
+	jmp	.LBB40_19
+.LBB40_27:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.152(%rip), %rcx
 	movl	$1024, %edx
 	xorl	%edi, %edi
 	callq	*_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail@GOTPCREL(%rip)
-.LBB34_20:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.43(%rip), %rdx
+.LBB40_20:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.50(%rip), %rdx
 	movq	%rcx, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB34_7:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.42(%rip), %rdx
+.LBB40_7:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.49(%rip), %rdx
 	movq	%rax, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB34_28:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.45(%rip), %rdx
+.LBB40_28:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.52(%rip), %rdx
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB34_26:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.46(%rip), %rdx
+.LBB40_26:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.53(%rip), %rdx
 	movq	%rax, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB34_29:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.54(%rip), %rdx
+.LBB40_29:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.61(%rip), %rdx
 	movq	%rax, %rsi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB34_30:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.55(%rip), %rdx
+.LBB40_30:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.62(%rip), %rdx
 	movq	%rcx, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB34_31:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.56(%rip), %rdx
+.LBB40_31:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.63(%rip), %rdx
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.Lfunc_end34:
-	.size	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert, .Lfunc_end34-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert
+.Lfunc_end40:
+	.size	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert, .Lfunc_end40-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree6insert
 	.cfi_endproc
 
 
 	.section	.text._RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve,"ax",@progbits
 	.globl	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve
-	.prefalign	4, .Lfunc_end35, nop
+	.prefalign	4, .Lfunc_end41, nop
 	.type	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve,@function
 _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve:
 	.cfi_startproc
@@ -3589,15 +3591,16 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	movq	%r13, %rdi
 	movl	%ebp, %esi
 	movq	%r14, %rdx
+	xorl	%ecx, %ecx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_tree7flatten
 	cmpb	$-1, %al
-	jne	.LBB35_1
+	jne	.LBB41_1
 	movq	%r15, %rdi
 	movq	8(%rsp), %r15
 	movq	$0, (%rsp)
 	movq	8208(%rsp), %rdx
 	cmpq	$1025, %rdx
-	jae	.LBB35_6
+	jae	.LBB41_6
 	movq	%rsp, %rax
 	leaq	16(%rsp), %rsi
 	xorl	%ecx, %ecx
@@ -3611,11 +3614,11 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	addq	$16, %rsp
 	.cfi_adjust_cfa_offset -16
 	cmpb	$-1, %al
-	je	.LBB35_4
-.LBB35_1:
+	je	.LBB41_4
+.LBB41_1:
 	movb	%al, 1(%rbx)
 	movb	$1, (%rbx)
-.LBB35_5:
+.LBB41_5:
 	movq	%rbx, %rax
 	addq	$8216, %rsp
 	.cfi_def_cfa_offset 56
@@ -3632,20 +3635,20 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18Discrimination
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB35_4:
+.LBB41_4:
 	.cfi_def_cfa_offset 8272
 	movq	(%rsp), %rax
 	movq	%rax, 8(%rbx)
 	movb	$0, (%rbx)
-	jmp	.LBB35_5
-.LBB35_6:
-	leaq	.Lanon.2b175dcb1978b556daea60d97743ca0d.90(%rip), %rcx
+	jmp	.LBB41_5
+.LBB41_6:
+	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.152(%rip), %rcx
 	movq	%rdx, %rsi
 	movl	$1024, %edx
 	xorl	%edi, %edi
 	callq	*_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail@GOTPCREL(%rip)
-.Lfunc_end35:
-	.size	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve, .Lfunc_end35-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve
+.Lfunc_end41:
+	.size	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve, .Lfunc_end41-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot5index19discrimination_treeNtB2_18DiscriminationTree8retrieve
 	.cfi_endproc
 
 

@@ -133,6 +133,82 @@ name = "unification_trail_contract_test"
 path = "tests/contract/unification_trail_contract_test.rs"
 
 [[test]]
+name = "sat_registry_test"
+path = "tests/unit/hot/sat_registry_test.rs"
+
+[[test]]
+name = "sat_proof_test"
+path = "tests/unit/hot/sat_proof_test.rs"
+
+[[test]]
+name = "sat_assumptions_test"
+path = "tests/unit/hot/sat_assumptions_test.rs"
+
+[[test]]
+name = "sat_preprocess_test"
+path = "tests/unit/hot/sat_preprocess_test.rs"
+
+[[test]]
+name = "drat_writer_test"
+path = "tests/unit/cold/drat_writer_test.rs"
+
+[[test]]
+name = "drat_checker_test"
+path = "tests/unit/cold/drat_checker_test.rs"
+
+[[test]]
+name = "feature_vector_test"
+path = "tests/unit/hot/feature_vector_test.rs"
+
+[[test]]
+name = "selection_test"
+path = "tests/unit/hot/selection_test.rs"
+
+[[test]]
+name = "inference_test"
+path = "tests/unit/hot/inference_test.rs"
+
+[[test]]
+name = "search_db_test"
+path = "tests/unit/hot/search_db_test.rs"
+
+[[test]]
+name = "given_clause_test"
+path = "tests/unit/hot/given_clause_test.rs"
+
+[[test]]
+name = "sat_preprocess_property_test"
+path = "tests/property/sat_preprocess_property_test.rs"
+
+[[test]]
+name = "sat_incremental_property_test"
+path = "tests/property/sat_incremental_property_test.rs"
+
+[[test]]
+name = "drat_property_test"
+path = "tests/property/drat_property_test.rs"
+
+[[test]]
+name = "inference_property_test"
+path = "tests/property/inference_property_test.rs"
+
+[[test]]
+name = "given_clause_property_test"
+path = "tests/property/given_clause_property_test.rs"
+
+[[test]]
+name = "given_clause_fuzz_test"
+path = "tests/fuzz/given_clause_fuzz_test.rs"
+
+[[test]]
+name = "drat_proof_test"
+path = "tests/golden/drat_proof_test.rs"
+
+[[test]]
+name = "phase3_bounds_test"
+path = "tests/security/phase3_bounds_test.rs"
+
+[[test]]
 name = "limits_test"
 path = "tests/unit/config/limits_test.rs"
 
@@ -191,6 +267,26 @@ path = "tests/security/literal_encoding_test.rs"
 [[test]]
 name = "ir_debug_print_test"
 path = "tests/golden/ir_debug_print_test.rs"
+
+[[bench]]
+name = "atp_bench"
+path = "benches/hot/atp_bench.rs"
+harness = false
+
+[[bench]]
+name = "search_bench"
+path = "benches/hot/search_bench.rs"
+harness = false
+
+[[bench]]
+name = "subsumption_bench"
+path = "benches/hot/subsumption_bench.rs"
+harness = false
+
+[[bench]]
+name = "sat_preprocess_bench"
+path = "benches/hot/sat_preprocess_bench.rs"
+harness = false
 
 [[bench]]
 name = "arena_bench"
