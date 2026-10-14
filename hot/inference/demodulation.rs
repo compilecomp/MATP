@@ -53,7 +53,7 @@ pub enum DemodulationOutcome {
 // CEP:WHAT: Attempts to rewrite literals[literal_index]'s atom at the position path with the oriented unit equation (rule_left = rule_right), copying the clause with the single rewritten literal into out.
 // CEP:WHY: Spec 07 section 7: the rule's left side must MATCH the target subterm (sigma instantiates only the rule's variables), the rule must be oriented rule_left strictly greater than rule_right (checked on the applied sides when sigma is non-empty), the target must be a non-variable, and the rewritten atom must be strictly smaller than the original atom (termination).
 // CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) on failed conditions; Err on structural failures or an over-long output; the substitution trail is unwound on every path.
+// CEP:FAILURE: Ok(None) on failed conditions (the matcher is unwound first, Spec 02 section 4); Err on structural failures or an over-long output, with the trail left at its current depth - safe because Err is terminal for the whole search (the generator's abort discipline: the trail is never read after an Err), never resumed.
 // CEP:ASSUMES: rule_left and rule_right are the sides of a positive unit equation; out holds kMaxClauseLiterals slots.
 // CEP:COST: one matching pass, one comparison, one rebuild.
 // CEP:EVIDENCE: unit/hot/inference_test.rs::{demodulation_rewrites_terms, demodulation_requires_orientation, demodulation_requires_decrease}; property/inference_property_test.rs::demodulation_is_sound.

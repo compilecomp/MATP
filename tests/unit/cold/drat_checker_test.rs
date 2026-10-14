@@ -154,6 +154,62 @@ fn refutation_proofs_verify() {
         "the refutation proof must verify: {:?}",
         verdict
     );
+    // The same trace must also verify with the refutation-completeness flag set:
+    // a genuine refutation derives the empty clause.
+    let mut strict = CheckOptions::new();
+    strict.require_refutation = true;
+    let strict_verdict = verify(&formula, recorder, &strict);
+    assert!(
+        matches!(strict_verdict, CheckOutcome::Valid { .. }),
+        "a genuine refutation must verify with require_refutation: {:?}",
+        strict_verdict
+    );
+}
+
+// CEP:WHAT: Verifies require_refutation rejects step-wise-valid traces that never derive the
+// empty clause (a satisfiable run's trace must not pass as a refutation certificate).
+// CEP:WHY: Spec 11 section 4: per-step justification alone certifies nothing about the
+// conclusion; the flag closes the justifies-every-step-but-derives-nothing class.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when a proofless trace verifies as a refutation.
+// CEP:ASSUMES: a satisfiable formula whose trace verifies per-step (axioms only).
+// CEP:COST: one solve plus two checks.
+// CEP:EVIDENCE: cited by cold/proof_output/drat_checker.rs::{verify, CheckOptions, InvalidReason::MissingRefutation}.
+// CEP:SECURITY: rejects fabricated certificates.
+#[test]
+fn refutation_required_rejects_proofless_traces() {
+    let solver = make_solver();
+    let formula: Vec<Vec<SatLiteral>> = vec![
+        vec![lit(0, true), lit(1, false)],
+        vec![lit(2, true), lit(3, true)],
+    ];
+    for clause in formula.iter() {
+        solver.add_clause(clause).expect("add");
+    }
+    let outcome = solver.solve();
+    assert!(matches!(
+        outcome,
+        mapt::hot::sat::solver::SolveResult::Satisfiable
+    ));
+    let recorder = solver.proof().expect("recorder");
+    // Per-step: the trace verifies (axiom adds only).
+    let per_step = verify(&formula, recorder, &CheckOptions::new());
+    assert!(matches!(per_step, CheckOutcome::Valid { .. }));
+    // Refutation assertion: the same trace must be rejected - no empty clause.
+    let mut strict = CheckOptions::new();
+    strict.require_refutation = true;
+    let strict_verdict = verify(&formula, recorder, &strict);
+    assert!(
+        matches!(
+            strict_verdict,
+            CheckOutcome::Invalid {
+                reason: InvalidReason::MissingRefutation,
+                ..
+            }
+        ),
+        "a proofless trace must not pass as a refutation: {:?}",
+        strict_verdict
+    );
 }
 
 // CEP:WHAT: Verifies the final empty clause of a refutation is among the verified steps.

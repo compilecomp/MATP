@@ -6,12 +6,12 @@
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns RegistryError (Full at the entry capacity, Storage for unreadable clause records, InvariantViolation for lifecycle misuse such as double deletion); never panics.
 // CEP:ASSUMES: Single-threaded use; all registered offsets came from the same ClauseStorage the reduction is driven against; entries are appended in strictly ascending clause-offset order (arena bump allocation guarantees it; the offset binary search relies on it); the storage deleted bit is the single source of truth for liveness - the tombstone mirrors it.
-// CEP:COST: registration is O(1) plus one header read; lookup by offset is O(log entries); bump_activity is O(1) with an O(entries) rescale at the 1e100 ceiling (rare); reduction is O(variables + live-learnts x log live-learnts) and fires at most once per learnt-budget window, so the amortized per-conflict cost is one registration plus one activity bump; measured in bench CEP-BENCH-0013, artifact benches/artifacts/sat_registry_step.json.
-// CEP:EVIDENCE: unit/hot/sat_registry_test.rs; unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::preprocessing_preserves_satisfiability; bench CEP-BENCH-0013.
+// CEP:COST: registration is O(1) plus one header read; lookup by offset is O(log entries); bump_activity is O(1) with an O(entries) rescale at the 1e100 ceiling (rare); reduction is O(variables + live-learnts x log live-learnts) and fires at most once per learnt-budget window, so the amortized per-conflict cost is one registration plus one activity bump; measured in bench CEP-BENCH-0010 (the atp bench's registry fixture), artifact benches/artifacts/sat_registry_step.json.
+// CEP:EVIDENCE: unit/hot/sat_registry_test.rs; unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::preprocessing_preserves_satisfiability; bench CEP-BENCH-0010.
 // CEP:SECURITY: the entry capacity is a memory-exhaustion bound; every scan is bounded by a named capacity; no unbounded loop exists in this file.
 // CEP:UNSAFE: none; this file is safe Rust.
 // CEP:HPC-DETERMINISM: deterministic; heapsort under a total key (entry indices are unique), index-ordered scans, no clocks or addresses (CEP&CC 38.10).
-// CEP:HPC-PASS-LEGALITY: Formal Spec 06 section 9 fixes the deletion contract: deletion never removes a clause that is the current reason of an assigned variable or the active conflict clause (locking, S29), the survivors are the best live/divisor entries under the design 11.6 total order (LBD ascending, age descending - the strict-lexicographic reading in which the activity key is vacuous because ages are unique, documented in the comparator), and deletions preserve the solver invariants because BCP skips deleted records and surviving reasons never point at deleted clauses; the property tests verify end-to-end that solving with reduction enabled agrees with brute force.
+// CEP:HPC-PASS-LEGALITY: Formal Spec 06 section 9 fixes the deletion contract: deletion never removes a clause that is the current reason of an assigned variable or the active conflict clause (locking, S29), the survivors are the best live/divisor entries under the design 11.6 total order (LBD ascending, age descending - the strict-lexicographic reading in which the activity key is vacuous because ages are unique, documented in the comparator), and deletions preserve the solver invariants because BCP skips deleted records and surviving reasons never point at deleted clauses; property/cdcl_property_test.rs::solve_agrees_with_brute_force verifies end-to-end, with reduction firing via the injected trigger, that solving with deletion active agrees with brute force.
 // CEP:OPTIMAL: not-optimal
 // CEP:OPTPROOF: N/A.
 // CEP:OPTNOTE: reduction re-reads headers per comparison for the LBD instead of caching LBD in registry entries; caching is deferred pending measurement on reduction-heavy workloads; ticket CEP-1032.
@@ -154,6 +154,26 @@ pub struct RegistryEntry {
 // CEP:SECURITY: none.
 const _: () = assert!(core::mem::size_of::<RegistryEntry>() == 16);
 
+// CEP:WHAT: Arity of the reduction heapsort's binary heap (children of node i sit at 2i+1 and 2i+2; a candidate set smaller than the arity is trivially sorted).
+// CEP:WHY: The heapify start, child-index arithmetic, and the trivial-case guard name their base (CEP&CC 11.3), matching the VSIDS heap discipline.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{lbd_priority_order, age_priority_within_lbd}.
+// CEP:SECURITY: none.
+const kRegistryHeapArity: usize = 2;
+
+// CEP:WHAT: Halving factor of the offset binary search (find and the map probe split their interval in half per step).
+// CEP:WHY: The midpoint divisor names its base (CEP&CC 11.3).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::registry_enumerates.
+// CEP:SECURITY: none.
+const kRegistrySearchHalving: usize = 2;
+
 /// CEP:WHAT: Sort key of one reduction candidate: (lbd, activity, entry index).
 /// CEP:WHY: The deletion policy (design 11.6) orders candidates by LBD, then activity, then age; packing the three fields in one Copy record keeps the heapsort allocation-free and its comparator a pure function (no dyn, no captures, CEP-0 discipline); the entry index is unique so the order is total.
 /// CEP:CLASS: CEP-0
@@ -251,14 +271,14 @@ pub struct ClauseRegistry<'a> {
     /// CEP:SECURITY: none.
     reduction_trigger: u32,
     /// CEP:WHAT: Activity bump increment.
-    /// CEP:WHY: The per-conflict activity delta; 1.0 in production, injectable for fast rescale-path tests (same discipline as the VSIDS decay).
+    /// CEP:WHY: The per-conflict activity delta; 1.0 in production, injectable for fast rescale-path tests (same discipline as the VSIDS decay); a Cell so the rescale path can shrink it with the scores (MiniSat discipline: the increment rescales together with every activity so bumps before and after a rescale stay comparable).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
-    /// CEP:ASSUMES: > 0; fixed at construction.
+    /// CEP:ASSUMES: > 0 at construction; multiplied by kSatClauseActivityRescaleFactor on every rescale (stays > 0).
     /// CEP:COST: 8 bytes.
-    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::activity_rescale_preserves_order.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{bump_raises_activity, activity_rescale_preserves_order, rescale_applies_the_pending_bump}.
     /// CEP:SECURITY: none.
-    activity_increment: f64,
+    activity_increment: core::cell::Cell<f64>,
     /// CEP:WHAT: Heapsort scratch: sort keys of live learnt candidates.
     /// CEP:WHY: The deletion policy sorts candidates under the total order; a flat scratch array keeps reduction allocation-free.
     /// CEP:STATUS: complete
@@ -323,7 +343,7 @@ impl<'a> ClauseRegistry<'a> {
             live_entries: core::cell::Cell::new(0),
             live_learnts: core::cell::Cell::new(0),
             reduction_trigger,
-            activity_increment,
+            activity_increment: core::cell::Cell::new(activity_increment),
             scratch,
         })
     }
@@ -373,7 +393,7 @@ impl<'a> ClauseRegistry<'a> {
         let mut low: usize = 0;
         let mut high: usize = count;
         while low < high {
-            let mid = low + (high - low) / 2;
+            let mid = low + (high - low) / kRegistrySearchHalving;
             let value = self.entries[mid].offset.get();
             if value < offset {
                 low = mid + 1;
@@ -410,13 +430,13 @@ impl<'a> ClauseRegistry<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Bumps the activity of a registered clause, rescaling all scores when the ceiling would be exceeded.
-    // CEP:WHY: Design 11.1 S24 and 11.6 priority 3; the rescale keeps scores finite and the order total (same discipline as the VSIDS heap, ceiling x factor <= 1).
+    // CEP:WHAT: Bumps the activity of a registered clause, rescaling all scores and the increment when the ceiling would be exceeded, then applying the pending bump after the rescale.
+    // CEP:WHY: Design 11.1 S24 and 11.6 priority 3; the rescale keeps scores finite and the order total (same discipline as the VSIDS heap, ceiling x factor <= 1); the bump is applied AFTER the rescale so it is never dropped, and the increment rescales with the scores so pre- and post-rescale bumps stay comparable (MiniSat clause-activity discipline).
     // CEP:STATUS: complete
     // CEP:FAILURE: InvariantViolation for unregistered or tombstoned offsets.
     // CEP:ASSUMES: called on live entries only.
     // CEP:COST: O(1) per bump; O(entries) on rescale (amortized negligible: the ceiling is 1e100).
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{bump_raises_activity, activity_rescale_preserves_order}.
+    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{bump_raises_activity, activity_rescale_preserves_order, rescale_applies_the_pending_bump}.
     // CEP:SECURITY: none.
     pub fn bump_activity(&self, offset: u32) -> Result<(), RegistryError> {
         let index = self.find(offset).ok_or(RegistryError::InvariantViolation)?;
@@ -424,14 +444,21 @@ impl<'a> ClauseRegistry<'a> {
         if entry.tombstone.get() {
             return Err(RegistryError::InvariantViolation);
         }
-        let next = entry.activity.get() + self.activity_increment;
+        let next = entry.activity.get() + self.activity_increment.get();
         if next > kSatClauseActivityCeiling {
+            // Rescale every score and the increment, then apply the (scaled) bump:
+            // the bump that triggered the rescale is never dropped.
             let used = self.next_entry.get() as usize;
             for other in self.entries[..used].iter() {
                 other
                     .activity
                     .set(other.activity.get() * kSatClauseActivityRescaleFactor);
             }
+            self.activity_increment
+                .set(self.activity_increment.get() * kSatClauseActivityRescaleFactor);
+            entry
+                .activity
+                .set(entry.activity.get() + self.activity_increment.get());
         } else {
             entry.activity.set(next);
         }
@@ -577,7 +604,7 @@ impl<'a> ClauseRegistry<'a> {
     // CEP:WHY: Assumption solves may learn clauses that depend on the temporary assumption units; keeping them would corrupt later incremental solves of the base formula, so solve_with_assumptions snapshots entry_count at entry and deletes everything learnt since on exit (deletion is always sound; the failed core is extracted before cleanup); the entry-index boundary is exact because offsets and entry indices are both monotonic.
     // CEP:STATUS: complete
     // CEP:FAILURE: Storage and Proof errors surface loudly.
-    // CEP:ASSUMES: the core is at level 0 (no assignment may reference a victim as its reason - backtrack first); entry_index <= entry_count.
+    // CEP:ASSUMES: the core is at level 0 (backtrack first); level-0 reason records may reference victims - harmless by construction, because both conflict analyses skip level-0 variables (Spec 06 section 9) and BCP never consults reasons of level-0 assignments; entry_index <= entry_count.
     // CEP:COST: O(entries - entry_index) with one map lookup and one header read per candidate.
     // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{learnts_do_not_leak_across_solves, repeated_assumption_solves_agree}.
     // CEP:SECURITY: bounded scan.
@@ -682,10 +709,10 @@ impl<'a> ClauseRegistry<'a> {
     // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_keeps_best_half, lbd_priority_order, age_priority_within_lbd}.
     // CEP:SECURITY: bounded by the scratch capacity.
     fn heapsort_best_first(&self, count: usize) {
-        if count < 2 {
+        if count < kRegistryHeapArity {
             return;
         }
-        let mut start = count / 2;
+        let mut start = count / kRegistryHeapArity;
         loop {
             if start == 0 {
                 break;
@@ -716,8 +743,8 @@ impl<'a> ClauseRegistry<'a> {
         let mut node = root;
         loop {
             let mut candidate = node;
-            let left = node * 2 + 1;
-            let right = node * 2 + 2;
+            let left = node * kRegistryHeapArity + 1;
+            let right = left + 1;
             if left < end && self.worse(self.scratch[left].get(), self.scratch[candidate].get()) {
                 candidate = left;
             }

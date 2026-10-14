@@ -614,7 +614,7 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 	jne	.LBB3_76
 .LBB3_77:
 	addq	%r14, %r13
-	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.81(%rip), %rdx
+	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.61(%rip), %rdx
 	movq	112(%rsp), %r14
 	.p2align	4
 .LBB3_78:
@@ -3370,7 +3370,7 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 	leaq	328(%rsp), %r12
 	jmp	.LBB3_730
 .LBB3_748:
-	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.80(%rip), %rdx
+	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.60(%rip), %rdx
 	jmp	.LBB3_734
 .LBB3_749:
 	movb	$5, %r15b
@@ -3746,11 +3746,11 @@ GCC_except_table3:
 	.p2align	2, 0x0
 
 
-	.section	.text._RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push,"ax",@progbits
-	.globl	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push
-	.prefalign	4, .Lfunc_end44, nop
-	.type	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push,@function
-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push:
+	.section	.text._RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push,"ax",@progbits
+	.globl	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push
+	.prefalign	4, .Lfunc_end115, nop
+	.type	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push,@function
+_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push:
 	.cfi_startproc
 	pushq	%rbp
 	.cfi_def_cfa_offset 16
@@ -3769,18 +3769,18 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push:
 	movl	16(%rdi), %r9d
 	movq	8(%rdi), %r10
 	cmpq	%r9, %r10
-	jbe	.LBB44_16
+	jbe	.LBB115_16
 	leaq	(%r9,%r9,2), %r11
 	shlq	$3, %r11
 	addq	(%rdi), %r11
 	movzbl	20(%rdi), %eax
 	testl	%eax, %eax
-	je	.LBB44_4
+	je	.LBB115_4
 	cmpl	$1, %eax
-	jne	.LBB44_6
+	jne	.LBB115_6
 	movl	%r8d, %eax
-	jmp	.LBB44_9
-.LBB44_4:
+	jmp	.LBB115_9
+.LBB115_4:
 	movl	%edx, %ebx
 	cmpl	$1, %r8d
 	adcl	$0, %r8d
@@ -3789,35 +3789,35 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push:
 	movq	%rax, %rcx
 	shrq	$32, %rcx
 	testw	%cx, %cx
-	je	.LBB44_7
+	je	.LBB115_7
 	xorl	%edx, %edx
 	divq	%r8
-	jmp	.LBB44_8
-.LBB44_6:
+	jmp	.LBB115_8
+.LBB115_6:
 	movl	%ecx, %eax
-	jmp	.LBB44_9
-.LBB44_7:
+	jmp	.LBB115_9
+.LBB115_7:
 	xorl	%edx, %edx
 	divl	%r8d
-.LBB44_8:
+.LBB115_8:
 	movl	%ebx, %edx
-.LBB44_9:
+.LBB115_9:
 	movq	%rax, (%r11)
 	movq	%rsi, 8(%r11)
 	movl	%edx, 16(%r11)
 	incl	16(%rdi)
 	testq	%r9, %r9
-	je	.LBB44_16
+	je	.LBB115_16
 	movq	%r9, %rcx
 	.p2align	4
-.LBB44_11:
+.LBB115_11:
 	movq	8(%rdi), %rsi
 	cmpq	%rsi, %rcx
-	jae	.LBB44_17
+	jae	.LBB115_17
 	leaq	-1(%rcx), %rax
 	shrq	%rax
 	cmpq	%rsi, %rax
-	jae	.LBB44_18
+	jae	.LBB115_18
 	movq	(%rdi), %rsi
 	leaq	(%rcx,%rcx,2), %r11
 	movq	(%rsi,%r11,8), %rcx
@@ -3833,7 +3833,7 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push:
 	setb	%r15b
 	cmovel	%ebp, %r15d
 	testb	%r15b, %r15b
-	je	.LBB44_16
+	je	.LBB115_16
 	leaq	(%rsi,%r11,8), %r15
 	movq	16(%rsi,%r11,8), %r11
 	leaq	(%rsi,%r8,8), %rsi
@@ -3843,15 +3843,15 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push:
 	movq	%rsi, 16(%r15)
 	movq	8(%rdi), %rsi
 	cmpq	%rsi, %rax
-	jae	.LBB44_19
+	jae	.LBB115_19
 	movq	(%rdi), %rsi
 	movq	%rcx, (%rsi,%r8,8)
 	movq	%rdx, 8(%rsi,%r8,8)
 	movq	%r11, 16(%rsi,%r8,8)
 	movq	%rax, %rcx
 	testq	%rax, %rax
-	jne	.LBB44_11
-.LBB44_16:
+	jne	.LBB115_11
+.LBB115_16:
 	cmpq	%r9, %r10
 	setbe	%al
 	addq	$8, %rsp
@@ -3865,21 +3865,21 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push:
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB44_17:
+.LBB115_17:
 	.cfi_def_cfa_offset 48
-	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.67(%rip), %rdx
+	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.144(%rip), %rdx
 	movq	%rcx, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB44_18:
-	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.68(%rip), %rdx
+.LBB115_18:
+	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.145(%rip), %rdx
 	movq	%rax, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB44_19:
-	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.69(%rip), %rdx
+.LBB115_19:
+	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.146(%rip), %rdx
 	movq	%rax, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.Lfunc_end44:
-	.size	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push, .Lfunc_end44-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB2_11PassiveHeap4push
+.Lfunc_end115:
+	.size	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push, .Lfunc_end115-_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push
 	.cfi_endproc
 
 

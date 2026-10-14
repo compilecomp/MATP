@@ -6,7 +6,7 @@
 // CEP:FAILURE: panics on harness failure (bench tooling may fail loudly).
 // CEP:ASSUMES: The cycle counter is accurate; measurements run single-threaded.
 // CEP:COST: offline; runtime cost irrelevant.
-// CEP:EVIDENCE: cited by hot/sat/preprocess.rs (CEP:COST), hot/sat/proof.rs (CEP:COST), hot/sat/registry.rs (CEP:COST), and scripts/bench_gate.py baselines sat_preprocess_round and sat_drat_record.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs (CEP:COST), hot/sat/proof.rs (CEP:COST), and scripts/bench_gate.py baselines sat_preprocess_round and sat_drat_record.
 // CEP:SECURITY: no untrusted input.
 
 #![allow(non_upper_case_globals)]
@@ -105,9 +105,12 @@ fn main() {
         round_median, round_min
     );
 
-    // DRAT record step: record_add on a fresh recorder per measurement batch is
-    // too heavy; instead record a fixed clause repeatedly on a large-capacity
-    // recorder through distinct offsets drawn from a pre-created clause pool.
+    // DRAT record step: measure the recorder's per-step append primitive via
+    // record_assumption_add (the shared append path of every step kind; the
+    // step-append plus the one-literal blob write, no map interaction).
+    // record_add adds one ascending-map insert on top of this primitive and
+    // record_delete one map search; both are bounded by the same capacity
+    // discipline and covered by the unit tests.
     let region = allocate_aligned_region(33_554_432).expect("region 2");
     let arena = Box::leak(Box::new(Arena::new(region).expect("arena 2")));
     let mut options = SolverOptions::new(16, RestartPolicy::Luby, false);
@@ -116,29 +119,10 @@ fn main() {
     options.proof_map_capacity = 262_144;
     options.proof_literal_capacity = 1_048_576;
     let solver = CdclSolver::new_advanced(arena, options).expect("solver 2");
-    // Pre-create 64 distinct clauses so the recorder's ascending-offset
-    // invariant holds across the measured range.
-    let mut offsets: Vec<u32> = Vec::new();
-    for index in 0..64u32 {
-        let outcome = solver
-            .add_clause(&[lit(index % 16, true), lit((index + 1) % 16, false)])
-            .expect("clause");
-        let _ = outcome;
-        offsets.push(solver.registry().entry(index).expect("entry").offset.get());
-    }
     let recorder = solver.proof().expect("recorder");
-    let _literals = [lit(0, true), lit(1, false)];
-    let (record_median, record_min) = measure_cycles(100_000, |iteration| {
-        let offset = offsets[(iteration as usize) % offsets.len()];
-        // record_add demands a fresh offset per call; the alternating pool makes
-        // the map's ascending invariant fail after the first pass, so the
-        // measurement uses the assumption-add step (no map entry, the honest
-        // per-step append cost of the recorder).
+    let (record_median, record_min) = measure_cycles(100_000, |_iteration| {
         match recorder.record_assumption_add(SatLiteral::new(SatVar(0), true).expect("l")) {
-            Ok(_) => {
-                let _ = offset;
-                1
-            }
+            Ok(_) => 1,
             Err(_) => 0,
         }
     });

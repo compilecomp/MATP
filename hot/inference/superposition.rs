@@ -1,6 +1,6 @@
 // CEP:FILE: hot/inference/superposition.rs
 // CEP:WHAT: Superposition left and right (Bachmair & Ganzinger 1994; design 10.1) and equality resolution (Nieuwenhuis & Rubio 2001; design 10.1): rewriting a non-variable subterm of one premise's literal by a positive eligible equation of the other premise, respectively collapsing a negative equation with unifiable sides.
-// CEP:WHY: Spec 07 section 6: superposition is the equality engine - from C v (s = t) and D v L[w] with sigma = MGU(w, s), the conclusion (C \\ {s = t}) sigma u (D \\ {L}) sigma u {L sigma[w sigma <- t sigma]} is a logical consequence of the premises (superposition is unconditionally sound: it is an equality-elimination argument on the instantiated equation); the side conditions follow the ordered calculus - the equation is eligible and oriented s sigma strictly greater than t sigma (design 10.2 "Ordering: s sigma > t sigma"), the target subterm w sigma is not a variable (design 10.2 "Variable restriction"), and the target literal is eligible - which together with eq resolution and eq factoring gives the standard complete superposition calculus (NR01 section 4); equality resolution from C v not (s = t) with MGU(s, t) = sigma concludes C sigma and is what closes reflexive disequalities.
+// CEP:WHY: Spec 07 section 6: superposition is the equality engine - from C v (s = t) and D v L[w] with sigma = MGU(w, s), the conclusion (C \\ {s = t}) sigma u (D \\ {L}) sigma u {L sigma[w sigma <- t sigma]} is a logical consequence of the premises (superposition is unconditionally sound: it is an equality-elimination argument on the instantiated equation); the side conditions follow the ordered calculus - the equation is eligible and oriented s sigma strictly greater than t sigma (design 10.2 "Ordering: s sigma > t sigma"), the target subterm w sigma is not a variable (design 10.2 "Variable restriction"), and the target literal is eligible - which together with eq resolution and eq factoring gives a sound and refutationally complete equality calculus - a documented superset of the standard ordered calculus (NR01 section 4): the into-equation orientation condition (u sigma > v sigma for positive into-equations) is deliberately not checked, so the rule set fires a superset of the NR01-restricted inferences (sound per the theorem, complete by the superset argument; Spec 07 section 6 completeness context); equality resolution from C v not (s = t) with MGU(s, t) = sigma concludes C sigma and is what closes reflexive disequalities.
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
@@ -16,6 +16,7 @@
 use crate::ir::literal::Literal;
 use crate::ir::term::{TermPtr, TermStore, TermTag};
 use crate::unification::unify;
+use mapt_config::limits::kMaxSymbolArity;
 
 use super::builder::apply_literal;
 use super::factoring::equality_sides;
@@ -132,7 +133,8 @@ pub(crate) fn replace_at(
     }
     match view.tag() {
         TermTag::Function | TermTag::Predicate => {
-            let mut children: [TermPtr; 32] = [TermPtr::invalid(); 32];
+            let mut children: [TermPtr; kMaxSymbolArity as usize] =
+                [TermPtr::invalid(); kMaxSymbolArity as usize];
             let count = view.child_count();
             if count as usize > children.len() {
                 return Err(InferenceError::Structural(
@@ -201,7 +203,7 @@ pub(crate) fn replace_at(
 // CEP:WHAT: Attempts superposition of the positive equation from_literals[equation_index] (s = t) into the subterm at path of into_literals[into_index]'s atom, writing the conclusion into out.
 // CEP:WHY: Spec 07 section 6: sigma = MGU(w, s) with the design 10.2 side conditions - the equation literal eligible (strictly maximal or selected), oriented s sigma strictly greater than t sigma, the target subterm w sigma not a variable, and the into literal eligible (selected, or nothing selected and maximal; the negative-side eligibility for negative literals, positive-side for positive literals - the standard superposition restrictions) - concluding the applied remainders plus the rewritten into literal.
 // CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) on any failed side condition or unification; Err on structural failures or an over-long conclusion; the substitution trail is unwound on every path.
+// CEP:FAILURE: Ok(None) on any failed side condition or unification (the MGU is unwound first, Spec 02 section 4); Err on structural failures or an over-long conclusion, with the trail left at its current depth - safe because Err is terminal for the whole search (the generator's abort discipline: the trail is never read after an Err), never resumed.
 // CEP:ASSUMES: premises renamed apart; the equation atom is an equality; the path addresses a subterm of the into atom; out holds kMaxClauseLiterals slots.
 // CEP:COST: one unification, one comparison, one rebuild, O(length) applications.
 // CEP:EVIDENCE: unit/hot/inference_test.rs::{superposition_into_negative, superposition_into_positive, superposition_orients_equations, superposition_rejects_variable_targets, superposition_side_conditions}; property/inference_property_test.rs::{superposition_is_sound, superposition_side_conditions}.

@@ -17,15 +17,16 @@ use crate::memory::arena::Arena;
 use core::cell::Cell;
 use mapt_config::limits::{kPassiveHeapCapacity, kSelectionRatioScale};
 
-/// CEP:WHAT: Selection strategy of the given-clause loop (design 15.2).
-/// CEP:WHY: The strategy fixes the priority function; three deterministic strategies are delivered and the remaining two of design 15.2 (conjecture distance, set of support) are ticketed with owners (CEP-1035).
-/// CEP:CLASS: CEP-0
-/// CEP:STATUS: complete
-/// CEP:FAILURE: none; a vocabulary type.
-/// CEP:ASSUMES: fixed for the lifetime of one search.
-/// CEP:COST: enum copy.
-/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, heap_orders_by_weight, heap_orders_by_age}.
-/// CEP:SECURITY: none.
+// CEP:WHAT: Arity of the passive heap's binary heap (children of index i sit at 2i+1 and 2i+2).
+// CEP:WHY: The parent and child index arithmetic names its base (CEP&CC 11.3), matching the VSIDS and registry heap discipline.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, tie_breaks_by_clause_id}.
+// CEP:SECURITY: none.
+const kPassiveHeapArity: usize = 2;
+
 /// CEP:WHAT: The default selection strategy (the design 15.2 default row).
 /// CEP:WHY: SearchOptions derives Default; the documented default is the age/weight ratio.
 /// CEP:CLASS: CEP-0
@@ -48,6 +49,16 @@ impl Default for SelectionStrategy {
         SelectionStrategy::AgeWeightRatio
     }
 }
+
+/// CEP:WHAT: Selection strategy of the given-clause loop (design 15.2).
+/// CEP:WHY: The strategy fixes the priority function; three deterministic strategies are delivered and the remaining two of design 15.2 (conjecture distance, set of support) are ticketed with owners (CEP-1035).
+/// CEP:CLASS: CEP-0
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a vocabulary type.
+/// CEP:ASSUMES: fixed for the lifetime of one search.
+/// CEP:COST: enum copy.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, heap_orders_by_weight, heap_orders_by_age}.
+/// CEP:SECURITY: none.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionStrategy {
@@ -330,7 +341,7 @@ impl<'a> PassiveHeap<'a> {
     // CEP:SECURITY: none.
     fn sift_up(&self, mut index: usize) {
         while index > 0 {
-            let parent = (index - 1) / 2;
+            let parent = (index - 1) / kPassiveHeapArity;
             let child_entry = self.entries[index].get();
             let parent_entry = self.entries[parent].get();
             if (child_entry.priority, child_entry.clause_id)
@@ -357,8 +368,8 @@ impl<'a> PassiveHeap<'a> {
         let count = self.count.get() as usize;
         loop {
             let mut best = index;
-            let left = index * 2 + 1;
-            let right = index * 2 + 2;
+            let left = index * kPassiveHeapArity + 1;
+            let right = left + 1;
             if left < count {
                 let left_entry = self.entries[left].get();
                 let best_entry = self.entries[best].get();

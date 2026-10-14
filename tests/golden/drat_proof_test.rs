@@ -84,15 +84,13 @@ fn drat_proof_text_is_stable() {
     let mut buffer = vec![0u8; required];
     let written = write_drat(recorder, &mut buffer).expect("write");
     let rendered = String::from_utf8(buffer[..written].to_vec()).expect("utf8");
-    // Create the golden on the first run; afterwards it pins byte-for-byte.
+    // The golden is a COMMITTED artifact: a missing file fails the test loudly
+    // instead of being rewritten from the current rendering (a self-written
+    // golden would be self-fulfilling - it could never catch a rendering
+    // change); regenerate it only deliberately, with a documented change.
     let golden_path = "tests/golden/golden/drat_php32.txt";
-    let golden = match std::fs::read_to_string(golden_path) {
-        Ok(value) => value,
-        Err(_) => {
-            std::fs::write(golden_path, &rendered).expect("write golden");
-            rendered.clone()
-        }
-    };
+    let golden = std::fs::read_to_string(golden_path)
+        .expect("the committed golden file must exist (never regenerated in-test)");
     assert_eq!(
         rendered, golden,
         "the certificate text must match the golden file"

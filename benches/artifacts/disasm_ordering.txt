@@ -503,7 +503,7 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 .LBB3_65:
 	orq	%rdx, %r9
 	addq	%r15, %r14
-	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.81(%rip), %rdx
+	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.61(%rip), %rdx
 	.p2align	4
 .LBB3_66:
 	cmpq	%rcx, %rsi
@@ -4004,7 +4004,7 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 	leaq	.Lanon.811b0a4a3e2f4fd47fbf7cb7751f06ab.24(%rip), %rdi
 	jmp	.LBB3_939
 .LBB3_953:
-	leaq	.Lanon.9fcd18ceee43a9812bdd9b2606683c69.80(%rip), %rdx
+	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.60(%rip), %rdx
 	jmp	.LBB3_941
 .LBB3_954:
 	movb	%r12b, 40(%rsp)
@@ -4978,7 +4978,7 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	jmp	.LBB149_67
 .LBB149_69:
 	addq	$4, %r10
-	leaq	.Lanon.4783535e334bc602691f0c1bca85f3a7.132(%rip), %rdx
+	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.112(%rip), %rdx
 	movq	%r10, %rdi
 	movq	%r14, %rsi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)

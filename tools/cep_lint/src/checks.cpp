@@ -313,6 +313,14 @@ std::vector<Finding> check_function_policy(const SourceFile& file, const RuleCon
                 || definition.name.find('<') != std::string::npos) {
                 continue;
             }
+            // Rust callable-trait bounds (Fn/FnMut/FnOnce inside generic
+            // parameter lists) parse as function-shaped tokens "Name(args)";
+            // they are language constructs, not user identifiers (CEP&CC 33.18
+            // governs user names only), so they are exempt.
+            if (definition.name == "Fn" || definition.name == "FnMut"
+                || definition.name == "FnOnce") {
+                continue;
+            }
             // Constructors carry the PascalCase class name by language convention
             // (CEP&CC 33.13 exempts special member functions): the name starts the
             // signature line or follows a Class:: qualifier.

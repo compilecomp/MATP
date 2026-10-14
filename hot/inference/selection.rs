@@ -18,15 +18,6 @@ use crate::ordering::OrderingComparison;
 
 use super::InferenceContext;
 
-/// CEP:WHAT: The literal selection function (design 10.1).
-/// CEP:WHY: Selection functions are the calculus's freedom lever: selecting negative literals before maximality restricts resolution and superposition exactly as BG94's calculus requires; the default (no selection) uses pure maximality, and FirstNegative selects the first negative literal if any (a standard complete selection for Horn-friendly problems).
-/// CEP:CLASS: CEP-0
-/// CEP:STATUS: complete
-/// CEP:FAILURE: none; a vocabulary type.
-/// CEP:ASSUMES: none.
-/// CEP:COST: enum copy.
-/// CEP:EVIDENCE: unit/hot/selection_test.rs::{selection_overrides_maximality, first_negative_selects}.
-/// CEP:SECURITY: none.
 /// CEP:WHAT: The default selection function (None: pure maximality).
 /// CEP:WHY: SearchOptions derives Default; no-selection is the default strategy.
 /// CEP:CLASS: CEP-0
@@ -49,6 +40,16 @@ impl Default for SelectionFunction {
         SelectionFunction::None
     }
 }
+
+/// CEP:WHAT: The literal selection function (design 10.1).
+/// CEP:WHY: Selection functions are the calculus's freedom lever: selecting negative literals before maximality restricts resolution and superposition exactly as BG94's calculus requires; the default (no selection) uses pure maximality, and FirstNegative selects the first negative literal if any (a standard complete selection for Horn-friendly problems).
+/// CEP:CLASS: CEP-0
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a vocabulary type.
+/// CEP:ASSUMES: none.
+/// CEP:COST: enum copy.
+/// CEP:EVIDENCE: unit/hot/selection_test.rs::{selection_overrides_maximality, first_negative_selects}.
+/// CEP:SECURITY: none.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionFunction {

@@ -303,21 +303,34 @@ fn inline_and_overflow_layout() {
         .expect("overflow clause");
     let overflow_clause = clauses.clause(overflow_ptr).expect("read");
     assert!(overflow_clause.overflow_offset != kInvalidClauseOffset);
-    // Phase 3 regression pin: every index of an overflow clause - including the
-    // first kInlineClauseLiterals indices - must return a readable atom (the
-    // pre-Phase-3 reader returned the inline filler for the first eight indices,
-    // and this test's is_ok assertions passed vacuously because they never
-    // dereferenced the atoms).
+    // Phase 3 regression pin: every index of an overflow clause must return the
+    // CORRECT literal value, not merely a readable one. The pre-Phase-3 reader
+    // had two defect halves: indices below kInlineClauseLiterals returned the
+    // inline FILLER (this test's old is_ok assertions passed vacuously because
+    // they never dereferenced the atoms), and indices at or above it returned
+    // overflow[index - 8] while the writer stores ALL literals at
+    // overflow[0..count] - wrong atoms, readable and therefore undetectable by
+    // the readability-only pin. The expected canonical order of the fixture
+    // (six positive pa literals, then six negative pb literals - the sort key
+    // is (!positive, atom)) discriminates both halves: a filler leak fails the
+    // atom check, an index shift crosses the pa/pb boundary at index 6.
+    let expected_len = 2 * kInlineClauseLiterals as u16 - 4;
+    assert_eq!(overflow_clause.literal_count, expected_len);
     for index in 0..overflow_clause.literal_count {
         let literal = clauses.literal(overflow_clause, index).expect("literal");
-        assert!(
-            terms.term(literal.atom()).is_ok(),
-            "overflow literal {} must carry a readable atom",
+        let expect_pa = index < expected_len / 2;
+        assert_eq!(
+            literal.is_positive(),
+            expect_pa,
+            "overflow literal {}: polarity must match the canonical order",
             index
         );
-    }
-    for index in 0..overflow_clause.literal_count {
-        assert!(clauses.literal(overflow_clause, index).is_ok());
+        assert_eq!(
+            literal.atom().as_u32(),
+            if expect_pa { pa } else { pb }.as_u32(),
+            "overflow literal {}: atom must match the canonical order",
+            index
+        );
     }
     assert!(clauses
         .literal(overflow_clause, overflow_clause.literal_count)

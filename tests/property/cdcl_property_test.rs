@@ -20,7 +20,7 @@ use mapt::hot::sat::cdcl::{CdclError, ConflictAnalyzer};
 use mapt::hot::sat::database::SatCore;
 use mapt::hot::sat::literal::{SatLiteral, SatVar};
 use mapt::hot::sat::restart::RestartPolicy;
-use mapt::hot::sat::solver::{CdclSolver, SolveResult};
+use mapt::hot::sat::solver::{CdclSolver, SolveResult, SolverOptions};
 use mapt::hot::sat::vsids::VsidsHeap;
 
 // CEP:WHAT: Variables in the random formulas.
@@ -198,8 +198,13 @@ fn solve_agrees_with_brute_force() {
         };
         let expected = brute_force_satisfiable(&formula);
         let arena = make_arena(kSolverArenaBytes);
-        let solver =
-            CdclSolver::new(arena, kOracleVariables, RestartPolicy::Luby, false).expect("solver");
+        // A small injected reduction trigger makes the learnt-deletion policy
+        // (registry reduction) fire during these searches, so this property also
+        // verifies end-to-end that solving WITH reduction active agrees with
+        // brute force - the claim registry.rs documents.
+        let mut options = SolverOptions::new(kOracleVariables, RestartPolicy::Luby, false);
+        options.reduction_trigger = 4;
+        let solver = CdclSolver::new_advanced(arena, options).expect("solver");
         for clause in formula.iter() {
             solver.add_clause(clause).expect("add clause");
         }
@@ -376,4 +381,63 @@ fn learnt_clauses_are_entailed() {
         checked_learnts > 0,
         "the generator must produce conflicts worth checking"
     );
+}
+
+// CEP:WHAT: Property: two solves of the same formula on fresh solvers produce the identical
+// result, conflict count, restart count, and proof step count.
+// CEP:WHY: CEP&CC 38.10: the search must be a pure function of the clause set and the arena
+// state; this is the two-identical-solves check cited by hot/sat/solver.rs's determinism
+// claim (decisions, propagation, analysis, learning, restarts, reduction, and proof
+// recording), run with reduction active (injected trigger) and proof recording on.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any divergence between the two runs.
+// CEP:ASSUMES: fresh solver per run; identical clause order; the deterministic LCG.
+// CEP:COST: two solves per formula.
+// CEP:EVIDENCE: cited by hot/sat/solver.rs (CEP:HPC-DETERMINISM).
+// CEP:SECURITY: none.
+#[test]
+fn two_identical_solves() {
+    let mut rng = DeterministicRng::new(0xC0FFEE07);
+    for _ in 0..10 {
+        let formula = if DeterministicRng::next_u64(&mut rng).is_multiple_of(2) {
+            random_formula(&mut rng)
+        } else {
+            let mut dense = random_formula(&mut rng);
+            dense.extend(random_formula(&mut rng));
+            dense
+        };
+        let mut result: Option<SolveResult> = None;
+        let mut conflicts: [u64; 2] = [0; 2];
+        let mut restarts: [u32; 2] = [0; 2];
+        let mut steps: [u32; 2] = [0; 2];
+        for run in 0..2 {
+            let arena = make_arena(kSolverArenaBytes);
+            let mut options = SolverOptions::new(kOracleVariables, RestartPolicy::Luby, false);
+            options.reduction_trigger = 4;
+            options.record_proof = true;
+            options.proof_step_capacity = 8192;
+            options.proof_map_capacity = 8192;
+            options.proof_literal_capacity = 65536;
+            let solver = CdclSolver::new_advanced(arena, options).expect("solver");
+            for clause in formula.iter() {
+                solver.add_clause(clause).expect("add clause");
+            }
+            let outcome = solver.solve();
+            if run == 0 {
+                result = Some(outcome);
+            } else {
+                assert_eq!(
+                    format!("{:?}", result),
+                    format!("{:?}", Some(outcome)),
+                    "the two solves must agree"
+                );
+            }
+            conflicts[run] = solver.conflicts();
+            restarts[run] = solver.restarts_done();
+            steps[run] = solver.proof().expect("recorder").step_count();
+        }
+        assert_eq!(conflicts[0], conflicts[1], "conflict counts must match");
+        assert_eq!(restarts[0], restarts[1], "restart counts must match");
+        assert_eq!(steps[0], steps[1], "proof step counts must match");
+    }
 }

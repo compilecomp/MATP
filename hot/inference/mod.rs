@@ -100,15 +100,6 @@ impl From<SubstitutionError> for InferenceError {
     }
 }
 
-/// CEP:WHAT: Which term ordering the search uses for side conditions.
-/// CEP:WHY: Design 8.3: KBO is the default and LPO the configurable alternative; the inference context dispatches comparisons through this tag so every rule is ordering-agnostic (a match, not dyn dispatch - CEP-0 discipline).
-/// CEP:CLASS: CEP-0
-/// CEP:STATUS: complete
-/// CEP:FAILURE: none; a vocabulary type.
-/// CEP:ASSUMES: the precedence table is valid for the chosen ordering.
-/// CEP:COST: enum copy.
-/// CEP:EVIDENCE: unit/hot/ordering_test.rs; unit/hot/inference_test.rs::superposition_orients_equations.
-/// CEP:SECURITY: none.
 /// CEP:WHAT: The default ordering (KBO, design 8.3).
 /// CEP:WHY: SearchOptions derives Default; KBO is the documented default.
 /// CEP:CLASS: CEP-0
@@ -132,6 +123,15 @@ impl Default for OrderingKind {
     }
 }
 
+/// CEP:WHAT: Which term ordering the search uses for side conditions.
+/// CEP:WHY: Design 8.3: KBO is the default and LPO the configurable alternative; the inference context dispatches comparisons through this tag so every rule is ordering-agnostic (a match, not dyn dispatch - CEP-0 discipline).
+/// CEP:CLASS: CEP-0
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a vocabulary type.
+/// CEP:ASSUMES: the precedence table is valid for the chosen ordering.
+/// CEP:COST: enum copy.
+/// CEP:EVIDENCE: unit/hot/ordering_test.rs; unit/hot/inference_test.rs::superposition_orients_equations.
+/// CEP:SECURITY: none.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OrderingKind {
     /// CEP:WHAT: Knuth-Bendix Ordering (default).

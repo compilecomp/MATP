@@ -547,7 +547,11 @@ impl<'a> ClauseStorage<'a> {
         if headers[0].flags & kSatClauseFlagDeleted == 0 {
             return Err(SatClauseError::InvariantViolation);
         }
-        headers[0].flags &= !kSatClauseFlagDeleted;
+        // Budget check and count update BEFORE the flag clear: on
+        // LearntBudgetExceeded the record stays consistently marked deleted
+        // (clearing first would leave the clause live but uncounted, with a
+        // stale learnt count). Unreachable in practice because nothing learns
+        // between the mark and the unmark of one isolation window.
         if headers[0].flags & kSatClauseFlagLearnt != 0 {
             let next = self.learnt_count.get().saturating_add(1);
             if next > kSatMaxLearntClauses {
@@ -555,6 +559,7 @@ impl<'a> ClauseStorage<'a> {
             }
             self.learnt_count.set(next);
         }
+        headers[0].flags &= !kSatClauseFlagDeleted;
         Ok(())
     }
 

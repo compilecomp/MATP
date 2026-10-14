@@ -1,6 +1,6 @@
 # Formal Specification 05: SAT Foundations — Literals, Clauses, Trails, Watched Literals, and BCP Soundness
 
-Version: 0.1
+Version: 0.2
 Status: complete for the Phase 1 subset (components S1-S6, S9-S11 of design section 11.1)
 Role: normative reference for `hot/sat/*`; cited by their `CEP:EVIDENCE` fields and by the BCP property tests.
 References: Moskewicz et al., DAC 2001 (Chaff); Biere, SAT 2020 (CaDiCaL); design sections 11.1-11.4.
@@ -54,6 +54,8 @@ Both theorems are tested against a brute-force oracle: `tests/property/bcp_prope
 ## 6. Watch move correctness
 
 When a watch `L` of clause `C` becomes false, BCP searches a non-false replacement `L'` among the remaining literals and swaps `L'` into the watch slot. The swap preserves the literal multiset of `C` (tested in `tests/unit/hot/sat_bcp_test.rs::watch_moves_preserve_clause_contents`) and re-establishes W1 by unlinking `C` from `L`'s list and linking it into `L'`'s list (tested by `tests/property/bcp_property_test.rs::watch_lists_consistent`).
+
+**Amendment (Phase 3, deleted records).** Clause deletion (the learnt-clause reduction of Spec 06 section 9 and SAT preprocessing) sets the record's deleted bit at deletion time and removes the record's watch-list links **lazily**: BCP skips any record whose deleted bit is set when the scan reaches it, so the section's watch-move swap runs only on live records and the stale links left behind by deleted clauses are inert. Watch-list consistency (W1) is therefore preserved without an eager unlink pass (tested by `tests/unit/hot/sat_registry_test.rs::bcp_skips_deleted` and the deleted-record handling of `tests/unit/hot/sat_bcp_test.rs`).
 
 ## 7. Bounded resources
 

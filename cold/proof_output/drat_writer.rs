@@ -1,6 +1,6 @@
 // CEP:FILE: cold/proof_output/drat_writer.rs
 // CEP:WHAT: DRAT text writer (design 6.4, 11.1 S41): serializes the proof recorder's step buffer into plain DRAT text (DIMACS-convention integers, 0-terminated lines, "d " deletion prefix).
-// CEP:WHY: Design 6.4 names cold/proof_output/drat_writer.rs as the SAT proof certificate writer; plain DRAT (Heule, Hunt & Wetzler 2013; Wetzler 2015) is the minimal independently checkable format - additions are clause lines whose justification (RUP or RAT) is verified by a checker, deletions are "d" lines that need no justification - so the writer only has to be a faithful, total rendering of the recorded steps; assumption hypothesis units and their removals render as ordinary unit add and delete lines because plain DRAT has no hypothesis syntax (the internal checker knows the step kinds; Spec 11 section 6 fixes the rendering).
+// CEP:WHY: Design 6.4 names cold/proof_output/drat_writer.rs as the SAT proof certificate writer; plain DRAT (Heule, Hunt & Wetzler 2013; Wetzler 2015) is the minimal independently checkable format - additions are clause lines whose justification (RUP or RAT) is verified by a checker, deletions are "d" lines that need no justification - so the writer only has to be a faithful, total rendering of the recorded steps; assumption hypothesis units and their removals render as ordinary unit add and delete lines because plain DRAT has no hypothesis syntax (the internal checker knows the step kinds; Spec 11 section 6 fixes the rendering); CAVEAT: a text trace containing AssumptionAdd steps is NOT a standalone external DRAT refutation - the hypothesis units are not RUP/RAT-justified by construction, so external tools must be fed assumption-free traces (plain solve refutations), while the internal checker consumes the full step stream with its hypothesis semantics.
 // CEP:CLASS: CEP-1
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns WriterError::Proof on recorder read failures (never fabricates a line); the output buffer is caller-owned and truncation is a loud error, never a silent short proof.
@@ -11,6 +11,39 @@
 // CEP:HPC-DETERMINISM: deterministic; step order and literal order are the recorder's, the numbering is a pure function of variable indices.
 
 use mapt_hot::sat::proof::{ProofRecorder, ProofStepKind};
+
+/// CEP:WHAT: Byte length of the deletion prefix ("d ").
+/// CEP:WHY: Named so the writer and the size pass cannot drift apart (CEP&CC 11.3).
+/// CEP:CLASS: CEP-1
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: none.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/cold/drat_writer_test.rs::{renders_adds_and_deletes, required_size_is_exact}.
+/// CEP:SECURITY: none.
+const kDeletionPrefixBytes: usize = 2;
+
+/// CEP:WHAT: Byte length of the line terminator (" 0" plus newline).
+/// CEP:WHY: Named so the writer and the size pass cannot drift apart (CEP&CC 11.3).
+/// CEP:CLASS: CEP-1
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: none.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/cold/drat_writer_test.rs::{renders_adds_and_deletes, required_size_is_exact}.
+/// CEP:SECURITY: none.
+const kLineTerminatorBytes: usize = 3;
+
+/// CEP:WHAT: Byte length of one separating space.
+/// CEP:WHY: Named so the writer and the size pass cannot drift apart (CEP&CC 11.3).
+/// CEP:CLASS: CEP-1
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: none.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/cold/drat_writer_test.rs::required_size_is_exact.
+/// CEP:SECURITY: none.
+const kSeparatorBytes: usize = 1;
 
 /// CEP:WHAT: Error cases of the DRAT writer.
 /// CEP:WHY: CEP&CC Law 6: explicit failure vocabulary; a truncated or unreadable proof must be loud, never silently shortened.
@@ -173,7 +206,7 @@ pub fn drat_size(recorder: &ProofRecorder<'_>) -> Result<usize, WriterError> {
             step.kind,
             ProofStepKind::Delete | ProofStepKind::AssumptionDelete
         ) {
-            total += 2; // "d "
+            total += kDeletionPrefixBytes;
         }
         for slot in 0..step.literal_count {
             let literal = recorder
@@ -182,10 +215,10 @@ pub fn drat_size(recorder: &ProofRecorder<'_>) -> Result<usize, WriterError> {
             let value = dimacs_literal(literal.variable().0, literal.is_positive());
             total += value.to_string().len();
             if slot + 1 < step.literal_count {
-                total += 1; // the space between literals
+                total += kSeparatorBytes;
             }
         }
-        total += 3; // " 0" plus newline
+        total += kLineTerminatorBytes;
     }
     Ok(total)
 }

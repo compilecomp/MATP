@@ -93,29 +93,94 @@ fn make_oracle() -> OracleFixture {
     }
 }
 
-// CEP:WHAT: Evaluates a ground term under an interpretation of f and g.
-// CEP:WHY: The oracle's term semantics: constants map to their domain values, f and g to the selected unary functions.
+// CEP:WHAT: One interpretation of the fixture vocabulary over the two-element domain {0, 1}.
+// CEP:WHY: A COMPLETE enumeration for the soundness oracle must vary every symbol: the constants a and b over both domain values (including a = b), the unary functions f and g over all four unary functions, the unary predicate p over all four unary boolean functions, and the proposition r over both truth values - 2 x 2 x 4 x 4 x 4 x 2 = 512 interpretations; pinning any of them (as the pre-widening oracle did: a = 0, b = 1, p = identity) leaves soundness violations visible only under non-enumerated models undetected.
+// CEP:STATUS: complete
+// CEP:FAILURE: none; a data record.
+// CEP:ASSUMES: fields in range (a, b < 2; f, g, p < 4).
+// CEP:COST: plain data.
+// CEP:EVIDENCE: used by this file's oracle.
+// CEP:SECURITY: none.
+struct Interpretation {
+    /// CEP:WHAT: Domain value of the constant a.
+    /// CEP:WHY: Varies over both domain values.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: < 2.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: used by this file's oracle.
+    /// CEP:SECURITY: none.
+    a: u64,
+    /// CEP:WHAT: Domain value of the constant b.
+    /// CEP:WHY: Varies over both domain values (a = b included).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: < 2.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: used by this file's oracle.
+    /// CEP:SECURITY: none.
+    b: u64,
+    /// CEP:WHAT: Index of the unary function f.
+    /// CEP:WHY: One of the four unary functions (apply_unary).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: < 4.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: used by this file's oracle.
+    /// CEP:SECURITY: none.
+    f: u64,
+    /// CEP:WHAT: Index of the unary function g.
+    /// CEP:WHY: One of the four unary functions (apply_unary).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: < 4.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: used by this file's oracle.
+    /// CEP:SECURITY: none.
+    g: u64,
+    /// CEP:WHAT: Index of the unary predicate p's boolean function.
+    /// CEP:WHY: One of the four unary boolean functions over the argument's value.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: < 4.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: used by this file's oracle.
+    /// CEP:SECURITY: none.
+    p: u64,
+    /// CEP:WHAT: Truth value of the proposition r.
+    /// CEP:WHY: Varies over both values.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 byte plus padding.
+    /// CEP:EVIDENCE: used by this file's oracle.
+    /// CEP:SECURITY: none.
+    r: bool,
+}
+
+// CEP:WHAT: Evaluates a ground term under an interpretation.
+// CEP:WHY: The oracle's term semantics: the constants map to their interpretation values, f and g to the selected unary functions.
 // CEP:STATUS: complete
 // CEP:FAILURE: returns None for non-ground or unreadable terms.
 // CEP:ASSUMES: ground term over the fixture vocabulary.
 // CEP:COST: O(term nodes).
 // CEP:EVIDENCE: used by this file.
 // CEP:SECURITY: none.
-fn eval_term(fixture: &OracleFixture, term: TermPtr, f_value: u64, g_value: u64) -> Option<u64> {
+fn eval_term(fixture: &OracleFixture, term: TermPtr, model: &Interpretation) -> Option<u64> {
     let view = fixture.terms.term(term).ok()?;
     match view.tag() {
         mapt::hot::ir::term::TermTag::Function => {
             if view.symbol() == symbol_id(&fixture.builder, "a") {
-                Some(0)
+                Some(model.a)
             } else if view.symbol() == symbol_id(&fixture.builder, "b") {
-                Some(1)
+                Some(model.b)
             } else {
                 let head = if view.symbol() == symbol_id(&fixture.builder, "f") {
-                    f_value
+                    model.f
                 } else {
-                    g_value
+                    model.g
                 };
-                let arg = eval_term(fixture, view.child(0).ok()?, f_value, g_value)?;
+                let arg = eval_term(fixture, view.child(0).ok()?, model)?;
                 Some(apply_unary(head, arg))
             }
         }
@@ -148,25 +213,19 @@ fn apply_unary(head: u64, value: u64) -> u64 {
 // CEP:COST: O(atom nodes).
 // CEP:EVIDENCE: used by this file.
 // CEP:SECURITY: none.
-fn eval_literal(
-    fixture: &OracleFixture,
-    literal: Literal,
-    f_value: u64,
-    g_value: u64,
-    r_value: bool,
-) -> Option<bool> {
+fn eval_literal(fixture: &OracleFixture, literal: Literal, model: &Interpretation) -> Option<bool> {
     let view = fixture.terms.term(literal.atom()).ok()?;
     let atom_value = match view.tag() {
         mapt::hot::ir::term::TermTag::Predicate => {
             if view.symbol() == symbol_id(&fixture.builder, "p") {
-                eval_term(fixture, view.child(0).ok()?, f_value, g_value)? == 1
+                apply_unary(model.p, eval_term(fixture, view.child(0).ok()?, model)?) == 1
             } else {
-                r_value
+                model.r
             }
         }
         mapt::hot::ir::term::TermTag::Equality => {
-            let left = eval_term(fixture, view.child(0).ok()?, f_value, g_value)?;
-            let right = eval_term(fixture, view.child(1).ok()?, f_value, g_value)?;
+            let left = eval_term(fixture, view.child(0).ok()?, model)?;
+            let right = eval_term(fixture, view.child(1).ok()?, model)?;
             left == right
         }
         _ => return None,
@@ -252,31 +311,49 @@ fn assert_conclusion_entailed(
     right: &[Literal],
     conclusion: &[Literal],
 ) {
-    // Entailment check: premises -> conclusion over the finite interpretation
-    // space: every interpretation that satisfies both premises (all literals of
-    // each) must satisfy the conclusion clause.
-    for f_value in 0..4u64 {
-        for g_value in 0..4u64 {
-            for r_bits in 0..2u64 {
-                let r_value = r_bits == 1;
-                let premises_hold = left.iter().chain(right.iter()).all(|literal| {
-                    eval_literal(fixture, *literal, f_value, g_value, r_value).unwrap_or(false)
-                });
-                if !premises_hold {
-                    continue;
+    // Entailment check: premises -> conclusion over the COMPLETE finite
+    // interpretation space of the fixture vocabulary: a and b over both domain
+    // values (including a = b), f, g, and p over all four unary functions, r
+    // over both truth values - 512 interpretations (the pre-widening oracle
+    // pinned a != b and p to identity, leaving 32).
+    for a_value in 0..2u64 {
+        for b_value in 0..2u64 {
+            for f_value in 0..4u64 {
+                for g_value in 0..4u64 {
+                    for p_value in 0..4u64 {
+                        for r_bits in 0..2u64 {
+                            let model = Interpretation {
+                                a: a_value,
+                                b: b_value,
+                                f: f_value,
+                                g: g_value,
+                                p: p_value,
+                                r: r_bits == 1,
+                            };
+                            let premises_hold = left.iter().chain(right.iter()).all(|literal| {
+                                eval_literal(fixture, *literal, &model).unwrap_or(false)
+                            });
+                            if !premises_hold {
+                                continue;
+                            }
+                            let conclusion_holds = conclusion.iter().any(|literal| {
+                                eval_literal(fixture, *literal, &model).unwrap_or(false)
+                            });
+                            assert!(
+                                conclusion_holds,
+                                "soundness violation: {} premise literals entail NOT the conclusion ({} literals) under a={} b={} f={} g={} p={} r={}",
+                                left.len() + right.len(),
+                                conclusion.len(),
+                                a_value,
+                                b_value,
+                                f_value,
+                                g_value,
+                                p_value,
+                                r_bits
+                            );
+                        }
+                    }
                 }
-                let conclusion_holds = conclusion.iter().any(|literal| {
-                    eval_literal(fixture, *literal, f_value, g_value, r_value).unwrap_or(false)
-                });
-                assert!(
-                    conclusion_holds,
-                    "soundness violation: premises {:?} entail NOT {:?} under f={} g={} r={}",
-                    (left.len() + right.len()),
-                    conclusion.len(),
-                    f_value,
-                    g_value,
-                    r_value
-                );
             }
         }
     }
@@ -628,10 +705,20 @@ fn demodulation_is_sound() {
                         count,
                     ) = outcome
                     {
-                        // The rule clause alone must entail the demodulant when the
-                        // rule is the unit equation used; the harness passes the
-                        // rule premise list as the premise.
-                        assert_conclusion_entailed(&fixture, &[*rule_literal], &[], &out[..count]);
+                        // The demodulant is entailed by BOTH premises: the unit
+                        // equation (the rule literal used) and the target clause
+                        // being rewritten (its untouched literals survive verbatim
+                        // and the rewritten literal is equivalent under the
+                        // equation); passing only the equation was a harness bug
+                        // the widened 512-interpretation oracle exposed (under
+                        // a = b models the equation alone entails nothing about
+                        // the target's predicate literals).
+                        assert_conclusion_entailed(
+                            &fixture,
+                            &[*rule_literal],
+                            &target_buf[..target_len],
+                            &out[..count],
+                        );
                     }
                 }
             }

@@ -51,7 +51,7 @@ The **standardize-apart discipline** (Spec 02 section 5): the substitution engin
 
 **Equality resolution.** From C ∨ ¬(s ≈ t) with σ = MGU(s, t): infer Cσ, requiring ¬(s ≈ t) eligible-negative. *Soundness:* a model falsifying Cσ satisfies ¬(s ≈ t)σ, but σ unifies s and t, making the disequation false — contradiction. ∎
 
-**Completeness context.** Superposition (both directions, i.e., into positive and negative literals), equality resolution, and equality factoring, with the eligibility restrictions of section 3, form the standard superposition calculus, refutationally complete for first-order logic with equality (NR01 theorem 4.4). The engine implements both directions (the into-direction indexed by the rule tree, the from-direction by the active scan).
+**Completeness context.** Superposition (both directions, i.e., into positive and negative literals), equality resolution, and equality factoring, with the eligibility restrictions of section 3, form the standard superposition calculus, refutationally complete for first-order logic with equality (NR01 theorem 4.4). The engine implements both directions by active-array scan with head-symbol prefilters (indexed retrieval is ticket CEP-1027). One deliberate deviation: the implemented superposition rule does not carry NR01's into-equation orientation condition (uσ ≻ vσ when the into literal is a positive equation) — every engine inference is sound (the soundness theorem above does not use that condition), and the engine's inference set is a superset of the NR01-restricted one, so refutational completeness is preserved; the omission trades some redundant inferences for a simpler side-condition check.
 
 ## 7. Demodulation
 

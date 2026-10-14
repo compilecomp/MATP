@@ -6,7 +6,7 @@
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns ProofError (buffer capacity exhausted, unmapped deletion offset, storage read failure); the solver surfaces exhaustion as Indeterminate - never silent truncation (CEP&CC Law 6); never panics.
 // CEP:ASSUMES: Single-threaded use; clause offsets arrive in strictly ascending order across record_add calls (arena bump allocation; the map's binary search relies on it); one record_add per clause offset (double-add of the same offset is an invariant violation); step ids are dense and 1-based.
-// CEP:COST: record_add and record_delete are O(1) appends plus one O(log map) search on deletion; measured in bench CEP-BENCH-0013, artifact benches/artifacts/sat_drat_record.json.
+// CEP:COST: every step kind shares one O(1) append primitive (step record plus literal blob write) measured in bench CEP-BENCH-0013, artifact benches/artifacts/sat_drat_record.json (the assumption-add step: the append path with no map interaction); record_add adds one ascending-map insert and record_delete one O(log map) search on top of that primitive, both capacity-bounded and covered by the unit tests.
 // CEP:EVIDENCE: unit/hot/sat_proof_test.rs; unit/cold/drat_writer_test.rs; unit/cold/drat_checker_test.rs; property/drat_property_test.rs::proofs_of_random_solves_verify.
 // CEP:SECURITY: buffer capacities are memory-exhaustion bounds; all enumeration is bounds-checked.
 // CEP:UNSAFE: none; this file is safe Rust.
@@ -214,6 +214,16 @@ pub struct ProofStep {
 // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::steps_recorded_in_order.
 // CEP:SECURITY: none.
 const _: () = assert!(core::mem::size_of::<ProofStep>() == 16);
+
+// CEP:WHAT: Halving factor of the clause-offset-to-proof-id map's binary search.
+// CEP:WHY: The midpoint divisor names its base (CEP&CC 11.3).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{ids_are_monotonic, deletion_resolves_id}.
+// CEP:SECURITY: none.
+const kProofMapSearchHalving: usize = 2;
 
 /// CEP:WHAT: One entry of the clause-offset-to-proof-id map.
 /// CEP:WHY: Deletions arrive by clause offset and must leave by proof id; the append-only sorted map is binary-searched, and ascending offsets (arena bump allocation) keep it sorted by construction.
@@ -524,7 +534,7 @@ impl<'a> ProofRecorder<'a> {
         let mut low: usize = 0;
         let mut high: usize = count;
         while low < high {
-            let mid = low + (high - low) / 2;
+            let mid = low + (high - low) / kProofMapSearchHalving;
             let value = self.map[mid].offset.get();
             if value < clause_offset {
                 low = mid + 1;

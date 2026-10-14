@@ -1,6 +1,6 @@
 // CEP:FILE: hot/index/feature_vector.rs
 // CEP:WHAT: Feature-vector index (design 9.3, CEP-1028): per-clause sparse (symbol, occurrence-count) vectors in a shared arena pool plus a sound subsumption pre-filter (literal count and per-symbol occurrence dominance).
-// CEP:WHY: Design 9.3: subsumption queries first filter by feature vector (cheap, O(feature count)) and then verify with the discrimination tree and matching (expensive), reducing tree lookups 10-100x on typical benchmarks; the filter is SOUND, never complete: if C subsumes D (exists sigma with C sigma a subset of D), then every symbol occurrence of C has a corresponding occurrence in C sigma and hence in D (sigma only instantiates variables, never removes symbols), so occ(f, C) <= occ(f, D) for every f and |C| <= |D| - a violated dominance or literal-count check therefore rejects subsumption without false negatives; variables are excluded from the vectors (they are the wildcard side of matching) and clauses with more distinct symbols than kFeatureVectorSlots are unfilterable (truncated vectors pass every filter - a sound degradation documented at the constant).
+// CEP:WHY: Design 9.3: subsumption queries first filter by feature vector (cheap, O(feature count)) and then verify with the discrimination tree and matching (expensive), reducing tree lookups 10-100x on typical benchmarks; the filter is SOUND, never complete: if C subsumes D (exists sigma with C sigma a subset of D), then every symbol occurrence of C has a corresponding occurrence in C sigma and hence in D (sigma only instantiates variables, never removes symbols), so occ(f, C) <= occ(f, D) for every f and |C| <= |D| under an INJECTIVE literal mapping - a violated dominance or literal-count check therefore rejects subsumption without false negatives; the reuse/collapse subsumptions of the set-semantics verifier (C = P(x) v P(y) subsuming D = P(a) v Q(b) with both variables mapped to a) are a documented false-negative class of both this filter and the verifier's own length guard (Spec 08 section 3 collapse restriction: a completeness reduction in simplification power, never in soundness); variables are excluded from the vectors (they are the wildcard side of matching) and clauses with more distinct symbols than kFeatureVectorSlots are unfilterable (truncated vectors pass every filter - a sound degradation documented at the constant).
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
@@ -270,8 +270,9 @@ impl<'a> FeatureVectorIndex<'a> {
             return Err(FeatureError::PoolFull);
         }
         for (index, pair) in state.symbols[..state.pair_count].iter().enumerate() {
-            self.pool[start as usize + index * 2].set(pair.0);
-            self.pool[start as usize + index * 2 + 1].set(pair.1);
+            let base = start as usize + index * kWordsPerPair as usize;
+            self.pool[base].set(pair.0);
+            self.pool[base + 1].set(pair.1);
         }
         self.used.set(start + words_needed);
         Ok(FeatureVector {
@@ -378,7 +379,7 @@ impl<'a> FeatureVectorIndex<'a> {
         if index >= vector.pairs {
             return None;
         }
-        let slot = vector.start as usize + index as usize * 2;
+        let slot = vector.start as usize + index as usize * kWordsPerPair as usize;
         if slot + 1 >= self.pool.len() {
             return None;
         }
@@ -386,7 +387,7 @@ impl<'a> FeatureVectorIndex<'a> {
     }
 
     // CEP:WHAT: Sound subsumption pre-filter: true when candidate might subsume the target (no necessary condition violated), false when subsumption is impossible.
-    // CEP:WHY: Design 9.3 and Spec 08 section 3: C subsumes D implies |C| <= |D| and occ(f, C) <= occ(f, D) for every symbol f (sigma only instantiates); the two-pointer scan over symbol-sorted vectors checks exactly these conditions; truncated vectors (either side) pass - sound because truncation only removes evidence of violation.
+    // CEP:WHY: Design 9.3 and Spec 08 section 3: C subsumes D implies |C| <= |D| and occ(f, C) <= occ(f, D) for every symbol f (sigma only instantiates); the two-pointer scan over symbol-sorted vectors checks the dominance conditions it can see (an absent candidate symbol whose sort position sits above every target symbol is not detectable as a violation by the two-pointer walk - a harmless direction, since the checker verifies every admitted pair); truncated vectors (either side) pass - sound because truncation only removes evidence of violation.
     // CEP:STATUS: complete
     // CEP:FAILURE: none (bool answer; the filter never claims subsumption, only possibility).
     // CEP:ASSUMES: both vectors came from build (symbol-sorted).

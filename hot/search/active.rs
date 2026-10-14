@@ -16,7 +16,7 @@
 use crate::index::discrimination_tree::DiscriminationTree;
 use crate::index::feature_vector::{FeatureError, FeatureVector, FeatureVectorIndex};
 use crate::index::IndexError;
-use crate::ir::clause::ClauseStore;
+use crate::ir::clause::{ClauseError, ClauseStore};
 use crate::ir::literal::Literal;
 use crate::ir::term::{TermStore, TermTag};
 use crate::memory::arena::Arena;
@@ -64,6 +64,24 @@ pub enum ActiveError {
     /// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::pool_capacity_enforced.
     /// CEP:SECURITY: memory bound.
     Features(FeatureError),
+    /// CEP:WHAT: The slot index is out of range (no such slot was ever inserted).
+    /// CEP:WHY: An out-of-range removal is a caller bug, not a capacity fact; the honest kind names it instead of masquerading as SlotsFull.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::active_insert_delete.
+    /// CEP:SECURITY: bounds-checked API.
+    InvalidSlot,
+    /// CEP:WHAT: A clause record read failed during an active-set operation.
+    /// CEP:WHY: Tree deletes re-read the clause's literals through the store; an unreadable record is a storage failure and is reported as one, not as a tree failure.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the record was readable at insertion.
+    /// CEP:COST: enum value with payload.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::active_trees_updated.
+    /// CEP:SECURITY: none.
+    Store(ClauseError),
 }
 
 impl From<IndexError> for ActiveError {
@@ -94,6 +112,46 @@ impl From<FeatureError> for ActiveError {
     }
 }
 
+// CEP:WHAT: Bit shift of the literal index inside a packed tree payload.
+// CEP:WHY: The payload layout (offset in the low 32 bits, literal index in bits 32..48, unit flag in bit 48) must be named at every pack/unpack site so the two sides cannot drift apart (CEP&CC 11.3 auditability).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: clause offsets fit 32 bits (arena capacity).
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_trees_updated, rule_tree_indexes_units}.
+// CEP:SECURITY: none.
+const kPayloadLiteralShift: u32 = 32;
+
+// CEP:WHAT: Bit shift of the unit-equation flag inside a packed tree payload.
+// CEP:WHY: The flag occupies bit 48, directly above the 16-bit literal index.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: literal indices fit 16 bits (kMaxClauseLiterals).
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/search_db_test.rs::rule_tree_indexes_units.
+// CEP:SECURITY: none.
+const kPayloadUnitShift: u32 = 48;
+
+// CEP:WHAT: Mask extracting the clause offset (the low word) of a packed payload.
+// CEP:WHY: The unpacking side of the named layout.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: offsets occupy the low 32 bits.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/inference_test.rs::resolution_candidates_retrieved.
+// CEP:SECURITY: none.
+const kPayloadOffsetMask: u64 = 0xFFFF_FFFF;
+
+// CEP:WHAT: Mask extracting the 16-bit literal index of a packed payload.
+// CEP:WHY: The unpacking side of the named layout.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: literal indices occupy bits 32..48.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/inference_test.rs::resolution_candidates_retrieved.
+// CEP:SECURITY: none.
+const kPayloadLiteralMask: u64 = 0xFFFF;
+
 // CEP:WHAT: Packs a clause offset, a literal index, and the unit-equation flag into one u64 tree payload.
 // CEP:WHY: The discrimination tree's payload is a bare u64; the packing (offset in the low 32 bits, literal index in bits 32..48, unit flag in bit 48) keeps one tree for all literals without a side table, and the helpers make the layout explicit and auditable (CEP&CC 11.3).
 // CEP:STATUS: complete
@@ -103,7 +161,9 @@ impl From<FeatureError> for ActiveError {
 // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_trees_updated, rule_tree_indexes_units}; unit/hot/inference_test.rs::resolution_candidates_retrieved.
 // CEP:SECURITY: none.
 pub fn pack_payload(offset: u32, literal_index: u16, unit: bool) -> u64 {
-    (offset as u64) | ((literal_index as u64) << 32) | (u64::from(unit) << 48)
+    (offset as u64)
+        | ((literal_index as u64) << kPayloadLiteralShift)
+        | (u64::from(unit) << kPayloadUnitShift)
 }
 
 // CEP:WHAT: Unpacks a tree payload.
@@ -116,9 +176,9 @@ pub fn pack_payload(offset: u32, literal_index: u16, unit: bool) -> u64 {
 // CEP:SECURITY: none.
 pub fn unpack_payload(payload: u64) -> (u32, u16, bool) {
     (
-        (payload & 0xFFFF_FFFF) as u32,
-        ((payload >> 32) & 0xFFFF) as u16,
-        (payload >> 48) & 1 == 1,
+        (payload & kPayloadOffsetMask) as u32,
+        ((payload >> kPayloadLiteralShift) & kPayloadLiteralMask) as u16,
+        (payload >> kPayloadUnitShift) & 1 == 1,
     )
 }
 
@@ -313,7 +373,7 @@ impl<'a> ActiveSet<'a> {
     // CEP:WHAT: Removes a clause from the active set by slot index: deletes every tree payload, then swap-removes the slot.
     // CEP:WHY: Backward subsumption and later given-clause processing remove clauses; the tree deletes re-read the literals through the store so the caller passes no clause copy; swap-remove keeps the array dense.
     // CEP:STATUS: complete
-    // CEP:FAILURE: propagates ActiveError; InvariantViolation surfaces for out-of-range slots via the tree/store error paths.
+    // CEP:FAILURE: InvalidSlot for out-of-range slot indices; Store for unreadable clause records; Tree propagates tree-delete failures.
     // CEP:ASSUMES: the slot is live; the clause record is readable.
     // CEP:COST: O(literals x depth).
     // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated}; unit/hot/given_clause_test.rs::backward_subsumption_removes.
@@ -327,17 +387,17 @@ impl<'a> ActiveSet<'a> {
         let index = slot as usize;
         let count = self.count.get() as usize;
         if index >= count {
-            return Err(ActiveError::SlotsFull);
+            return Err(ActiveError::InvalidSlot);
         }
         let record = self.slots[index].get();
         let clause = store
             .clause(crate::ir::clause::ClausePtr::from_u32(record.offset))
-            .map_err(|_| ActiveError::Tree(IndexError::TermTooLarge))?;
+            .map_err(ActiveError::Store)?;
         let unit = clause.literal_count == 1;
         for position in 0..clause.literal_count {
             let literal = store
                 .literal(clause, position)
-                .map_err(|_| ActiveError::Tree(IndexError::TermTooLarge))?;
+                .map_err(ActiveError::Store)?;
             self.atom_tree.delete(
                 terms,
                 literal.atom(),
@@ -419,7 +479,7 @@ impl<'a> ActiveSet<'a> {
     }
 
     // CEP:WHAT: Returns the rule tree for rewriting retrieval.
-    // CEP:WHY: Demodulation and superposition-into query it.
+    // CEP:WHY: The demodulation scan of simplify_given queries it with subterms of the given clause's literal atoms (the inter-clause inference phases scan the active array directly; ticket CEP-1027 tracks indexed retrieval).
     // CEP:STATUS: complete
     // CEP:FAILURE: none.
     // CEP:ASSUMES: read-only use.

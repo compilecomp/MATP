@@ -38,6 +38,16 @@ use mapt_config::limits::{
     kSatVivifyPropagationBudget,
 };
 
+// CEP:WHAT: Minimum clause length a vivification candidate must have.
+// CEP:WHY: A unit or empty clause cannot be shortened (the prefix search needs at least one droppable literal besides the kept prefix); the scan skips shorter clauses by name, not by numeral (CEP&CC 11.3).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{vivification_shortens_clause, vivification_restores_unchanged_clause}.
+// CEP:SECURITY: none.
+const kVivifyMinLiterals: usize = 2;
+
 /// CEP:WHAT: Counters of one preprocessing run.
 /// CEP:WHY: CEP&CC Law 4 and design 20.2: bounded passes must report exactly what they did so a partial pass is auditable; the counters are the pass's measurement record.
 /// CEP:CLASS: CEP-0
@@ -331,7 +341,7 @@ impl Workspace {
 // CEP:WHY: Design 26 Phase 3 and Spec 09: the entry point composes the four rewrites in bounded rounds; the solver is used in place (no formula copy), so every mutation is visible to the subsequent solve and the proof trace.
 // CEP:STATUS: complete
 // CEP:FAILURE: propagates CdclError; returns Unsatisfiable in the outcome when the pass refutes the formula.
-// CEP:ASSUMES: decision level 0; solver built with a registry (always true from Phase 3 constructors).
+// CEP:ASSUMES: decision level 0 (NOT a flush point: after a Satisfiable assumption solve a direct simplify call fails the level invariant loudly — add or solve first to flush the deferred cleanup, Spec 10 section 5); solver built with a registry (always true from Phase 3 constructors).
 // CEP:COST: see file header; measured in bench CEP-BENCH-0013.
 // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::preprocessing_preserves_satisfiability.
 // CEP:SECURITY: all loops bounded by the injected budgets.
@@ -373,7 +383,7 @@ pub fn simplify(
 // CEP:WHAT: Builds the refuted outcome and emits the empty-clause proof step.
 // CEP:WHY: Both refutation paths (falsified unit, empty strengthened clause) must leave the trace with the terminating empty clause (Spec 11 section 4).
 // CEP:STATUS: complete
-// CEP:FAILURE: proof errors are swallowed here only because the outcome is already refutation - no: they surface through the caller's Result; this helper records the step and reports the outcome.
+// CEP:FAILURE: proof-append errors propagate through the caller's Result (a failed refutation step is a broken trace, never a silent one); storage errors propagate identically.
 // CEP:ASSUMES: a recorder may or may not be attached.
 // CEP:COST: one proof append.
 // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::contradictory_units_refute.
@@ -526,7 +536,7 @@ fn simplify_round(
             None => continue,
         };
         let (length, _, _) = read_clause(solver, offset, &mut workspace.left)?;
-        if length < 2 {
+        if length < kVivifyMinLiterals {
             continue;
         }
         stats.vivify_attempts += 1;
@@ -549,7 +559,7 @@ fn simplify_round(
     Ok(changed)
 }
 
-// CEP:WHAT: Vivifies one candidate clause: isolates it with the raw deleted mark, assumes the negations of its literals in storage order, and on the first propagation conflict replaces the clause with the surviving prefix.
+// CEP:WHAT: Vivifies one candidate clause: isolates it with the raw deleted mark, assumes the negations of its literals in the sorted, deduplicated order produced by read_clause (any fixed order is sound - the prefix argument does not depend on the original storage order), and on the first propagation conflict replaces the clause with the surviving prefix.
 // CEP:WHY: Spec 09 section 5: the conflict under the first k negated literals proves the database minus the candidate entails l1 v ... v lk, which is the shortened clause; the original is deleted first in the proof (the RUP check of the replacement runs against the database minus the candidate, exactly the state the check used); the raw mark is restored when no shortening is found.
 // CEP:STATUS: complete
 // CEP:FAILURE: propagates CdclError; never leaves the trail above level 0 or the candidate marked.
@@ -643,7 +653,11 @@ fn vivify(
     match add_clause_checked(solver, &literals[..keep])? {
         Some(()) => {}
         None => {
-            // The shortened clause refuted the formula outright (unit falsified).
+            // The shortened clause refuted the formula outright (falsified unit
+            // or level-0 propagation conflict): the round ends refuted with the
+            // empty-clause step already emitted by add_clause_checked (Spec 09
+            // section 6, Spec 11 section 4).
+            *status = SimplifyStatus::Unsatisfiable;
             return Ok(true);
         }
     }
@@ -802,12 +816,12 @@ fn self_subsumption_pivot(left: &[SatLiteral], right: &[SatLiteral]) -> Option<u
 }
 
 // CEP:WHAT: Adds a clause through the solver's level-0 entry point and classifies the refuting outcomes.
-// CEP:WHY: Every preprocessing rewrite adds through the same path as problem clauses, so registration, attachment, unit enqueueing, root-conflict flagging, and proof recording happen exactly once per clause; None signals "formula refuted by this addition" (falsified unit or level-0 propagation conflict).
+// CEP:WHY: Every preprocessing rewrite adds through the same path as problem clauses, so registration, attachment, unit enqueueing, root-conflict flagging, and proof recording happen exactly once per clause; None signals "formula refuted by this addition" (falsified unit or level-0 propagation conflict); the falsified-unit sub-case emits the empty clause inside add_clause_with_kind (Spec 11 section 4), and the propagation-conflict sub-case emits it here so every refuted-by-addition trace ends with the refutation step regardless of which scan triggered it.
 // CEP:STATUS: complete
-// CEP:FAILURE: propagates CdclError; returns None on refutation.
+// CEP:FAILURE: propagates CdclError; returns None on refutation (the empty-clause step is emitted before returning).
 // CEP:ASSUMES: decision level 0.
-// CEP:COST: one clause add plus one propagation drain.
-// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{contradictory_units_refute, strengthening_rewrites}.
+// CEP:COST: one clause add plus one propagation drain plus (on refutation) one proof append.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{contradictory_units_refute, strengthening_rewrites, vivified_clause_refutes_formula}.
 // CEP:SECURITY: add-time validation.
 fn add_clause_checked(
     solver: &CdclSolver<'_>,
@@ -817,7 +831,20 @@ fn add_clause_checked(
         Ok(AttachOutcome::Conflict) => Ok(None),
         Ok(_) => match solver.core().propagate() {
             Ok(PropagationOutcome::NoConflict) => Ok(Some(())),
-            Ok(PropagationOutcome::Conflict(_)) => Ok(None),
+            Ok(PropagationOutcome::Conflict(_)) => {
+                // Level-0 propagation conflict: the added clause refutes the
+                // formula. The conflicting state is exactly the RUP witness of
+                // the empty clause (all trail entries are level-0 consequences),
+                // so the refutation step is emitted here (Spec 11 section 4) -
+                // the falsified-unit sub-case is emitted inside
+                // add_clause_with_kind, so both None sub-cases are covered.
+                if let Some(recorder) = solver.proof() {
+                    recorder
+                        .record_empty_clause()
+                        .map_err(crate::sat::cdcl::CdclError::Proof)?;
+                }
+                Ok(None)
+            }
             Err(error) => Err(error.into()),
         },
         Err(error) => Err(error),

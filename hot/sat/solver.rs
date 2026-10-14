@@ -6,12 +6,12 @@
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns Indeterminate(CdclError) on structural failures, the conflict budget, proof-buffer exhaustion, or over-long learnt clauses; Unsatisfiable on level-0 conflicts and falsified learnt units; Satisfiable when every variable is assigned; UnsatUnderAssumptions when the refutation requires the pushed assumptions (the core is then readable via failed_assumptions). Never panics.
 // CEP:ASSUMES: Clauses are added at level 0 before solve; single-threaded; assumption literals belong to declared variables and repeat at most kMaxAssumptions per call; learnt clauses learned during an assumption solve are deleted on that solve's exit (they may depend on the assumptions), so incremental solves of the base formula stay sound.
-// CEP:COST: per iteration: one propagate (54.90 cycles median per step including reason and level recording, bench CEP-BENCH-0005) plus one decision (420.41 cycles median, bench CEP-BENCH-0009) plus per-conflict analysis and learning (697.42 cycles median, bench CEP-BENCH-0009); end-to-end PHP(3,4) refutation measured 5372.33 cycles per conflict on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, measured 2026-10-10, bench CEP-BENCH-0009, artifact benches/artifacts/cdcl_solve_per_conflict.json; registry bookkeeping adds one O(1) registration per learnt clause (bench CEP-BENCH-0013, artifact benches/artifacts/sat_registry_step.json) and proof recording, when enabled, one O(1) append per clause add and delete (artifact benches/artifacts/sat_drat_record.json); the loop is allocation-free after construction.
-// CEP:EVIDENCE: unit/hot/sat_solver_test.rs; unit/hot/sat_registry_test.rs; unit/hot/sat_assumptions_test.rs; unit/hot/sat_proof_test.rs; property/cdcl_property_test.rs::{solve_agrees_with_brute_force, models_satisfy_formulas, learnt_clauses_are_entailed}; property/sat_incremental_property_test.rs; fuzz/cdcl_fuzz_test.rs; bench CEP-BENCH-0009, CEP-BENCH-0013.
+// CEP:COST: per iteration: one propagate (54.90 cycles median per step including reason and level recording, bench CEP-BENCH-0005) plus one decision (420.41 cycles median, bench CEP-BENCH-0009) plus per-conflict analysis and learning (697.42 cycles median, bench CEP-BENCH-0009); end-to-end PHP(3,4) refutation measured 5372.33 cycles per conflict on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, measured 2026-10-10, bench CEP-BENCH-0009, artifact benches/artifacts/cdcl_solve_per_conflict.json; registry bookkeeping adds one O(1) registration per learnt clause (bench CEP-BENCH-0010, artifact benches/artifacts/sat_registry_step.json) and proof recording, when enabled, one O(1) append per clause add and delete (the append primitive measured by bench CEP-BENCH-0013, artifact benches/artifacts/sat_drat_record.json); the loop is allocation-free after construction.
+// CEP:EVIDENCE: unit/hot/sat_solver_test.rs; unit/hot/sat_registry_test.rs; unit/hot/sat_assumptions_test.rs; unit/hot/sat_proof_test.rs; property/cdcl_property_test.rs::{solve_agrees_with_brute_force, models_satisfy_formulas, learnt_clauses_are_entailed}; property/sat_incremental_property_test.rs; fuzz/cdcl_fuzz_test.rs; bench CEP-BENCH-0005, CEP-BENCH-0009, CEP-BENCH-0010, CEP-BENCH-0013.
 // CEP:SECURITY: all state transitions go through the bounds-checked SatCore APIs; the conflict budget, the registry capacity, and the proof capacities bound adversarial workloads.
 // CEP:UNSAFE: none; this file is safe Rust.
-// CEP:HPC-DETERMINISM: deterministic; decisions, propagation, analysis, learning, restarts, reduction, and proof recording are pure functions of the clause set and the arena state (CEP&CC 38.10), verified by the two-identical-solves test.
-// CEP:HPC-PASS-LEGALITY: Formal Spec 06 section 8 fixes the loop contract (the search terminates with Satisfiable only at a model, with Unsatisfiable only after a level-0 refutation, and CDCL with restarts, bounded learning, and bounded deletion terminates) and Spec 06 section 9 fixes the reduction contract; Formal Spec 10 sections 3-5 fix the assumption contract (root levels, backjump clamping, and the analyze_final core); Formal Spec 11 fixes the proof-recording contract; all three are verified against brute-force oracles in the property tests.
+// CEP:HPC-DETERMINISM: deterministic; decisions, propagation, analysis, learning, restarts, reduction, and proof recording are pure functions of the clause set and the arena state (CEP&CC 38.10), verified by property/cdcl_property_test.rs::two_identical_solves (identical result, conflict, restart, and proof-step counts across fresh double solves, with reduction firing and proof recording on).
+// CEP:HPC-PASS-LEGALITY: Formal Spec 06 section 5 fixes the loop contract (the search terminates with Satisfiable only at a model, with Unsatisfiable only after a level-0 refutation, and CDCL with restarts, bounded learning, and bounded deletion terminates) and Spec 06 section 9 fixes the reduction contract; Formal Spec 10 sections 3-5 fix the assumption contract (root levels, backjump clamping, and the analyze_final core); Formal Spec 11 fixes the proof-recording contract; all three are verified against brute-force oracles in the property tests.
 // CEP:OPTIMAL: not-optimal
 // CEP:OPTNOTE: the loop re-reads trail state through accessors per iteration and the learnt buffer is copied per conflict; both are measurement-deferred micro-optimizations; ticket CEP-1032.
 
@@ -424,6 +424,26 @@ pub struct CdclSolver<'a> {
 // CEP:SECURITY: none.
 const kInvalidPendingCleanup: u32 = u32::MAX;
 
+// CEP:WHAT: Bit shift separating the proof id and the literal encoding in one packed pending-cleanup step.
+// CEP:WHY: The deferred assumption-delete queue stores (id, literal) pairs in one u64; the layout must be named so pack and unpack cannot drift apart (CEP&CC 11.3 auditability).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: proof ids fit u32 and literal encodings fit u32 (both bounded by their own capacities).
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{failed_core_is_minimal_subset, learnts_do_not_leak_across_solves}.
+// CEP:SECURITY: none.
+const kPendingCleanupIdShift: u32 = 32;
+
+// CEP:WHAT: Low-word mask extracting the literal encoding from a packed pending-cleanup step.
+// CEP:WHY: The unpacking side of the named layout (kPendingCleanupIdShift is the packing side).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: literal encodings occupy the low 32 bits.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::failed_core_is_minimal_subset.
+// CEP:SECURITY: none.
+const kPendingCleanupLiteralMask: u64 = 0xFFFF_FFFF;
+
 impl<'a> CdclSolver<'a> {
     // CEP:WHAT: Constructs the solver with production defaults (registry on, proof off).
     // CEP:WHY: Design 19.4: every structure is fully built before the hot path; the Phase 2 signature stays identical so existing callers keep their behavior (registry bookkeeping adds O(1) per clause and the trigger never fires below kSatMaxLearntClauses).
@@ -588,8 +608,9 @@ impl<'a> CdclSolver<'a> {
             let count = self.pending_cleanup_steps_count.get();
             for slot in (0..count as usize).rev() {
                 let packed = self.pending_cleanup_steps[slot].get();
-                let id = (packed >> 32) as u32;
-                let literal = SatLiteral::from_encoding((packed & 0xFFFF_FFFF) as u32);
+                let id = (packed >> kPendingCleanupIdShift) as u32;
+                let literal =
+                    SatLiteral::from_encoding((packed & kPendingCleanupLiteralMask) as u32);
                 if let Err(error) = recorder.record_assumption_delete(id, literal) {
                     self.pending_cleanup.set(kInvalidPendingCleanup);
                     self.pending_cleanup_steps_count.set(0);
@@ -756,7 +777,7 @@ impl<'a> CdclSolver<'a> {
     // CEP:WHAT: Copies the failed-assumption core of the last UnsatUnderAssumptions result into a caller buffer and returns its length.
     // CEP:WHY: S38: the core is the AVATAR-facing answer of an assumption solve; the copy-out API keeps the hot crate allocation-free and safe (no slice transmute of the Cell buffer), and an empty result accompanies every other outcome.
     // CEP:STATUS: complete
-    // CEP:FAILURE: returns 0 when the buffer is shorter than the core (the core length is still returned truthfully only when it fits; truncation reports the copied length, and the buffer is expected sized kMaxAssumptions by the documented contract).
+    // CEP:FAILURE: truncates to the buffer length and returns the copied count (callers size the buffer with failed_assumption_count or pass kMaxAssumptions storage per the documented contract).
     // CEP:ASSUMES: meaningful only after UnsatUnderAssumptions; out is caller-owned stack storage.
     // CEP:COST: O(core length).
     // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{unsat_under_assumptions_yields_core, core_negation_is_entailed}; property/sat_incremental_property_test.rs::cores_are_valid.
@@ -1050,7 +1071,7 @@ impl<'a> CdclSolver<'a> {
                 .enumerate()
             {
                 self.pending_cleanup_steps[slot]
-                    .set((*id as u64) << 32 | literal.encoding() as u64);
+                    .set((*id as u64) << kPendingCleanupIdShift | literal.encoding() as u64);
             }
             self.pending_cleanup_steps_count
                 .set(assumption_recorded as u32);

@@ -1,9 +1,9 @@
 // CEP:FILE: cold/proof_output/drat_checker.rs
-// CEP:WHAT: Internal DRAT checker (design 11.1 S43): replays the recorder's steps against the formula, seeds the database from axiom steps, verifies every derived addition by RUP (unit propagation to conflict) or RAT (resolvent RUP over the pivot), mirrors deletions, and reports validity, the first invalid step, or honest budget exhaustion.
-// CEP:WHY: Design 18 and 11.4: a proof is an independently checkable certificate - trusting the solver's own claim of unsatisfiability violates the zero-tolerance correctness contract, so the recorded trace is verified mechanically after the solve; the checker runs cold (std, Vec-based, no arena) because it is a post-solve batch pass; axiom steps seed the database (they ARE the formula, and their one-to-one correspondence with the caller-supplied formula is verified, which binds the trace to the problem it claims to refute), assumption units are hypotheses (justification skipped, exactly as the solver treats them), derived additions carry the RUP/RAT burden, and deletions need no justification but must reference known ids.
+// CEP:WHAT: Internal DRAT checker (design 11.1 S43): replays the recorder's steps against the formula, seeds the database from axiom steps, verifies every derived addition by RUP (unit propagation to conflict) or RAT (resolvent RUP over the pivot), mirrors deletions, and reports validity, the first invalid step, or honest budget exhaustion; with CheckOptions.require_refutation set, a trace that never derives the empty clause is rejected with MissingRefutation so a step-wise-valid trace cannot masquerade as a refutation certificate.
+// CEP:WHY: Design 18 and 11.4: a proof is an independently checkable certificate - trusting the solver's own claim of unsatisfiability violates the zero-tolerance correctness contract, so the recorded trace is verified mechanically after the solve; the checker runs cold (std, Vec-based, no arena) because it is a post-solve batch pass; axiom steps seed the database (they ARE the formula, and their one-to-one correspondence with the caller-supplied formula is verified, which binds the trace to the problem it claims to refute), assumption units are hypotheses (justification skipped, exactly as the solver treats them), derived additions carry the RUP/RAT burden, deletions need no justification but must reference known ids, and the refutation-completeness flag closes the justifies-every-step-but-derives-nothing certificate class (Spec 11 section 4).
 // CEP:CLASS: CEP-1
 // CEP:STATUS: complete
-// CEP:FAILURE: Returns CheckOutcome::Invalid with the failing step index and reason, or BudgetExhausted with the steps checked; never panics; never reports Valid for a step it could not verify.
+// CEP:FAILURE: Returns CheckOutcome::Invalid with the failing step index and reason (including MissingRefutation when a refutation is required but never derived), or BudgetExhausted with the steps checked; never panics; never reports Valid for a step it could not verify or a refutation it never saw.
 // CEP:ASSUMES: The recorder is quiescent; the formula argument is exactly the sequence of problem clauses added through solver.add_clause, in order; variable indices are dense from zero.
 // CEP:COST: O(steps_checked x database_size x propagation_length) worst case - the checker re-propagates from scratch per RUP probe (no incremental watched-literal state), which is the price of a from-scratch independent verifier; the step budget bounds the pass and is reported honestly on exhaustion.
 // CEP:EVIDENCE: unit/cold/drat_checker_test.rs; property/drat_property_test.rs::{proofs_of_random_solves_verify, mutated_proofs_rejected}; tests/golden/drat_proof_test.rs.
@@ -61,6 +61,15 @@ pub enum InvalidReason {
     /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::malformed_steps_rejected.
     /// CEP:SECURITY: none.
     MalformedStep,
+    /// CEP:WHAT: require_refutation was set but the trace contains no empty-clause Add step.
+    /// CEP:WHY: Per-step justification alone does not certify a refutation: a trace whose every step is justified but which never derives the empty clause refutes nothing (Spec 11 section 4); when the caller asserts the trace refutes the formula, the missing terminal derivation is a rejecting outcome, not a silent pass.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::refutation_required_rejects_proofless_traces.
+    /// CEP:SECURITY: rejects fabricated certificates that verify step-wise but conclude nothing.
+    MissingRefutation,
 }
 
 /// CEP:WHAT: Outcome of one verification run.
@@ -74,11 +83,11 @@ pub enum InvalidReason {
 /// CEP:SECURITY: none.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CheckOutcome {
-    /// CEP:WHAT: Every step verified (RUP or RAT where required, deletions mirrored, axioms matched).
+    /// CEP:WHAT: Every step verified (RUP or RAT where required, deletions mirrored, axioms matched) and, when require_refutation is set, the empty-clause derivation is present.
     /// CEP:WHY: The trusting outcome.
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
-    /// CEP:ASSUMES: the trace ends with the empty clause when it claims a refutation (the caller checks the terminal step's shape).
+    /// CEP:ASSUMES: with require_refutation off (the default), Valid certifies per-step justification only - callers asserting a refutation must set the flag or check the terminal step themselves.
     /// CEP:COST: none.
     /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::refutation_proofs_verify; property/drat_property_test.rs::proofs_of_random_solves_verify.
     /// CEP:SECURITY: none.
@@ -165,27 +174,37 @@ pub struct CheckOptions {
     /// CEP:WHAT: Maximum clauses scanned per RAT pivot.
     /// CEP:WHY: kDratRatScanLimit.
     /// CEP:STATUS: complete
-    /// CEP:FAILURE: an over-limit scan reports JustificationFailed (not silently valid).
+    /// CEP:FAILURE: an over-limit scan reports BudgetExhausted (fail-closed, but distinct from a genuine justification failure).
     /// CEP:ASSUMES: >= 1.
     /// CEP:COST: 4 bytes.
     /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::rat_scan_budget_enforced.
     /// CEP:SECURITY: denial-of-service bound.
     pub rat_scan_limit: u32,
+    /// CEP:WHAT: Whether the trace must contain an empty-clause Add (a complete refutation).
+    /// CEP:WHY: Spec 11 section 4: a refutation ends with the empty-clause Add; with this flag set, a trace whose steps all verify but which never derives the empty clause is rejected with MissingRefutation instead of being blessed Valid; satisfiable-run traces (no empty clause) and hypothesis-scoped checks keep the flag off.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; a configuration flag.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 byte.
+    /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::{refutation_proofs_verify, refutation_required_rejects_proofless_traces}.
+    /// CEP:SECURITY: closes the step-wise-valid-but-concludes-nothing certificate class.
+    pub require_refutation: bool,
 }
 
 impl CheckOptions {
     // CEP:WHAT: Production budgets from the named constants.
-    // CEP:WHY: One named place documents the defaults (CEP&CC 11.3).
+    // CEP:WHY: One named place documents the defaults (CEP&CC 11.3); require_refutation defaults to false so satisfiable-run traces and hypothesis-scoped verifications keep their per-step semantics.
     // CEP:STATUS: complete
     // CEP:FAILURE: none.
     // CEP:ASSUMES: none.
     // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/drat_checker_test.rs::refutation_proofs_verify.
+    // CEP:EVIDENCE: unit/cold/drat_checker_test.rs::refutation_proofs_verify; property/drat_property_test.rs::proofs_of_random_solves_verify.
     // CEP:SECURITY: none.
     pub fn new() -> CheckOptions {
         CheckOptions {
             step_budget: 1_000_000,
             rat_scan_limit: kDratRatScanLimit,
+            require_refutation: false,
         }
     }
 }
@@ -261,7 +280,7 @@ impl Mirror {
 }
 
 // CEP:WHAT: Unit propagation to conflict over a clause list under seed assumptions (the RUP engine).
-// CEP:WHY: RUP (reverse unit propagation, Heule et al. 2013): a clause C is RUP iff assuming the negation of every C literal and propagating derives a conflict; the routine is a plain worklist propagation over a dense value array - from-scratch by design so the verifier shares no state with the solver it verifies.
+// CEP:WHY: RUP (reverse unit propagation, Heule et al. 2013): a clause C is RUP iff assuming the negation of every C literal and propagating derives a conflict; the routine is a plain wave propagation over a dense value array - from-scratch by design so the verifier shares no state with the solver it verifies.
 // CEP:STATUS: complete
 // CEP:FAILURE: none (bool answer).
 // CEP:ASSUMES: seed literals are the assumed-true literals; variables are dense from zero.
@@ -280,25 +299,24 @@ fn propagates_to_conflict(clauses: &[&[SatLiteral]], seed: &[SatLiteral]) -> boo
     }
     // values[v]: 1 = true, -1 = false, 0 = unassigned.
     let mut values = vec![0i8; variable_count];
-    let mut queue: Vec<SatLiteral> = Vec::with_capacity(seed.len());
     for literal in seed.iter() {
         let index = literal.variable().0 as usize;
         let bit: i8 = if literal.is_positive() { 1 } else { -1 };
         match values[index] {
             0 => {
                 values[index] = bit;
-                queue.push(*literal);
             }
-            existing if existing == bit => {}
+            existing if existing == bit => {
+                // Same value already set by an earlier seed literal: no-op.
+            }
             _ => return true,
         }
     }
     // Wave propagation: each wave scans every clause once, propagating units and
     // detecting conflicts, until a wave makes no progress (from-scratch verifier
-    // simplicity). Waves run even when the seed queue is empty so that database
-    // units alone can derive a conflict - that is exactly the RUP shape of the
-    // final empty clause (Spec 11 section 4).
-    let _ = &queue;
+    // simplicity). Waves run even when the seed is empty so that database units
+    // alone can derive a conflict - that is exactly the RUP shape of the final
+    // empty clause (Spec 11 section 4).
     loop {
         let mut progressed = false;
         for clause in clauses.iter() {
@@ -331,7 +349,6 @@ fn propagates_to_conflict(clauses: &[&[SatLiteral]], seed: &[SatLiteral]) -> boo
                     let index = literal.variable().0 as usize;
                     let bit: i8 = if literal.is_positive() { 1 } else { -1 };
                     values[index] = bit;
-                    queue.push(literal);
                     progressed = true;
                 }
             }
@@ -382,6 +399,7 @@ pub fn verify(
     let mut formula_cursor: usize = 0;
     let total = recorder.step_count();
     let mut checked: u32 = 0;
+    let mut saw_empty_clause = false;
     for index in 0..total {
         if checked as u64 >= options.step_budget {
             return CheckOutcome::BudgetExhausted {
@@ -430,17 +448,31 @@ pub fn verify(
                 let live = mirror.live();
                 let rup = propagates_to_conflict(&live, &negated);
                 let justified = if rup {
-                    true
+                    RatCheck::Justified
                 } else if literals.is_empty() {
-                    false
+                    // The empty clause has no RAT pivot: RUP is its only justification.
+                    RatCheck::Refuted
                 } else {
                     rat_justified(&live, &literals, options.rat_scan_limit)
                 };
-                if !justified {
-                    return CheckOutcome::Invalid {
-                        step: index,
-                        reason: InvalidReason::JustificationFailed,
-                    };
+                match justified {
+                    RatCheck::Justified => {}
+                    RatCheck::Refuted => {
+                        return CheckOutcome::Invalid {
+                            step: index,
+                            reason: InvalidReason::JustificationFailed,
+                        }
+                    }
+                    RatCheck::ScanBudgetExhausted => {
+                        // Fail-closed, but honest about the cause: the scan limit
+                        // ran out, no genuine justification failure was found.
+                        return CheckOutcome::BudgetExhausted {
+                            steps_checked: checked,
+                        };
+                    }
+                }
+                if literals.is_empty() {
+                    saw_empty_clause = true;
                 }
                 mirror.insert(step.proof_id, literals);
             }
@@ -473,20 +505,67 @@ pub fn verify(
             reason: InvalidReason::AxiomMismatch,
         };
     }
+    if options.require_refutation && !saw_empty_clause {
+        // The caller asserted a refutation: every step may be justified, but a
+        // trace that never derives the empty clause refutes nothing (Spec 11
+        // section 4).
+        return CheckOutcome::Invalid {
+            step: total,
+            reason: InvalidReason::MissingRefutation,
+        };
+    }
     CheckOutcome::Valid {
         steps_checked: checked,
     }
 }
 
+// CEP:WHAT: Outcome of one RAT scan: justified, refuted, or the scan budget ran out.
+// CEP:WHY: CEP&CC Law 6: a genuine justification failure and a budget exhaustion are different facts; the caller maps Refuted to Invalid(JustificationFailed) and ScanBudgetExhausted to BudgetExhausted so the rejecting verdict names the true cause.
+// CEP:STATUS: complete
+// CEP:FAILURE: none; a vocabulary type.
+// CEP:ASSUMES: none.
+// CEP:COST: enum copy.
+// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::{rat_failure_rejected, rat_scan_budget_enforced}.
+// CEP:SECURITY: none.
+enum RatCheck {
+    /// CEP:WHAT: Every required resolvent is RUP or tautological.
+    /// CEP:WHY: The trusting outcome.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::rat_step_verified.
+    /// CEP:SECURITY: none.
+    Justified,
+    /// CEP:WHAT: Some required resolvent is neither RUP nor tautological.
+    /// CEP:WHY: The genuine justification failure.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::rat_failure_rejected.
+    /// CEP:SECURITY: none.
+    Refuted,
+    /// CEP:WHAT: The scan limit ran out before every pivot partner was examined.
+    /// CEP:WHY: Fail-closed budget outcome; no justification failure was found.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::rat_scan_budget_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    ScanBudgetExhausted,
+}
+
 // CEP:WHAT: RAT check: the pivot is the clause's first literal; every live clause containing the negated pivot yields a resolvent that must be RUP (tautological resolvents are skipped).
 // CEP:WHY: RAT (resolution asymmetric tautology, Heule et al. 2013): C is RAT on pivot p iff for every clause D containing -p, the resolvent (C \ {p}) u (D \ {-p}) is RUP or tautological; the scan limit bounds adversarial databases.
 // CEP:STATUS: complete
-// CEP:FAILURE: false when any required resolvent is not RUP or the scan limit is exceeded.
+// CEP:FAILURE: Refuted when any required resolvent is not RUP; ScanBudgetExhausted when the scan limit is exceeded (fail-closed).
 // CEP:ASSUMES: clause is non-empty (the caller checks).
 // CEP:COST: O(scan limit x resolvent size x propagation).
 // CEP:EVIDENCE: unit/cold/drat_checker_test.rs::{rat_step_verified, rat_failure_rejected, rat_scan_budget_enforced}.
 // CEP:SECURITY: the scan limit is a denial-of-service bound.
-fn rat_justified(live: &[&[SatLiteral]], clause: &[SatLiteral], scan_limit: u32) -> bool {
+fn rat_justified(live: &[&[SatLiteral]], clause: &[SatLiteral], scan_limit: u32) -> RatCheck {
     let pivot = clause[0];
     let negated_pivot = pivot.negate();
     let mut scanned: u32 = 0;
@@ -499,7 +578,7 @@ fn rat_justified(live: &[&[SatLiteral]], clause: &[SatLiteral], scan_limit: u32)
         }
         scanned += 1;
         if scanned > scan_limit {
-            return false;
+            return RatCheck::ScanBudgetExhausted;
         }
         // Resolvent: (clause \ {pivot}) u (candidate \ {negated pivot}).
         let mut resolvent: Vec<SatLiteral> = Vec::with_capacity(clause.len() + candidate.len());
@@ -529,8 +608,8 @@ fn rat_justified(live: &[&[SatLiteral]], clause: &[SatLiteral], scan_limit: u32)
         let negated_resolvent: Vec<SatLiteral> =
             resolvent.iter().map(|literal| literal.negate()).collect();
         if !propagates_to_conflict(live, &negated_resolvent) {
-            return false;
+            return RatCheck::Refuted;
         }
     }
-    true
+    RatCheck::Justified
 }

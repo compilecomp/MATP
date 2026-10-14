@@ -2,11 +2,11 @@
   "bench": "CEP-BENCH-0001",
   "name": "arena_alloc_bytes",
   "iterations": 1000000,
-  "cycles_median": 9.98727,
-  "cycles_min": 9.958074,
+  "cycles_median": 9.970452,
+  "cycles_min": 9.944688,
   "rustc": "1.99.0",
   "profile": "release",
   "target": "x86-64",
   "cycle_counter": "serialized-rdtsc",
-  "date_unix": 1791918161
+  "date_unix": 1792021234
 }

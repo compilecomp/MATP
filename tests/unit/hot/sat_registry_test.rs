@@ -18,6 +18,7 @@ use common::make_arena;
 use mapt::hot::sat::literal::{SatLiteral, SatVar};
 use mapt::hot::sat::restart::RestartPolicy;
 use mapt::hot::sat::solver::{CdclSolver, SolverOptions};
+use mapt_config::limits::kSatClauseActivityCeiling;
 
 // CEP:WHAT: Test variable count.
 // CEP:WHY: Named fixture size (CEP&CC 11.3).
@@ -289,14 +290,58 @@ fn activity_rescale_preserves_order() {
     let first = solver.registry().entry(0).expect("entry").offset.get();
     let second = solver.registry().entry(1).expect("entry").offset.get();
     solver.registry().bump_activity(first).expect("bump");
-    // A second bump of a different clause with the huge increment forces rescale.
     solver.registry().bump_activity(second).expect("bump");
+    // The third bump pushes the first clause past the 1e100 ceiling (1e100 +
+    // 1e100 > 1e100), forcing the rescale path.
+    solver.registry().bump_activity(first).expect("bump");
     let a = solver.registry().entry(0).expect("entry").activity.get();
     let b = solver.registry().entry(1).expect("entry").activity.get();
     assert!(a.is_finite() && b.is_finite());
-    // Both were bumped once before any rescale; after rescale order is preserved
-    // weakly (identical scores are legal; the deletion tiebreak is the age).
-    assert!(a <= b || b <= a);
+    assert!(
+        a < kSatClauseActivityCeiling && b < kSatClauseActivityCeiling,
+        "rescale must pull every score below the ceiling: {a} {b}"
+    );
+    // The twice-bumped clause stays above the once-bumped one: the rescale is
+    // (weakly) order-preserving and the pending bump is applied after it.
+    assert!(a > b, "order through the rescale: {a} vs {b}");
+}
+
+// CEP:WHAT: Verifies the bump that triggers a rescale is still applied (after the
+// rescale, with the scaled increment), and the increment rescales with the scores.
+// CEP:WHY: MiniSat clause-activity discipline: rescaling must neither drop the
+// pending bump nor leave the increment un-scaled (pre- and post-rescale bumps
+// would then be incomparable); the pre-fix code dropped the bump entirely.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the triggering bump is dropped or scores double-count.
+// CEP:ASSUMES: increment 1e100 against the 1e100 ceiling: the second bump of the
+// same clause crosses the ceiling and rescales (factor 1e-100), so the expected
+// post-rescale score is ~1.0 (scaled) + ~1.0 (scaled increment) = ~2.0 while the
+// untouched clause stays at exactly 0.0.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/registry.rs::{bump_activity, activity_increment}.
+// CEP:SECURITY: none.
+#[test]
+fn rescale_applies_the_pending_bump() {
+    let solver = make_solver(64, 10, 1e100);
+    solver
+        .add_clause(&[lit(0, true), lit(1, true)])
+        .expect("c1");
+    solver
+        .add_clause(&[lit(2, true), lit(3, true)])
+        .expect("c2");
+    let first = solver.registry().entry(0).expect("entry").offset.get();
+    // First bump: 0 + 1e100 = 1e100, at (not past) the ceiling: no rescale.
+    solver.registry().bump_activity(first).expect("bump 1");
+    // Second bump of the same clause: 1e100 + 1e100 > 1e100: rescale, then the
+    // pending bump applies with the scaled increment: ~1.0 + ~1.0 = ~2.0.
+    solver.registry().bump_activity(first).expect("bump 2");
+    let a = solver.registry().entry(0).expect("entry").activity.get();
+    let b = solver.registry().entry(1).expect("entry").activity.get();
+    assert!(
+        (a - 2.0).abs() < 1e-12,
+        "the rescaling bump must land: {a} (expected ~2.0)"
+    );
+    assert_eq!(b, 0.0, "the untouched clause scales 0.0 -> 0.0 exactly");
 }
 
 // CEP:WHAT: Verifies a single bump raises the activity score.

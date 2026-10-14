@@ -17,7 +17,7 @@ use crate::ir::literal::Literal;
 use crate::ir::symbol_table::SymbolTable;
 use crate::ir::term::{TermError, TermPtr, TermStore, TermTag};
 use crate::unification::substitution::Substitution;
-use mapt_config::limits::{kMaxInferenceVariables, kMaxVariablesPerClause};
+use mapt_config::limits::{kMaxInferenceVariables, kMaxSymbolArity, kMaxVariablesPerClause};
 
 use super::InferenceError;
 
@@ -63,7 +63,8 @@ pub fn rename_apart(
             terms.intern_var(shifted).map_err(term_error)
         }
         TermTag::Function | TermTag::Predicate => {
-            let mut children: [TermPtr; 32] = [TermPtr::invalid(); 32];
+            let mut children: [TermPtr; kMaxSymbolArity as usize] =
+                [TermPtr::invalid(); kMaxSymbolArity as usize];
             let count = view.child_count();
             if count as usize > children.len() {
                 return Err(InferenceError::Structural(
@@ -252,7 +253,8 @@ pub fn remap_variables(
             terms.intern_var(target).map_err(term_error)
         }
         TermTag::Function | TermTag::Predicate => {
-            let mut children: [TermPtr; 32] = [TermPtr::invalid(); 32];
+            let mut children: [TermPtr; kMaxSymbolArity as usize] =
+                [TermPtr::invalid(); kMaxSymbolArity as usize];
             let count = view.child_count();
             if count as usize > children.len() {
                 return Err(InferenceError::Structural(

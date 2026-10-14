@@ -10,7 +10,7 @@
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force, loop_refutes_pigeonhole}; fuzz/given_clause_fuzz_test.rs.
 // CEP:SECURITY: every budget is enforced (inference count, clause budget, arena, capacities, injected time); the loop cannot run unbounded without the callback firing.
 // CEP:UNSAFE: none; this file is safe Rust.
-// CEP:HPC-DETERMINISM: deterministic for a fixed stop callback: selection, simplification, and generation are pure functions of the state; the two-identical-solves fuzz test verifies it.
+// CEP:HPC-DETERMINISM: deterministic for a fixed stop callback: selection, simplification, and generation are pure functions of the state; unit/hot/given_clause_test.rs::generation_is_deterministic and property/given_clause_property_test.rs::selection_is_deterministic verify the two-run discipline (identical conclusions and identical selection sequences on fresh double runs).
 // CEP:HPC-PASS-LEGALITY: Formal Spec 08 section 7 fixes the loop contract: the empty clause is derived only by sound inferences (Theorem is trustworthy), Saturated means every selected clause had all its budgeted inferences computed (fairness per the strategy's priority argument), and every GaveUp reason names its budget; the property tests verify the loop against the SAT solver and brute force on propositional problems.
 
 use crate::inference::demodulation::{demodulate, unit_equation_sides};
@@ -29,8 +29,30 @@ use crate::search::SearchError;
 use crate::unification::substitution::Substitution;
 use mapt_config::limits::{
     kBudgetCheckInterval, kDefaultSymbolWeight, kInvalidClauseId, kInvalidSubstitutionOffset,
-    kMaxClauseLiterals, kMaxInferences, kMaxSimplifyRounds, kSelectionVariableWeight,
+    kMaxClauseLiterals, kMaxDerivationParents, kMaxInferences, kMaxSimplifyRounds,
+    kSelectionVariableWeight,
 };
+
+// CEP:WHAT: Parent counts of unary and binary inference rules (demodulation and factoring-style rules have one parent; resolution and superposition have two).
+// CEP:WHY: The derivation label's parent count names its values (CEP&CC 11.3) instead of bare 1/2 literals at every construction site.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: parent_count is u8 in DerivationStep.
+// CEP:COST: compile-time constants.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{resolution_fires, demodulation_simplifies}.
+// CEP:SECURITY: none.
+const kUnaryRuleParents: u8 = 1;
+const kBinaryRuleParents: u8 = 2;
+
+// CEP:WHAT: Payload capacity of one demodulation rule-tree retrieval.
+// CEP:WHY: The retrieval buffer is a fixed stack array (no allocation in the hot path); when more unit rules match a subterm than the buffer holds, the visible prefix is tried and the overflow is counted into stats.dropped (Law 4: bounded drops are never silent); the next simplify round retries on the rewritten clause.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: the rule tree's payload count per query stays small in practice (unit equations with equal left sides).
+// CEP:COST: 8 bytes per slot on the stack.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{retrieval_overflow_counts_drops, demodulation_simplifies}.
+// CEP:SECURITY: the capacity bounds the retrieval work per subterm.
+const kDemodulationPayloads: usize = 16;
 
 /// CEP:WHAT: Why the search gave up.
 /// CEP:WHY: CEP&CC Law 6 and design 20.2: a bounded stop reports its budget; the reasons map onto the design 2.2 ProverResult vocabulary (Timeout, InferenceLimit, MemoryExhausted).
@@ -151,7 +173,7 @@ pub struct SearchStats {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::inference_budget_fires.
     /// CEP:SECURITY: none.
     pub inferences: u64,
-    /// CEP:WHAT: Candidates and conclusions dropped (retrieval overflow, namespace overflow, over-long conclusions, budget tail).
+    /// CEP:WHAT: Candidates and conclusions dropped (retrieval overflow, namespace overflow, over-long conclusions, and the one-drop budget-tail marker of cap exhaustion).
     /// CEP:WHY: Bounded-search accounting (Law 4).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
@@ -267,7 +289,7 @@ impl SearchOptions {
 }
 
 /// CEP:WHAT: The selection weight function (design 15.3).
-/// CEP:WHY: weight = sum over the clause's subterm nodes of the symbol weight (function and predicate symbols at their configured weight, default 1) with variables at kSelectionVariableWeight (0) - the design's "symbol_weight(s) x occurrence_count(s)" with the documented defaults; the weight is computed at clause creation for the passive-set key and is distinct from the cached clause weight (which counts variables at the KBO weight for ordering purposes).
+/// CEP:WHY: weight = sum over the clause's subterm nodes of the symbol weight (function and predicate symbols at their configured weight, default 1) with variables at kSelectionVariableWeight (0) - the design's "symbol_weight(s) x occurrence_count(s)" with the documented defaults; the weight is computed at clause creation for the passive-set key and is distinct from the cached clause weight (which counts variables at the KBO weight for ordering purposes) An unknown symbol id falls back to kDefaultSymbolWeight (a defensive default: the frozen table answers every interned symbol, so the fallback covers only forged ids and keeps the weight positive and deterministic).
 /// CEP:CLASS: CEP-0
 /// CEP:STATUS: complete
 /// CEP:FAILURE: saturates at u32::MAX on overflow (weights bounded by kMaxTermWeight make this unreachable for legal clauses; the saturation is documented, not silent, via the store's WeightOverflow check at record level).
@@ -511,7 +533,7 @@ impl<'a> SearchSpace<'a> {
             rule: InferenceRule::Input,
             parent_count: 0,
             reserved: 0,
-            parents: [kInvalidClauseId; 4],
+            parents: [kInvalidClauseId; kMaxDerivationParents],
             substitution: kInvalidSubstitutionOffset,
         };
         let ptr = self
@@ -618,6 +640,11 @@ pub fn saturate<F: Fn(u64) -> bool>(
             }
             SimplifyStatus::Kept => {}
         }
+        // Defensive re-check after simplification: demodulation rewrites in
+        // place and never removes literals, so a clause that was non-empty at
+        // entry stays non-empty here (the empty clause arrives through
+        // SimplifyStatus::Discarded's drain path or the entry check above);
+        // the guard is kept as defense in depth, deliberately.
         if given_len == 0 {
             return Ok(SearchOutcome::Theorem {
                 refutation: given_offset,
@@ -640,6 +667,18 @@ pub fn saturate<F: Fn(u64) -> bool>(
         } else {
             let age = space.input_age.get();
             space.input_age.set(age + 1);
+            // Restandardize the rewritten clause before storage: demodulation
+            // can remove a middle variable (P(f(x0)) v Q(x1) under the rule
+            // f(y)=a becomes P(a) v Q(x1), namespace {1} with a gap), and the
+            // dense-namespace discipline the standardize-apart offset
+            // arithmetic relies on requires [0, n) (Spec 07 section 2, the
+            // same contract drain_buffer honors for rule conclusions).
+            crate::inference::restandardize_clause(
+                context.terms,
+                context.symbols,
+                &mut given[..given_len],
+            )
+            .map_err(SearchError::Inference)?;
             let deduped = dedupe_literals(&mut given[..given_len]);
             given_len = deduped;
             let weight = SelectionWeight::of(context.terms, context.symbols, &given[..given_len]);
@@ -834,13 +873,27 @@ fn simplify_given(
             let mut path: [u16; crate::inference::superposition::kMaxPathLength] =
                 [0; crate::inference::superposition::kMaxPathLength];
             let mut path_len: u32 = 0;
+            // Enter the literal at its first non-root position: rewriting
+            // targets subterm positions (the atom root is never rewritten;
+            // an atom without subterm positions has no demodulation site).
+            if !crate::search::generate::advance_path(context.terms, atom, &mut path, &mut path_len)
+            {
+                literal_index += 1;
+                continue;
+            }
             while let Some(target) = crate::inference::superposition::subterm_at_public(
                 context.terms,
                 atom,
                 &path[..path_len as usize],
             ) {
-                // Query the rule tree with the subterm; unit rules only.
-                let mut payloads: [u64; 16] = [0; 16];
+                // Query the rule tree with the subterm; unit rules only. The
+                // payload buffer is bounded by kDemodulationPayloads: a
+                // BufferTooSmall answer means more unit rules matched than the
+                // buffer holds - the visible prefix is tried and the overflow
+                // is COUNTED as a drop (Law 4: bounded drops are never
+                // silent; the next simplify round retries with the rewritten
+                // clause and typically reaches the rest).
+                let mut payloads: [u64; kDemodulationPayloads] = [0; kDemodulationPayloads];
                 let retrieved =
                     match space
                         .active
@@ -848,7 +901,10 @@ fn simplify_given(
                         .retrieve(context.terms, target, &mut payloads)
                     {
                         Ok(value) => value,
-                        Err(crate::index::IndexError::BufferTooSmall) => payloads.len(),
+                        Err(crate::index::IndexError::BufferTooSmall) => {
+                            stats.dropped += 1;
+                            payloads.len()
+                        }
                         Err(error) => return Err(SearchError::Index(error)),
                     };
                 let mut applied = false;
@@ -1118,9 +1174,9 @@ fn drain_buffer(
             let derivation = DerivationStep {
                 rule: entry.rule,
                 parent_count: if entry.parents[1] == kInvalidClauseId {
-                    1
+                    kUnaryRuleParents
                 } else {
-                    2
+                    kBinaryRuleParents
                 },
                 reserved: 0,
                 parents: [
@@ -1167,9 +1223,9 @@ fn drain_buffer(
         let derivation = DerivationStep {
             rule: entry.rule,
             parent_count: if entry.parents[1] == kInvalidClauseId {
-                1
+                kUnaryRuleParents
             } else {
-                2
+                kBinaryRuleParents
             },
             reserved: 0,
             parents: [
@@ -1196,10 +1252,10 @@ fn drain_buffer(
     Ok(DrainStatus::Drained)
 }
 
-// CEP:WHAT: Test probe for the forward-subsumption path (wraps forward_subsumed).
-// CEP:WHY: The loop-internal helper is private; the database tests verify the filtered path (feature filter then matching) in isolation through this thin, documented projection - the loop-level behavior is covered by given_clause_test's forward_subsumption_discards.
+// CEP:WHAT: Test probe for the forward-subsumption path (wraps forward_subsumed); pub because the integration tests live outside the crate, never called by production code.
+// CEP:WHY: The loop-internal helper is private; the database tests verify the filtered path (feature filter then matching) in isolation through this thin, documented projection - the loop-level behavior is covered by given_clause_test's forward_subsumption_discards; an internal SearchError is converted to false (the probe answers a yes/no question and the loop's own path surfaces the error loudly - the production forward_subsumed call has no such swallowing).
 // CEP:STATUS: complete
-// CEP:FAILURE: propagates SearchError.
+// CEP:FAILURE: false on an internal error (test-surface behavior; production callers get the Err).
 // CEP:ASSUMES: the given clause is non-empty.
 // CEP:COST: as forward_subsumed.
 // CEP:EVIDENCE: unit/hot/search_db_test.rs::forward_subsumption_uses_filter.

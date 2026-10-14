@@ -642,13 +642,14 @@ impl<'a> ClauseStore<'a> {
         if clause.overflow_offset != kInvalidClauseOffset {
             // Overflow-stored clause: the construction wrote ALL literals (count of
             // them, canonically sorted) into the overflow array and left the inline
-            // slots as filler, so EVERY index - including indices below
-            // kInlineClauseLiterals - reads the overflow array. (Phase 3 fix: the
-            // pre-Phase-3 reader returned the inline filler for the first eight
-            // indices of overflow clauses, and the Phase 1 layout test's is_ok()
-            // assertions never dereferenced the atoms, so the fillers leaked
-            // silently into every consumer that reads by index; the reader now
-            // matches the writer exactly.)
+            // slots as filler, so EVERY index reads the overflow array directly.
+            // (Phase 3 fix of two reader defects: the pre-Phase-3 reader returned
+            // the inline FILLER for indices below kInlineClauseLiterals, and read
+            // overflow[index - kInlineClauseLiterals] for indices at or above it
+            // while the writer stores all count literals at overflow[0..count] -
+            // the second half returned wrong-but-readable atoms that the Phase 1
+            // layout test's is_ok() assertions could not catch; the reader now
+            // matches the writer exactly, pinned by value in the layout test.)
             let overflow_start = clause.overflow_offset;
             let overflow_end = overflow_start
                 .checked_add(clause.literal_count as u32 * core::mem::size_of::<Literal>() as u32)

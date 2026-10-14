@@ -1,5 +1,5 @@
 // CEP:FILE: tests/unit/hot/sat_preprocess_test.rs
-// CEP:WHAT: Unit tests for SAT preprocessing: tautology deletion, duplicate-literal removal, subsumption deletion, self-subsuming strengthening, vivification (shortening, restoration, budget stops), contradictory-unit refutation, and the round bound.
+// CEP:WHAT: Unit tests for SAT preprocessing: tautology deletion, duplicate-literal removal, subsumption deletion, self-subsuming strengthening, vivification (shortening, restoration, budget stops, vivify-refuted formulas with the empty-clause proof step), contradictory-unit refutation, and the round bound.
 // CEP:WHY: Design 11.1 S30/S33/S34/S36 and Spec 09: preprocessing rewrites must preserve satisfiability with exact proof-trace ordering; the four rewrite kinds and their budget stops are pinned here before the property test verifies satisfiability preservation against brute force.
 // CEP:CLASS: CEP-2
 // CEP:STATUS: complete
@@ -17,8 +17,9 @@ mod common;
 use common::make_arena;
 use mapt::hot::sat::literal::{SatLiteral, SatVar};
 use mapt::hot::sat::preprocess::{simplify, SimplifyOptions, SimplifyStatus};
+use mapt::hot::sat::proof::ProofStepKind;
 use mapt::hot::sat::restart::RestartPolicy;
-use mapt::hot::sat::solver::CdclSolver;
+use mapt::hot::sat::solver::{CdclSolver, SolverOptions};
 
 // CEP:WHAT: Test variable count.
 // CEP:WHY: Named fixture size (CEP&CC 11.3).
@@ -227,6 +228,56 @@ fn contradictory_units_refute() {
     solver.add_clause(&[lit(0, false)]).expect("u2");
     let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
     assert_eq!(outcome.status, SimplifyStatus::Unsatisfiable);
+}
+
+// CEP:WHAT: Verifies a vivification-produced clause that refutes the formula ends the round
+// as Unsatisfiable and emits the empty-clause proof step (the level-0 propagation-conflict
+// sub-case of add_clause_checked).
+// CEP:WHY: Spec 09 section 6 and Spec 11 section 4: every refutation trace must end with the
+// empty clause regardless of which scan triggered it; the vivify None arm previously reported
+// Complete and the propagation-conflict sub-case emitted no refutation step at all.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any other status or a non-empty last step.
+// CEP:ASSUMES: fixture with database (0 or 1), (not 1), (not 0 or 2), (not 2), candidate
+// (0 or 3): vivifying the candidate negates 0, which makes (0 or 1) unit on 0 (1 is false at
+// level 0) and conflicts immediately, shortening the candidate to the unit (0); adding (0)
+// enqueues 0=true, and (not 0 or 2) is unit on not-0 (2 is false at level 0), so propagation
+// conflicts at level 0 - the added unit was NOT falsified at attach, so this is exactly the
+// propagation-conflict sub-case; the earlier two candidates cannot shorten (checked by hand:
+// negating their first literals satisfies every other clause).
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::{add_clause_checked, vivify}.
+// CEP:SECURITY: none.
+#[test]
+fn vivified_clause_refutes_formula() {
+    let arena = make_arena(12_582_912);
+    let mut options = SolverOptions::new(kVariables, RestartPolicy::Luby, false);
+    options.record_proof = true;
+    // Injected small proof capacities: the default buffers (1M steps) are sized
+    // for production arenas, not this 12 MiB fixture arena.
+    options.proof_step_capacity = 64;
+    options.proof_map_capacity = 64;
+    options.proof_literal_capacity = 256;
+    let solver = CdclSolver::new_advanced(arena, options).expect("solver");
+    solver
+        .add_clause(&[lit(0, true), lit(1, true)])
+        .expect("c1");
+    solver.add_clause(&[lit(1, false)]).expect("u1");
+    solver
+        .add_clause(&[lit(0, false), lit(2, true)])
+        .expect("c2");
+    solver.add_clause(&[lit(2, false)]).expect("u2");
+    solver
+        .add_clause(&[lit(0, true), lit(3, true)])
+        .expect("candidate");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Unsatisfiable);
+    // The refutation step is the last recorded proof step: an Add with zero
+    // literals (the empty clause), emitted by the propagation-conflict arm.
+    let recorder = solver.proof().expect("recorder");
+    let last = recorder.step(recorder.step_count() - 1).expect("last step");
+    assert_eq!(last.kind, ProofStepKind::Add);
+    assert_eq!(last.literal_count, 0, "last step must be the empty clause");
 }
 
 // CEP:WHAT: Verifies the pair budget stops the pass honestly.

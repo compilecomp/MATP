@@ -1,17 +1,17 @@
 // CEP:FILE: hot/search/generate.rs
-// CEP:WHAT: The bounded given-clause inference generator (design 10.3): enumerates all inferences between one given clause and the active set through resumable phases (resolution, factoring, equality rules, superposition-into via the rule index, superposition-from via the active scan) under the kMaxInferencesPerClause budget with buffer-full deferral.
-// CEP:WHY: Design 10.3 fixes the generation strategy - all inferences between the given clause and the active set, computed lazily at selection time, bounded per clause with deferral - and design 15.1 step 5 consumes them; the generator owns every bound (candidate retrieval overflow, conclusion length, per-clause budget, buffer capacity) so the rules stay pure, and the cursor makes generation resumable across loop iterations: the search calls generate_step repeatedly for one given clause until the phase machine reaches Done, with the buffer filling at most kInferenceBufferClauses conclusions per call; standardize-apart (Spec 02 section 5) renames every ACTIVE premise into the window above the given clause's variables before any rule call, with the namespace bound checked per pair; soundness of the emitted conclusions is each rule's theorem (Spec 07), so the generator adds only bookkeeping.
+// CEP:WHAT: The bounded given-clause inference generator (design 10.3): enumerates all inferences between one given clause and the active set through resumable phases (factoring, equality rules, resolution, superposition-into, superposition-from - each inter-clause phase an active-array scan with a head-symbol prefilter) under the kMaxInferencesPerClause budget with buffer-full deferral.
+// CEP:WHY: Design 10.3 fixes the generation strategy - all inferences between the given clause and the active set, computed lazily at selection time, bounded per clause with deferral - and design 15.1 step 5 consumes them; the generator owns every bound (conclusion length, per-clause budget, buffer capacity) so the rules stay pure, and the cursor makes generation resumable across loop iterations: the search calls generate_step repeatedly for one given clause until the phase machine reaches Done, with the buffer filling at most kInferenceBufferClauses conclusions per call; standardize-apart (Spec 02 section 5) renames every ACTIVE premise into the window above the given clause's variables before any rule call, with the namespace bound checked per pair; soundness of the emitted conclusions is each rule's theorem (Spec 07), so the generator adds only bookkeeping.
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns SearchError on structural failures; Ok(GenerationStatus::MoreRemaining) defers (buffer full, budget not yet exhausted); Ok(GenerationStatus::Complete) ends the given clause; dropped candidates and over-long conclusions are counted, never silent (CEP&CC Law 6).
-// CEP:ASSUMES: The given clause's literals are the stored ones (flags computed); the active set's trees and slots are consistent; the substitution trail is at the search's baseline depth between calls.
-// CEP:COST: per call: O(retrievals x candidates) rule attempts bounded by kRetrievalPayloads per query and the per-clause budget overall; the active scan of the superposition-from phase is O(active clauses x literals x subterms) across the clause's whole generation (the residual unindexed scan, ticket CEP-1027); measured in bench CEP-BENCH-0010, artifact benches/artifacts/atp_resolution_step.json.
+// CEP:ASSUMES: The given clause's literals are the stored ones (flags computed); the active set's trees and slots are consistent; the substitution trail is at the search's baseline depth between calls - the ABORT DISCIPLINE: a rule's Err (for example ArenaFull during conclusion materialization after a successful unification) propagates out of generate_step and ends the whole search, so the partially-bound trail a rule may leak on an Err path is never read again; rules unwind only on their Ok(None) paths.
+// CEP:COST: per call: O(active) scan steps with one constant head-symbol prefilter per pair, bounded by the per-clause budget overall (the residual unindexed scans are the Phase 3 state, tickets CEP-1027 for indexed retrieval); measured in bench CEP-BENCH-0010, artifact benches/artifacts/atp_resolution_step.json.
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs::{inference_deferral_resumes, per_clause_bound_enforced, retrieval_overflow_counts_drops, generation_is_deterministic}; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force}.
 // CEP:SECURITY: every loop is bounded by a named constant (CEP&CC 22.10).
 // CEP:UNSAFE: none; this file is safe Rust.
 // CEP:HPC-DETERMINISM: deterministic; phases, literals, candidates, slots, and paths advance in index order, and rule outcomes are pure functions of the premises.
-// CEP:HPC-PASS-LEGALITY: Formal Spec 08 section 6 fixes the phase machine, the budget semantics (buffer-full defers within the per-clause cap; cap exhaustion ends the clause with the remainder counted as dropped), and the standardize-apart discipline; the property tests verify the loop end-to-end against the SAT solver and brute force.
+// CEP:HPC-PASS-LEGALITY: Formal Spec 08 section 6 fixes the phase machine, the budget semantics (buffer-full defers within the per-clause cap; cap exhaustion ends the clause and marks the abandoned tail with one drop - the enumeration stops at the cap, unvisited candidates are not individually enumerated by design), and the standardize-apart discipline; the property tests verify the loop end-to-end against the SAT solver and brute force.
 
 use crate::inference::factoring::{equality_factor, factor};
 use crate::inference::resolution::resolve;
@@ -26,10 +26,19 @@ use mapt_config::limits::{
     kInferenceBufferClauses, kInferenceClauseLiterals, kMaxClauseLiterals, kMaxInferencesPerClause,
 };
 
+// CEP:WHAT: Parent-id slots of one buffered conclusion (the given clause and one partner premise).
+// CEP:WHY: Every inter-clause rule is binary (two premises); the buffer entry's parent array names its width instead of a bare 2 at every site (CEP&CC 11.3).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: intra-clause rules pass the given clause id twice or zero for the second slot.
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{resolution_fires, inference_deferral_resumes}.
+// CEP:SECURITY: none.
+const kRulePremiseSlots: usize = 2;
 use super::SearchError;
 
 /// CEP:WHAT: The generation phases of one given clause, in processing order.
-/// CEP:WHY: A fixed order makes generation deterministic and the cursor's phase component meaningful: intra-clause rules first (factoring, equality resolution, equality factoring - cheap and clause-local), then indexed inter-clause resolution, then the two superposition directions (into via the rule index, from via the active scan).
+/// CEP:WHY: A fixed order makes generation deterministic and the cursor's phase component meaningful: intra-clause rules first (factoring, equality resolution, equality factoring - cheap and clause-local), then the three inter-clause scans (resolution, superposition-into, superposition-from - each an active-array scan with a head-symbol prefilter; indexed retrieval is ticket CEP-1027).
 /// CEP:CLASS: CEP-0
 /// CEP:STATUS: complete
 /// CEP:FAILURE: none; a vocabulary type.
@@ -57,8 +66,8 @@ pub enum GenerationPhase {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::equality_rules_fire.
     /// CEP:SECURITY: none.
     EqualityRules,
-    /// CEP:WHAT: Resolution of the given clause's literals against atom-indexed active candidates.
-    /// CEP:WHY: Design 10.1 binary/ordered resolution through the discrimination tree.
+    /// CEP:WHAT: Resolution of the given clause's literals against active candidates by scan.
+    /// CEP:WHY: Design 10.1 binary/ordered resolution; the discrimination tree's flat-sequence retrieval cannot see all unifiable pairs (documented at the scan and in Spec 08 section 6), so the phase scans the active array with a head-symbol prefilter (indexed retrieval is ticket CEP-1027).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: none.
@@ -66,8 +75,8 @@ pub enum GenerationPhase {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::resolution_fires; unit/hot/inference_test.rs::resolution_candidates_retrieved.
     /// CEP:SECURITY: none.
     Resolution,
-    /// CEP:WHAT: Superposition of rule-indexed active equations into the given clause's subterms.
-    /// CEP:WHY: Design 10.1 superposition, into direction (indexed).
+    /// CEP:WHAT: Superposition of active equations into the given clause's non-root subterm positions, by scan.
+    /// CEP:WHY: Design 10.1 superposition, into direction; the scan enumerates the given clause's literal atoms' subterm positions and pairs each with every active positive equation whose left side's head matches (indexed retrieval is ticket CEP-1027).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: none.
@@ -172,7 +181,7 @@ pub struct GeneratedClause {
     /// CEP:COST: 16 bytes.
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::resolution_fires.
     /// CEP:SECURITY: none.
-    pub parents: [u64; 2],
+    pub parents: [u64; kRulePremiseSlots],
 }
 
 /// CEP:WHAT: The conclusion buffer: kInferenceBufferClauses inline conclusions plus the fill counter.
@@ -235,7 +244,7 @@ impl InferenceBuffer {
                     kInferenceClauseLiterals],
                 count: 0,
                 rule: InferenceRule::Input,
-                parents: [0; 2],
+                parents: [0; kRulePremiseSlots],
             }; kInferenceBufferClauses],
             count: 0,
         }
@@ -585,6 +594,11 @@ pub fn generate_step(
     let mut emitted_this_call = false;
     loop {
         if cursor.inferences >= kMaxInferencesPerClause as u64 {
+            // Budget exhaustion: the remaining phase work is abandoned. The
+            // tail is marked with one drop so the abandonment is never silent
+            // (Law 4); the not-yet-visited candidates are not individually
+            // enumerable - stopping there is the bound's purpose.
+            cursor.dropped += 1;
             cursor.phase = GenerationPhase::Done;
             return Ok(finish(buffer, emitted_this_call));
         }
@@ -674,7 +688,7 @@ fn append(
     buffer: &mut InferenceBuffer,
     literals: &[Literal],
     rule: InferenceRule,
-    parents: [u64; 2],
+    parents: [u64; kRulePremiseSlots],
     cursor: &mut GenerationCursor,
 ) -> bool {
     if buffer.count >= buffer.clauses.len() {
@@ -1071,9 +1085,26 @@ fn step_superposition_into(
     if given.is_empty() {
         return Ok(false);
     }
+    // The given clause is fixed for the whole scan: count its variables once
+    // instead of once per active partner.
+    let given_variables = crate::inference::count_clause_variables(context.terms, given)
+        .map_err(SearchError::Inference)?;
     while cursor.literal < given.len() as u32 {
         let literal_index = cursor.literal as usize;
         let atom = given[literal_index].atom();
+        // Enter the literal at its first non-root position: the rule contracts
+        // address subterm positions only (the atom root is never an into
+        // target); an atom with no subterm positions moves to the next
+        // literal.
+        if cursor.path_len == 0
+            && !advance_path(context.terms, atom, &mut cursor.path, &mut cursor.path_len)
+        {
+            cursor.path_len = 0;
+            cursor.literal += 1;
+            cursor.partner = 0;
+            cursor.partner_literal = 0;
+            continue;
+        }
         while let Some(target) = crate::inference::superposition::subterm_at_public(
             context.terms,
             atom,
@@ -1089,9 +1120,6 @@ fn step_superposition_into(
                         continue;
                     }
                 };
-                let given_variables =
-                    crate::inference::count_clause_variables(context.terms, given)
-                        .map_err(SearchError::Inference)?;
                 let premise_len = match load_renamed_premise(
                     context,
                     store,
@@ -1202,11 +1230,11 @@ fn step_superposition_into(
 }
 
 // CEP:WHAT: One superposition-from attempt per call iteration: the given clause's equation cursor.literal superposed into (cursor.slot, cursor.partner_literal, cursor.path) of the active scan.
-// CEP:WHY: The unindexed from-direction (ticket CEP-1027 for the subterm index): for each positive equation literal of the given clause, scan active slots in order, and for each literal and subterm position try superposition; the cursor (slot, partner_literal, path) makes the scan resumable.
+// CEP:WHY: The unindexed from-direction (ticket CEP-1027 for the subterm index): for each positive equation literal of the given clause, scan active slots in order, and for each literal and non-root subterm position try superposition; the head prefilter (the from side's left term and the into target must share their head symbol, mirroring the into-scan) prunes the scan before the rule call; the cursor (slot, partner_literal, path) makes the scan resumable.
 // CEP:STATUS: complete
 // CEP:FAILURE: propagates SearchError; drops counted.
 // CEP:ASSUMES: none.
-// CEP:COST: one rule call per (slot, literal, position); the scan is O(active) across the clause's generation.
+// CEP:COST: one head prefilter plus one rule call per surviving (slot, literal, position); the scan is O(active) across the clause's generation.
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs::superposition_from_fires.
 // CEP:SECURITY: bounded by the active capacity and the per-clause budget.
 fn step_superposition_from(
@@ -1231,6 +1259,11 @@ fn step_superposition_from(
     if given.is_empty() {
         return Ok(false);
     }
+    // The given clause is fixed for the whole scan: count its variables once
+    // instead of once per active slot (the renamed premises extend this
+    // namespace per partner).
+    let given_variables = crate::inference::count_clause_variables(context.terms, given)
+        .map_err(SearchError::Inference)?;
     while cursor.literal < given.len() as u32 {
         let equation_index = cursor.literal as usize;
         // Only positive equations can be from-side premises.
@@ -1246,13 +1279,28 @@ fn step_superposition_from(
             cursor.path_len = 0;
             continue;
         }
+        // The from side is fixed for this equation: hoist its sides for the
+        // head prefilter (None means a malformed equation - defensive skip,
+        // counted, never a panic).
+        let from_sides = match crate::inference::factoring::equality_sides(
+            context.terms,
+            given[equation_index].atom(),
+        ) {
+            Some(value) => value,
+            None => {
+                cursor.dropped += 1;
+                cursor.literal += 1;
+                cursor.slot = 0;
+                cursor.partner_literal = 0;
+                cursor.path_len = 0;
+                continue;
+            }
+        };
         while cursor.slot < active.len() {
             let slot = match active.slot(cursor.slot) {
                 Some(value) => value,
                 None => break,
             };
-            let given_variables = crate::inference::count_clause_variables(context.terms, given)
-                .map_err(SearchError::Inference)?;
             let premise_len =
                 match load_renamed_premise(context, store, slot.offset, given_variables, workspace)
                 {
@@ -1279,12 +1327,38 @@ fn step_superposition_from(
             while (cursor.partner_literal as usize) < premise_len {
                 let into_index = cursor.partner_literal as usize;
                 let atom = workspace.premise[into_index].atom();
+                // Enter the literal at its first non-root position: the rule
+                // contracts address subterm positions only (the atom root is
+                // never an into target); an atom with no subterm positions
+                // moves straight to the next partner literal.
+                if cursor.path_len == 0
+                    && !advance_path(context.terms, atom, &mut cursor.path, &mut cursor.path_len)
+                {
+                    cursor.path_len = 0;
+                    cursor.partner_literal += 1;
+                    continue;
+                }
                 while let Some(target) = crate::inference::superposition::subterm_at_public(
                     context.terms,
                     atom,
                     &cursor.path[..cursor.path_len as usize],
                 ) {
-                    let _ = target;
+                    // Head prefilter (mirrors the into-scan): the from side's
+                    // left term and the into target must share their head
+                    // symbol (a variable left side never matches here and can
+                    // never orient in the rule).
+                    if !heads_match(context, from_sides.0, target) {
+                        if !advance_path(
+                            context.terms,
+                            atom,
+                            &mut cursor.path,
+                            &mut cursor.path_len,
+                        ) {
+                            cursor.path_len = 0;
+                            break;
+                        }
+                        continue;
+                    }
                     let mut output: [Literal; kInferenceClauseLiterals] =
                         [Literal::new(crate::ir::term::TermPtr::invalid(), true);
                             kInferenceClauseLiterals];

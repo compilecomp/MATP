@@ -1,5 +1,5 @@
 // CEP:FILE: benches/hot/atp_bench.rs
-// CEP:WHAT: ATP inference benchmarks (bench CEP-BENCH-0010): cycles per resolution step (rename, unify, apply, conclude) on a fixed premise pair and cycles per registry bookkeeping step (register plus activity bump).
+// CEP:WHAT: ATP inference benchmarks (bench CEP-BENCH-0010): cycles per resolution rule step (unify, apply, conclude on a fixed, fixture-renamed premise pair) and cycles per registry bookkeeping step (register plus activity bump).
 // CEP:WHY: Design 26 Phase 3 ("Superposition + resolution + factoring") and design 10.3: resolution is the workhorse inference of the given-clause loop and must carry OPT-0 cost evidence; the registry step (S4/S24 bookkeeping on every learnt clause) is the amortized cost the Phase 3 CDCL loop adds per conflict; the same bench file carries both measurements so the ATP and SAT bookkeeping costs are comparable on one host.
 // CEP:CLASS: CEP-2
 // CEP:STATUS: complete
@@ -76,6 +76,7 @@ fn make_fixture() -> (
         .declare_function("h", 2, 1, &[sort_s, sort_s], sort_s)
         .expect("h");
     builder.declare_predicate("p", 1, 1, &[sort_s]).expect("p");
+    builder.declare_predicate("s", 1, 1, &[sort_s]).expect("s");
     builder
         .declare_predicate("q", 2, 1, &[sort_s, sort_t])
         .expect("q");
@@ -115,10 +116,11 @@ fn symbol_id(builder: &mapt::cold::symbol_table_builder::SymbolTableBuilder, nam
 fn main() {
     let (_arena, symbols, builder, terms, precedence, substitution) = make_fixture();
 
-    // Resolution step: premises p(x) or r and not p(f(a)) or q(f(a)); the renamed
-    // right premise lives in the shared namespace; each iteration runs the full
-    // step (rename, flags already cached, unify, apply, conclude) with the
-    // substitution trail rewound by the rule itself.
+    // Resolution step: premises p(x) or r and not p(f(a)) or s(f(a)); the right
+    // premise is pre-renamed into the shared namespace by the fixture (the
+    // generator's rename is not part of the measured rule call); each iteration
+    // runs the rule step (unify, apply, conclude; flags already cached) with
+    // the substitution trail rewound by the rule itself.
     let x = terms.intern_var(0).expect("x");
     let a = terms
         .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
@@ -135,9 +137,13 @@ fn main() {
     let not_p_fa = terms
         .intern_pred(&symbols, symbol_id(&builder, "p"), &[f_a])
         .expect("p(f(a))");
+    // The second right-premise literal is the non-complementary filler s(f(a))
+    // (previously interned with symbol "p" under the label "q(f(a))" - hash
+    // consing silently made the premise a tautology; the measured resolved
+    // pair was unaffected, but the fixture now matches its comment).
     let second_p_fa = terms
-        .intern_pred(&symbols, symbol_id(&builder, "p"), &[f_a])
-        .expect("q(f(a))");
+        .intern_pred(&symbols, symbol_id(&builder, "s"), &[f_a])
+        .expect("s(f(a))");
     let mut left = [Literal::new(p_x, true), Literal::new(r, true)];
     let mut right = [
         Literal::new(not_p_fa, false),

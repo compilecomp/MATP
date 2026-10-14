@@ -23,7 +23,7 @@ C subsumes D iff lit(C) ⊆ lit(D) (propositional: sorted two-pointer inclusion)
 
 From C = A ∨ x and D = B ∨ ¬x with A ⊆ B: replace D by D' = B \ {¬x} (equivalently A ∪ (B \ {¬x}) = B \ {¬x} since A ⊆ B).
 
-**Theorem.** D is equivalent to D' given C. *Proof.* D' is the resolvent of C and D on x; resolution is sound (Spec 07 section 4 restricted to the propositional fragment), so C ∧ D ⊨ D'; conversely D' ∧ C ⊨ D (if x is true, C holds and D holds; if x is false, D' gives B\{¬x} all true, so D holds). With C in the database, replacing D by D' preserves the theory. ∎ **Trace order**: add D' first — under ¬D', the unit propagation of C (A false forces x) and D (¬x side forced by B\{¬x} false) fires both x (from C) and ¬x (from D) — a propagation conflict, so D' is RUP — then delete D.
+**Theorem.** D is equivalent to D' given C. *Proof.* D' is the resolvent of C and D on x; resolution is sound (Spec 07 section 4 restricted to the propositional fragment), so C ∧ D ⊨ D'. Conversely no case analysis is needed: D' ⊆ D as literal sets (D' is D minus the ¬x disjunct), and a sub-clause entails its superset, so D' ⊨ D outright — hence D' ⊨ C ∧ D. With C in the database, replacing D by D' preserves the theory. ∎ **Trace order**: add D' first — under ¬D', the unit propagation of C (A false forces x) and D (¬x side forced by B\{¬x} false) fires both x (from C) and ¬x (from D) — a propagation conflict, so D' is RUP — then delete D.
 
 ## 5. Vivification (S36)
 

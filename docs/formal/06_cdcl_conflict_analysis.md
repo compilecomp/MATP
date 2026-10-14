@@ -1,8 +1,8 @@
-# Formal Specification 06: CDCL — Implication Graphs, First-UIP Conflict Analysis, Learning, Backjumping, VSIDS, and Restarts
+# Formal Specification 06: CDCL — Implication Graphs, First-UIP Conflict Analysis, Learning, Backjumping, VSIDS, Restarts, and Learnt-Clause Deletion
 
-Version: 0.1
-Status: complete for the Phase 2 scope (design 11.1 S12-S24, 11.5; design 26 build order)
-Role: normative reference for `hot/sat/cdcl.rs`, `hot/sat/vsids.rs`, `hot/sat/restart.rs`, and `hot/sat/solver.rs`; cited by their `CEP:HPC-PASS-LEGALITY` fields and by the CDCL property and fuzz tests.
+Version: 0.2
+Status: complete for the Phase 2 scope (design 11.1 S12-S24, 11.5; design 26 build order); section 9 (the clause registry and learnt-clause deletion) is the Phase 3 amendment delivered with CEP-1003
+Role: normative reference for `hot/sat/cdcl.rs`, `hot/sat/vsids.rs`, `hot/sat/restart.rs`, `hot/sat/solver.rs`, and `hot/sat/registry.rs`; cited by their `CEP:HPC-PASS-LEGALITY` fields and by the CDCL property and fuzz tests.
 References: Marques-Silva & Sakallah 1996 (GRASP, conflict-driven learning); Moskewicz et al. DAC 2001 (Chaff, VSIDS); Zhang et al. 2001 (LBD-era learning); Sorensson & Biere 2009 (minimizing learned clauses); Luby, Sinclair & Zuckerman 1993 (restart schedule); Biere, Heule, van Maaren & Walsh, *Handbook of Satisfiability* 2009, ch. 4; design sections 11.1-11.6 and Formal Spec 05.
 
 ## 1. Prerequisites (from Spec 05)
@@ -88,3 +88,17 @@ Measured medians on x86-64 (Intel Xeon, virtualized), rustc 1.99.0, release, 202
 - Propagation step including reason and level recording: 54.90 cycles (bench CEP-BENCH-0005, re-baselined from the 44.53 Phase 1 figure with the two added per-assignment stores).
 
 Disassembly evidence: `benches/artifacts/disasm_cdcl.txt`.
+
+## 9. The clause registry and learnt-clause deletion (Phase 3)
+
+The clause registry (`hot/sat/registry.rs`, design 11.1 S4, ticket CEP-1003) is the enumerable clause database: one dense entry (clause offset, activity score, tombstone) per registered clause, appended in strictly ascending clause-offset order with the entry index as the registration age. The storage deleted bit is the single source of truth for liveness; the tombstone mirrors it.
+
+**Reduction trigger.** After a conflict, if the live-learnt count reaches the trigger (`kSatMaxLearntClauses` in production; injectable for tests), one reduction runs: it locks, sorts, deletes, and unlocks.
+
+**Locking (S29).** Before any victim is chosen, every clause that is the current reason of an assigned variable, plus the active conflict clause, is marked locked. Locked clauses can never be victims, so no surviving reason ever points at a deleted record and no in-flight analysis loses its conflict clause. Locks are released in the reduction epilogue.
+
+**Victim selection (design 11.6 total order).** Live unlocked learnts are sorted best-first under the strict lexicographic key: LBD ascending, then age ascending (older clauses are better; ages are unique so the activity key is vacuous in the strict order — it is kept for the documented tie-break role only). The best `live / kSatLearntReduceDivisor` entries survive; the rest are deleted. The sort is a deterministic heapsort under this total key, so the victim set is a pure function of the database state (CEP&CC 38.10).
+
+**Deletion effect and safety.** A deletion writes the proof-deletion step first (S41: the trace can never miss a database mutation), then sets the storage deleted bit and the registry tombstone. BCP skips deleted records (Spec 05 section 6 amendment), so lazy watch-list links left by deleted clauses are inert. Reduction runs between conflicts with a quiescent core; both first-UIP analysis (section 3) and `analyze_final` skip level-0 variables, so level-0 reason records — which reduction may legitimately leave pointing at deleted clauses — are never consulted semantically.
+
+**Completeness.** Reduction deletes only learnt clauses; problem clauses and locked clauses always survive, and CDCL with bounded learnt deletion remains refutationally complete (Handbook of Satisfiability, ch. 4). End-to-end correctness with reduction firing is verified against the brute-force oracle in `tests/property/cdcl_property_test.rs::solve_agrees_with_brute_force` (trigger injected small so reduction runs during the tested searches) and the policy mechanics in `tests/unit/hot/sat_registry_test.rs::{reduction_keeps_best_half, locked_clauses_survive, reduction_trigger_enforced, reduction_marks_deleted, bcp_skips_deleted, reduction_records_proof_deletions}`.
