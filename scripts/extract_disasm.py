@@ -7,7 +7,7 @@
 # CEP:FAILURE: Exits nonzero when an assembly input is missing or a requested section is not found.
 # CEP:ASSUMES: Run after `cargo rustc -p mapt-hot --release -- --emit asm` and `cargo rustc --bench <name> --release -- --emit asm` for each bench.
 # CEP:COST: offline tool; runtime cost irrelevant.
-# CEP:EVIDENCE: outputs benches/artifacts/disasm_{arena,term,clause,substitution,sat,unify,ordering,index,cdcl,atp,search,subsumption,sat_preprocess}.txt cited by CEP:OPTPROOF and CEP:COST fields.
+# CEP:EVIDENCE: outputs benches/artifacts/disasm_{arena,term,clause,substitution,sat,unify,ordering,index,cdcl,atp,search,subsumption,sat_preprocess,avatar,concurrency}.txt cited by CEP:OPTPROOF and CEP:COST fields.
 # CEP:SECURITY: repository-trusted input only; no network.
 
 import glob
@@ -77,6 +77,12 @@ TARGETS = {
     "disasm_sat_preprocess.txt": [
         ("build/release/deps/sat_preprocess_bench-*.s", "sat_preprocess_bench4main,"),
         ("build/release/deps/mapt_hot-*.s", "preprocess8simplify"),
+    ],
+    "disasm_avatar.txt": [
+        ("build/release/deps/avatar_bench-*.s", "avatar_bench4main,"),
+    ],
+    "disasm_concurrency.txt": [
+        ("build/release/deps/concurrency_bench-*.s", "concurrency_bench4main,"),
     ],
 }
 

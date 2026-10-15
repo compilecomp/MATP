@@ -73,8 +73,17 @@ fn make_problem(passive_capacity: u32) -> ProblemFixture {
     let (arena, symbols, builder, terms, precedence, _substitution) = make_inference_fixture();
     let options = SearchOptions::new();
     let space = Box::leak(Box::new(
-        SearchSpace::new_with(arena, &options, passive_capacity, 512, 2048, 4096, 65536)
-            .expect("space"),
+        SearchSpace::new_with(
+            arena,
+            &options,
+            passive_capacity,
+            512,
+            2048,
+            4096,
+            65536,
+            4096,
+        )
+        .expect("space"),
     ));
     let symbols: &'static _ = Box::leak(Box::new(symbols));
     let terms: &'static _ = Box::leak(Box::new(terms));

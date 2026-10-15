@@ -251,6 +251,18 @@ pub const kTermDepthMask: u32 = 0xFFFF;
 pub struct TermPtr(u32);
 
 impl TermPtr {
+    // CEP:WHAT: Rebuilds a handle from a raw arena offset (the crate-internal inverse of as_u32).
+    // CEP:WHY: The AVATAR component table stores canonical literal words as (atom offset << 1 | polarity) for interning (Spec 12 section 4) and materialization rebuilds the Literal from those words; the same deferred-validation discipline as ClausePtr::from_u32 applies - every dereference goes through the bounds-checked term() accessor, and semantic validity is the caller's documented contract (offsets come from as_u32 of interned terms).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: subsequent term() reads validate the offset and reject garbage loudly.
+    // CEP:ASSUMES: the offset came from as_u32 of a live interned term.
+    // CEP:COST: constant.
+    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    // CEP:SECURITY: validation deferred to the bounds-checked reader; not part of the public API.
+    pub(crate) fn from_u32(offset: u32) -> TermPtr {
+        TermPtr(offset)
+    }
+
     // CEP:WHAT: Returns the raw arena offset for serialization and diagnostics.
     // CEP:WHY: Cold printers and the future FFI need the numeric identity; keeping construction private preserves the invariant while allowing read-out.
     // CEP:STATUS: complete

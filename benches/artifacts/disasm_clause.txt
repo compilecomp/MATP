@@ -107,9 +107,9 @@ _RNvCslozTGwXM0cZ_12clause_bench4main:
 	movups	%xmm0, 792(%rsp)
 	movq	200(%rsp), %rsi
 	movq	%rsi, 808(%rsp)
-	movupd	.Lanon.133af2d7c339746ebbe9339949d489fe.1(%rip), %xmm0
+	movupd	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1(%rip), %xmm0
 	movupd	%xmm0, 824(%rsp)
-	movupd	.Lanon.133af2d7c339746ebbe9339949d489fe.1+16(%rip), %xmm1
+	movupd	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1+16(%rip), %xmm1
 	movupd	%xmm1, 840(%rsp)
 	movq	%rax, 856(%rsp)
 	movq	%rdx, 864(%rsp)
@@ -217,7 +217,7 @@ _RNvCslozTGwXM0cZ_12clause_bench4main:
 	.cfi_escape 0x2e, 0x20
 	subq	$16, %rsp
 	.cfi_adjust_cfa_offset 16
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.4(%rip), %rsi
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.30(%rip), %rsi
 	leaq	784(%rsp), %rdi
 	movl	$2, %edx
 	movl	$4, %r9d
@@ -2781,7 +2781,7 @@ _RNvCslozTGwXM0cZ_12clause_bench4main:
 	jmp	.LBB3_632
 .LBB3_573:
 	.cfi_escape 0x2e, 0x00
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.13(%rip), %rcx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.45(%rip), %rcx
 	movq	%rbx, %rdx
 	callq	_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail
 .LBB3_574:
@@ -2947,7 +2947,7 @@ _RNvCslozTGwXM0cZ_12clause_bench4main:
 	movq	144(%rsp), %rbx
 	jmp	.LBB3_474
 .LBB3_594:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.5(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.31(%rip), %rdx
 .LBB3_595:
 .Ltmp28:
 	.cfi_escape 0x2e, 0x00
@@ -3140,7 +3140,7 @@ _RNvCslozTGwXM0cZ_12clause_bench4main:
 .LBB3_632:
 	ud2
 .LBB3_633:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.6(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.32(%rip), %rdx
 	movq	%r14, %rsi
 	jmp	.LBB3_595
 .LBB3_634:
@@ -3804,19 +3804,19 @@ GCC_except_table3:
 
 	.section	.text._RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause,"ax",@progbits
 	.globl	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause
-	.prefalign	4, .Lfunc_end80, nop
+	.prefalign	4, .Lfunc_end90, nop
 	.type	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause,@function
 _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause:
 	.cfi_startproc
 	movl	$1281, %eax
 	cmpb	$4, 1(%r9)
-	ja	.LBB80_30
+	ja	.LBB90_34
 	movl	$1, %eax
 	cmpq	$512, %rcx
-	ja	.LBB80_30
+	ja	.LBB90_34
 	movl	$257, %eax
-	cmpq	$10000000, 8(%rdi)
-	ja	.LBB80_30
+	cmpq	$10000000, 24(%rdi)
+	ja	.LBB90_34
 	pushq	%rbp
 	.cfi_def_cfa_offset 16
 	pushq	%r15
@@ -3838,7 +3838,7 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause:
 	.cfi_offset %r15, -24
 	.cfi_offset %rbp, -16
 	testq	%rcx, %rcx
-	je	.LBB80_4
+	je	.LBB90_4
 	movq	(%rsi), %rsi
 	movl	12(%rsi), %r11d
 	cmpl	$268435457, %r11d
@@ -3847,71 +3847,72 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause:
 	setne	%bl
 	movl	$769, %eax
 	orb	%r10b, %bl
-	jne	.LBB80_29
+	jne	.LBB90_33
 	leaq	(,%rcx,8), %r10
 	xorl	%r15d, %r15d
 	xorl	%ebx, %ebx
 	.p2align	4
-.LBB80_7:
+.LBB90_7:
 	movl	(%rdx,%rbx), %r14d
 	testb	$3, %r14b
-	jne	.LBB80_29
+	jne	.LBB90_33
 	cmpl	%r14d, %r11d
-	jbe	.LBB80_29
+	jbe	.LBB90_33
 	cmpl	8(%rsi), %r11d
-	ja	.LBB80_29
+	ja	.LBB90_33
 	movq	(%rsi), %r12
 	testq	%r12, %r12
-	je	.LBB80_29
+	je	.LBB90_33
 	movl	%r11d, %ebp
 	subl	%r14d, %ebp
 	cmpl	$16, %ebp
-	jb	.LBB80_29
+	jb	.LBB90_33
 	movl	(%r12,%r14), %r13d
 	cmpb	$6, %r13b
-	ja	.LBB80_29
+	ja	.LBB90_33
 	shrl	$2, %ebp
 	shrl	$16, %r13d
 	addl	$4, %r13d
 	cmpl	%r13d, %ebp
-	jb	.LBB80_29
+	jb	.LBB90_33
 	movl	12(%r12,%r14), %r14d
 	addq	%r14, %r15
 	addq	$8, %rbx
 	cmpq	%rbx, %r10
-	jne	.LBB80_7
+	jne	.LBB90_7
 	movq	%r15, %rax
 	shrq	$32, %rax
 	movl	$1025, %eax
-	jne	.LBB80_29
+	jne	.LBB90_33
 	cmpq	$8, %rcx
-	jbe	.LBB80_17
+	jbe	.LBB90_17
 	movq	(%rdi), %rsi
 	leal	(,%rcx,8), %r11d
 	movl	8(%rsi), %eax
-	movl	12(%rsi), %r13d
-	addl	$3, %r13d
-	andl	$-4, %r13d
-	subl	%r13d, %eax
+	movl	12(%rsi), %ebp
+	addl	$3, %ebp
+	andl	$-4, %ebp
+	subl	%ebp, %eax
 	setb	%bl
 	cmpl	%eax, %r11d
 	seta	%al
 	orb	%bl, %al
 	movl	$513, %eax
-	jne	.LBB80_29
-	addl	%r13d, %r11d
+	jne	.LBB90_33
+	addl	%ebp, %r11d
 	movl	%r11d, 12(%rsi)
 	movq	(%rdi), %rsi
 	cmpl	8(%rsi), %r11d
-	ja	.LBB80_29
+	ja	.LBB90_33
 	movq	(%rsi), %rbx
 	testq	%rbx, %rbx
-	je	.LBB80_29
-	movq	%r9, 72(%rsp)
-	movl	%r8d, 4(%rsp)
-	movl	%r13d, %eax
+	je	.LBB90_33
+	movl	%ebp, %r12d
+	movq	%r9, 64(%rsp)
+	movl	%r8d, %r13d
+	movl	%ebp, %eax
 	addq	%rax, %rbx
-	movq	%rdi, %r12
+	movq	%rdi, 72(%rsp)
 	movq	%rbx, %rdi
 	movq	%rdx, %rsi
 	movq	%r10, %rdx
@@ -3921,7 +3922,10 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause:
 	movq	%r14, %rbp
 	movq	%r14, %rsi
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clause23sort_literals_canonical
+	movl	%r12d, %r11d
+	movq	72(%rsp), %r12
 	movabsq	$8589934591, %rax
+	movq	%rax, (%rsp)
 	movq	%rax, 8(%rsp)
 	movq	%rax, 16(%rsp)
 	movq	%rax, 24(%rsp)
@@ -3929,22 +3933,22 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause:
 	movq	%rax, 40(%rsp)
 	movq	%rax, 48(%rsp)
 	movq	%rax, 56(%rsp)
-	movq	%rax, 64(%rsp)
 	movq	(%r12), %r14
 	movl	12(%r14), %ebx
-	jmp	.LBB80_25
-.LBB80_4:
+	jmp	.LBB90_25
+.LBB90_4:
 	xorl	%r15d, %r15d
-.LBB80_17:
+.LBB90_17:
 	movq	(%rdi), %r14
 	movl	12(%r14), %ebx
 	movl	$513, %eax
 	cmpl	$268435456, %ebx
-	ja	.LBB80_29
+	ja	.LBB90_33
 	movq	%rdi, %r12
-	movq	%r9, 72(%rsp)
-	movl	%r8d, 4(%rsp)
+	movq	%r9, 64(%rsp)
+	movl	%r8d, %r13d
 	movabsq	$8589934591, %rax
+	movq	%rax, (%rsp)
 	movq	%rax, 8(%rsp)
 	movq	%rax, 16(%rsp)
 	movq	%rax, 24(%rsp)
@@ -3952,102 +3956,120 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause:
 	movq	%rax, 40(%rsp)
 	movq	%rax, 48(%rsp)
 	movq	%rax, 56(%rsp)
-	movq	%rax, 64(%rsp)
 	testq	%rcx, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	(%rdx), %rax
-	movq	%rax, 8(%rsp)
+	movq	%rax, (%rsp)
 	cmpq	$1, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	8(%rdx), %rax
-	movq	%rax, 16(%rsp)
+	movq	%rax, 8(%rsp)
 	cmpq	$2, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	16(%rdx), %rax
-	movq	%rax, 24(%rsp)
+	movq	%rax, 16(%rsp)
 	cmpq	$3, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	24(%rdx), %rax
-	movq	%rax, 32(%rsp)
+	movq	%rax, 24(%rsp)
 	cmpq	$4, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	32(%rdx), %rax
-	movq	%rax, 40(%rsp)
+	movq	%rax, 32(%rsp)
 	cmpq	$5, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	40(%rdx), %rax
-	movq	%rax, 48(%rsp)
+	movq	%rax, 40(%rsp)
 	cmpq	$6, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	48(%rdx), %rax
-	movq	%rax, 56(%rsp)
+	movq	%rax, 48(%rsp)
 	cmpq	$7, %rcx
-	je	.LBB80_20
+	je	.LBB90_20
 	movq	56(%rdx), %rax
-	movq	%rax, 64(%rsp)
-.LBB80_20:
-	leaq	8(%rsp), %rdi
+	movq	%rax, 56(%rsp)
+.LBB90_20:
+	movq	%rsp, %rdi
 	movq	%rcx, %rbp
 	movq	%rcx, %rsi
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clause23sort_literals_canonical
-	movl	$-1, %r13d
-.LBB80_25:
+	movl	$-1, %r11d
+.LBB90_25:
 	addl	$7, %ebx
 	andl	$-8, %ebx
 	movl	8(%r14), %eax
 	subl	%ebx, %eax
-	setb	%cl
+	setb	%dl
 	cmpl	$152, %eax
 	setb	%al
-	orb	%cl, %al
+	orb	%dl, %al
 	movl	$513, %eax
-	jne	.LBB80_29
-	leal	152(%rbx), %edx
-	movl	%edx, 12(%r14)
-	movq	(%r12), %rcx
-	cmpl	8(%rcx), %edx
-	ja	.LBB80_29
-	movq	(%rcx), %rcx
-	testq	%rcx, %rcx
-	movl	4(%rsp), %edx
-	movq	72(%rsp), %rsi
-	je	.LBB80_29
+	jne	.LBB90_33
+	leal	152(%rbx), %esi
+	movl	%esi, 12(%r14)
+	movq	(%r12), %rdx
+	cmpl	8(%rdx), %esi
+	ja	.LBB90_33
+	movq	(%rdx), %rdx
+	testq	%rdx, %rdx
+	movq	64(%rsp), %rdi
+	je	.LBB90_33
+	movq	16(%r12), %r8
+	movq	24(%r12), %rsi
+	movq	%rsi, %rax
+	testq	%r8, %r8
+	je	.LBB90_32
+	movl	$1537, %eax
+	testq	%rsi, %rsi
+	je	.LBB90_33
+	movabsq	$4294967296, %r9
+	cmpq	%r9, %rsi
+	seta	%r9b
+	leaq	-1(%rsi), %r10
+	cmpq	%r8, %r10
+	setae	%r8b
+	orb	%r9b, %r8b
+	jne	.LBB90_33
 	movq	8(%r12), %rax
-	leaq	1(%rax), %rdi
-	movq	%rdi, 8(%r12)
-	incl	16(%r12)
-	movups	(%rsi), %xmm0
-	movups	16(%rsi), %xmm1
-	movups	32(%rsi), %xmm2
+	movl	%ebx, -4(%rax,%rsi,4)
+	movq	24(%r12), %rax
+.LBB90_32:
+	incq	%rax
+	movq	%rax, 24(%r12)
+	incl	32(%r12)
+	movl	%ebx, %eax
+	addq	%rax, %rdx
+	movups	(%rdi), %xmm0
+	movups	16(%rdi), %xmm1
+	movups	32(%rdi), %xmm2
 	movups	%xmm2, 120(%rsp)
 	movups	%xmm1, 104(%rsp)
 	movups	%xmm0, 88(%rsp)
-	movq	%rax, (%rcx,%rbx)
-	movw	%bp, 8(%rcx,%rbx)
-	movw	$0, 10(%rcx,%rbx)
-	movl	%r15d, 12(%rcx,%rbx)
-	movl	%edx, 16(%rcx,%rbx)
-	movq	$0, 20(%rcx,%rbx)
+	movq	%rsi, (%rdx)
+	movw	%bp, 8(%rdx)
+	movw	$0, 10(%rdx)
+	movl	%r15d, 12(%rdx)
+	movl	%r13d, 16(%rdx)
+	movq	$0, 20(%rdx)
 	movups	84(%rsp), %xmm0
 	movups	100(%rsp), %xmm1
 	movups	116(%rsp), %xmm2
-	movups	%xmm0, 28(%rcx,%rbx)
-	movups	%xmm1, 44(%rcx,%rbx)
-	movups	%xmm2, 60(%rcx,%rbx)
-	movl	132(%rsp), %eax
-	movl	%eax, 76(%rcx,%rbx)
-	movl	%r13d, 80(%rcx,%rbx)
-	movups	8(%rsp), %xmm0
-	movups	24(%rsp), %xmm1
-	movups	40(%rsp), %xmm2
-	movups	56(%rsp), %xmm3
-	movups	%xmm0, 84(%rcx,%rbx)
-	movups	%xmm1, 100(%rcx,%rbx)
-	movups	%xmm2, 116(%rcx,%rbx)
-	movups	%xmm3, 132(%rcx,%rbx)
-	shlq	$32, %rbx
-	movq	%rbx, %rax
-.LBB80_29:
+	movups	%xmm0, 28(%rdx)
+	movups	%xmm1, 44(%rdx)
+	movups	%xmm2, 60(%rdx)
+	movl	132(%rsp), %ecx
+	movl	%ecx, 76(%rdx)
+	movl	%r11d, 80(%rdx)
+	movups	(%rsp), %xmm0
+	movups	16(%rsp), %xmm1
+	movups	32(%rsp), %xmm2
+	movups	48(%rsp), %xmm3
+	movups	%xmm0, 84(%rdx)
+	movups	%xmm1, 100(%rdx)
+	movups	%xmm2, 116(%rdx)
+	movups	%xmm3, 132(%rdx)
+	shlq	$32, %rax
+.LBB90_33:
 	addq	$136, %rsp
 	.cfi_def_cfa_offset 56
 	popq	%rbx
@@ -4068,10 +4090,10 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause:
 	.cfi_restore %r14
 	.cfi_restore %r15
 	.cfi_restore %rbp
-.LBB80_30:
+.LBB90_34:
 	retq
-.Lfunc_end80:
-	.size	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause, .Lfunc_end80-_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause
+.Lfunc_end90:
+	.size	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause, .Lfunc_end90-_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir6clauseNtB4_11ClauseStore10new_clause
 	.cfi_endproc
 
 

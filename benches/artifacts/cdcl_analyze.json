@@ -2,11 +2,11 @@
   "bench": "CEP-BENCH-0009",
   "name": "cdcl_analyze",
   "iterations": 200000,
-  "cycles_median": 712.92497,
-  "cycles_min": 710.93725,
+  "cycles_median": 712.46195,
+  "cycles_min": 710.78137,
   "rustc": "1.99.0",
   "profile": "release",
   "target": "x86-64",
   "cycle_counter": "serialized-rdtsc",
-  "date_unix": 1792021205
+  "date_unix": 1792092839
 }

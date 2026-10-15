@@ -22,6 +22,8 @@
 // CEP:SECURITY: none.
 #![allow(non_upper_case_globals)]
 
+pub mod avatar;
+pub mod concurrency;
 pub mod index;
 pub mod inference;
 pub mod ir;

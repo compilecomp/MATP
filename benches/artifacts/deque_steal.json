@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0033",
+  "name": "deque_steal",
+  "iterations": 256,
+  "cycles_median": 68.2447509765625,
+  "cycles_min": 67.504638671875,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1792092817
+}

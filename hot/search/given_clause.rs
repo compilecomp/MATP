@@ -92,6 +92,24 @@ pub enum GaveUpReason {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::passive_overflow_stops.
     /// CEP:SECURITY: memory bound.
     MemoryBudget,
+    /// CEP:WHAT: The AVATAR abstraction exhausted its conflict-round budget (design 12.2 rule 4).
+    /// CEP:WHY: Each conflict round adds one abstraction clause and requires a complete first-order refutation; the named budget bounds pathological oscillation loudly (Spec 12 section 5).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: only saturate_with_avatar returns this variant.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::conflict_round_budget_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    AvatarConflictBudget,
+    /// CEP:WHAT: The AVATAR model-rotation sweep exhausted its budget before testing every waiting component (design 12.2 rule 3).
+    /// CEP:WHY: Rotations probe one waiting component per assumption solve; the budget bounds the sweep instead of claiming Saturated without evidence (Spec 12 section 6).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: only saturate_with_avatar returns this variant.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::model_rotation_budget_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    AvatarModelBudget,
 }
 
 /// CEP:WHAT: The terminal outcome of the saturation loop.
@@ -462,17 +480,27 @@ impl<'a> SearchSpace<'a> {
             mapt_config::limits::kDiscriminationTreeNodes,
             mapt_config::limits::kDiscriminationTreeEntries,
             mapt_config::limits::kFeatureVectorPoolWords,
+            mapt_config::limits::kClauseOffsetTableCapacity,
         )
     }
 
     // CEP:WHAT: Constructs the search space with explicit capacities.
-    // CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path.
+    // CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path; Phase 4 adds the clause-id side-table capacity so proof reconstruction and AVATAR ancestry can resolve parent ids on the production space while tests inject small tables.
     // CEP:STATUS: complete
     // CEP:FAILURE: returns SearchError on exhaustion.
     // CEP:ASSUMES: capacities >= 1.
     // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::passive_overflow_stops; security/phase3_bounds_test.rs::{passive_capacity_enforced, active_capacity_enforced}.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::passive_overflow_stops; security/phase3_bounds_test.rs::{passive_capacity_enforced, active_capacity_enforced}; unit/hot/clause_test.rs::side_table_capacity_enforced.
     // CEP:SECURITY: bounds validated.
+    // CEP:WHAT: Clippy allowance for the eight explicit capacities (one per bounded substructure).
+    // CEP:WHY: CEP&CC 34.3 requires every capacity injectable on the production path; an options struct would hide which test uses which bound, so the parameter list is the documented interface.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: none.
+    // CEP:COST: compile-time only.
+    // CEP:EVIDENCE: security/phase3_bounds_test.rs; security/phase4_bounds_test.rs.
+    // CEP:SECURITY: none.
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with(
         arena: &'a Arena,
         options: &SearchOptions,
@@ -481,9 +509,10 @@ impl<'a> SearchSpace<'a> {
         tree_nodes: u32,
         tree_entries: u32,
         pool_words: u32,
+        id_offset_capacity: u32,
     ) -> Result<SearchSpace<'a>, SearchError> {
         Ok(SearchSpace {
-            store: ClauseStore::new(arena),
+            store: ClauseStore::new_with(arena, id_offset_capacity).map_err(SearchError::Clause)?,
             passive: PassiveHeap::new_with(arena, passive_capacity, options.strategy)?,
             active: ActiveSet::new_with(
                 arena,
@@ -555,6 +584,20 @@ impl<'a> SearchSpace<'a> {
     // CEP:SECURITY: none.
     pub fn input_count(&self) -> u32 {
         self.input_age.get()
+    }
+
+    // CEP:WHAT: Allocates the next input age (monotonic counter shared by input clauses and AVATAR component materializations).
+    // CEP:WHY: Materialized components (design 12.2 rule 3) enter the passive set like inputs and need the same monotone age discipline (design 15.2); the counter stays private to the space, so this is the single sanctioned allocation point.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: single-threaded space.
+    // CEP:COST: 1 load, 1 store.
+    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    // CEP:SECURITY: none.
+    pub fn next_input_age(&self) -> u32 {
+        let age = self.input_age.get();
+        self.input_age.set(age + 1);
+        age
     }
 }
 

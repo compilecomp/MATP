@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0034",
+  "name": "mpmc_enqueue_dequeue",
+  "iterations": 1024,
+  "cycles_median": 1039.662841796875,
+  "cycles_min": 1013.248779296875,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1792092817
+}

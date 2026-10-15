@@ -135,6 +135,15 @@ pub enum ClauseError {
     /// CEP:EVIDENCE: unit/hot/clause_test.rs::too_many_parents_rejected.
     /// CEP:SECURITY: fixed-size record bound.
     TooManyParents,
+    /// CEP:WHAT: The clause-id-to-offset side table is exhausted.
+    /// CEP:WHY: Id resolution (proof walks, AVATAR ancestry, portfolio export scans) needs the dense id side table; the capacity is injected at construction and the bound fires loudly instead of wrapping (CEP&CC Law 6).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: the capacity argument of new_with was >= 1.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::side_table_capacity_enforced.
+    /// CEP:SECURITY: resource-exhaustion boundary.
+    OffsetTableFull,
 }
 
 /// CEP:WHAT: Opaque handle to a clause record (byte offset in the arena).
@@ -465,23 +474,62 @@ pub struct ClauseStore<'a> {
     /// CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
     /// CEP:SECURITY: none.
     live_clauses: Cell<u32>,
+    /// CEP:WHAT: Dense clause-id-to-record-offset side table (index = id - kFirstClauseId).
+    /// CEP:WHY: Design 18.2 proof reconstruction and design 12.2 rule 4 AVATAR ancestry walk the derivation DAG by parent clause id; the side array makes the lookup O(1) with no per-record linked list and no cold-side scan (Spec 14 section 2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: writes past the capacity return OffsetTableFull (see new_clause).
+    /// CEP:ASSUMES: ids are dense and monotonic from kFirstClauseId (the store's contract); entries never change after their write (records are immutable and never move).
+    /// CEP:COST: 4 bytes per clause id; capacity injected at construction.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::side_table_resolves_ids.
+    /// CEP:SECURITY: bounds-checked access; kInvalidClauseOffset marks unwritten slots.
+    id_offsets: &'a [Cell<u32>],
 }
 
 impl<'a> ClauseStore<'a> {
-    // CEP:WHAT: Constructs the clause store.
-    // CEP:WHY: Explicit initialization before the hot path; no allocation happens here (records are allocated on demand from the arena).
+    // CEP:WHAT: Constructs the clause store without an id side table (Phase 1 behavior).
+    // CEP:WHY: Explicit initialization before the hot path with no allocation (records are allocated on demand from the arena); the empty side table means offset_of_id resolves nothing - direct constructions that never walk derivations keep the exact Phase 1 footprint, and the production search space constructs through new_with with the full table.
     // CEP:STATUS: complete
     // CEP:FAILURE: none.
-    // CEP:ASSUMES: arena outlives the store.
+    // CEP:ASSUMES: arena outlives the store; no caller will resolve clause ids on this store (offset_of_id returns None).
     // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
+    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction; unit/hot/clause_test.rs::{ids_are_monotonic, arena_full_after_exhaustion}.
     // CEP:SECURITY: none.
     pub fn new(arena: &'a Arena) -> ClauseStore<'a> {
         ClauseStore {
             arena,
             next_id: Cell::new(kFirstClauseId),
             live_clauses: Cell::new(0),
+            id_offsets: &[],
         }
+    }
+
+    // CEP:WHAT: Constructs the clause store with an explicit clause-id side-table capacity.
+    // CEP:WHY: CEP&CC 34.3: every capacity bound must be injectable on the production code path so tests exercise the exhaustion path at small scales; the production search space injects kClauseOffsetTableCapacity so proof reconstruction (design 18.2) and AVATAR ancestry (design 12.2 rule 4) can resolve parent ids.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: returns OffsetTableFull for zero capacity or when the arena cannot host the table.
+    // CEP:ASSUMES: capacity >= 1; the arena has room for capacity x 4 bytes.
+    // CEP:COST: O(capacity) one-time.
+    // CEP:EVIDENCE: unit/hot/clause_test.rs::{side_table_resolves_ids, side_table_capacity_enforced}.
+    // CEP:SECURITY: capacity validated before allocation.
+    pub fn new_with(arena: &'a Arena, id_capacity: u32) -> Result<ClauseStore<'a>, ClauseError> {
+        if id_capacity == 0 {
+            return Err(ClauseError::OffsetTableFull);
+        }
+        let table_range = arena
+            .alloc_array::<Cell<u32>>(id_capacity)
+            .map_err(|_| ClauseError::ArenaFull)?;
+        let table = arena
+            .array::<Cell<u32>>(table_range)
+            .map_err(|_| ClauseError::ArenaFull)?;
+        for slot in table.iter() {
+            slot.set(kInvalidClauseOffset);
+        }
+        Ok(ClauseStore {
+            arena,
+            next_id: Cell::new(kFirstClauseId),
+            live_clauses: Cell::new(0),
+            id_offsets: table,
+        })
     }
 
     // CEP:WHAT: Returns the number of constructed clauses.
@@ -506,6 +554,65 @@ impl<'a> ClauseStore<'a> {
     // CEP:SECURITY: none.
     pub fn next_clause_id(&self) -> ClauseId {
         ClauseId(self.next_id.get())
+    }
+
+    // CEP:WHAT: Resolves a clause id to its record offset through the id side table.
+    // CEP:WHY: Proof reconstruction (design 18.2) and AVATAR ancestry collection (design 12.2 rule 4) walk derivations by parent id; the dense side table gives O(1) resolution with no per-record linked list (Spec 14 section 2).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: returns None when the store has no side table (Phase 1 construction), the id is outside the assigned range, or the slot is unwritten.
+    // CEP:ASSUMES: ids are dense and monotonic; the store wrote each slot at creation.
+    // CEP:COST: 1 load plus bounds check.
+    // CEP:EVIDENCE: unit/hot/clause_test.rs::side_table_resolves_ids.
+    // CEP:SECURITY: bounds-checked; unassigned ids resolve to None, never to a wrong record.
+    pub fn offset_of_id(&self, id: ClauseId) -> Option<u32> {
+        if self.id_offsets.is_empty() {
+            return None;
+        }
+        let index = id.0.checked_sub(kFirstClauseId)?;
+        let index = u32::try_from(index).ok()?;
+        let slot = self.id_offsets.get(index as usize)?;
+        let offset = slot.get();
+        if offset == kInvalidClauseOffset {
+            return None;
+        }
+        Some(offset)
+    }
+
+    // CEP:WHAT: Reads the clause record for a clause id through the id side table.
+    // CEP:WHY: The proof-walking entry point (TSTP reconstruction, checker, ancestry); one accessor keeps the resolve-then-read sequence auditable.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: returns InvalidPointer when the id resolves to nothing and OffsetTableFull never occurs here (resolution failures map to InvalidPointer).
+    // CEP:ASSUMES: see offset_of_id.
+    // CEP:COST: as offset_of_id plus the record read.
+    // CEP:EVIDENCE: unit/cold/tstp_test.rs::proof_walk_resolves_parents.
+    // CEP:SECURITY: bounds-checked read through the same entry point as handle-based access.
+    pub fn clause_by_id(&self, id: ClauseId) -> Result<&'a Clause, ClauseError> {
+        match self.offset_of_id(id) {
+            Some(offset) => self.clause(ClausePtr::from_u32(offset)),
+            None => Err(ClauseError::InvalidPointer),
+        }
+    }
+
+    // CEP:WHAT: Writes the AVATAR split level (component slot + 1) into a stored record's header.
+    // CEP:WHY: Design 5.3 field split_level (0 = not split) is metadata written once by the AVATAR controller after record creation (the creation path stays Phase 1-stable); the write locates the record through the same bounds-checked reader and mutates one arena word through the arena's array_mut discipline - records are otherwise immutable and this is the single sanctioned metadata mutator (Spec 12 section 4).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: returns InvalidPointer for unreadable or misaligned offsets and OffsetTableFull never occurs here.
+    // CEP:ASSUMES: the record exists and has not been read as immutable by concurrent callers (single-threaded store); level <= u16::MAX.
+    // CEP:COST: bounds check plus one store.
+    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::split_derivations_cite_original.
+    // CEP:SECURITY: bounds-checked; the write touches exactly the 2-byte split_level field inside the record header.
+    pub fn set_split_level(&self, ptr: ClausePtr, level: u16) -> Result<(), ClauseError> {
+        let offset = ptr.as_u32();
+        let end = offset
+            .checked_add(core::mem::size_of::<Clause>() as u32)
+            .ok_or(ClauseError::InvalidPointer)?;
+        let range = ArenaRange::new(offset, end).map_err(|_| ClauseError::InvalidPointer)?;
+        let slot = self
+            .arena
+            .array_mut::<Clause>(range)
+            .map_err(|_| ClauseError::InvalidPointer)?;
+        slot[0].split_level = level;
+        Ok(())
     }
 
     // CEP:WHAT: Constructs a clause: validates bounds, sorts literals canonically, computes weight, allocates, assigns the next ID.
@@ -576,6 +683,24 @@ impl<'a> ClauseStore<'a> {
             .array_mut::<Clause>(header_range)
             .map_err(|_| ClauseError::ArenaFull)?;
         let clause_id = ClauseId(self.next_id.get());
+        // Side-table write (design 18.2/12.2 id resolution): dense index by id;
+        // stores constructed without a table skip the write (documented Phase 1
+        // construction path), stores with a table fail loudly at the bound.
+        if !self.id_offsets.is_empty() {
+            let index = match clause_id
+                .0
+                .checked_sub(kFirstClauseId)
+                .and_then(|value| u32::try_from(value).ok())
+            {
+                Some(index) => index as usize,
+                None => return Err(ClauseError::OffsetTableFull),
+            };
+            let slot = match self.id_offsets.get(index) {
+                Some(slot) => slot,
+                None => return Err(ClauseError::OffsetTableFull),
+            };
+            slot.set(header_range.start);
+        }
         self.next_id.set(self.next_id.get() + 1);
         self.live_clauses.set(self.live_clauses.get() + 1);
         header_slot[0] = Clause {

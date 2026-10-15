@@ -1217,7 +1217,7 @@ _RNvCs9fGoE3IYtvS_9sat_bench4main:
 	movq	$8, 384(%rsp)
 	movq	$0, 392(%rsp)
 	movl	$8, %r12d
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.110(%rip), %rax
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.135(%rip), %rax
 	movq	%rax, 32(%rsp)
 	leaq	216(%rsp), %rbx
 	xorl	%r14d, %r14d
@@ -1979,7 +1979,7 @@ _RNvCs9fGoE3IYtvS_9sat_bench4main:
 	movl	$4, %esi
 	callq	_RNvNtCsevLNFiNqfJP_4core6result13unwrap_failed
 .LBB3_482:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.13(%rip), %rax
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.24(%rip), %rax
 	jmp	.LBB3_494
 .LBB3_483:
 	movb	$5, %al
@@ -1997,18 +1997,18 @@ _RNvCs9fGoE3IYtvS_9sat_bench4main:
 	callq	_RNvNtCs1C1lLj4PWSY_5alloc7raw_vec12handle_error
 .LBB3_486:
 	movq	%rcx, %rdi
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.107(%rip), %rax
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.132(%rip), %rax
 	jmp	.LBB3_494
 .LBB3_489:
 	movl	$1, %edi
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.15(%rip), %rax
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.26(%rip), %rax
 	jmp	.LBB3_494
 .LBB3_490:
 	movq	%rcx, %rdi
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.17(%rip), %rax
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.28(%rip), %rax
 	jmp	.LBB3_494
 .LBB3_491:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.16(%rip), %rax
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.27(%rip), %rax
 	jmp	.LBB3_494
 .LBB3_492:
 	xorl	%edi, %edi
@@ -2017,7 +2017,7 @@ _RNvCs9fGoE3IYtvS_9sat_bench4main:
 .LBB3_493:
 	xorl	%edi, %edi
 	xorl	%esi, %esi
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.111(%rip), %rax
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.136(%rip), %rax
 .LBB3_494:
 	movq	%rax, 32(%rsp)
 .LBB3_495:
@@ -2148,7 +2148,7 @@ GCC_except_table3:
 
 	.section	.text._RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate,"ax",@progbits
 	.globl	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate
-	.prefalign	4, .Lfunc_end11, nop
+	.prefalign	4, .Lfunc_end18, nop
 	.type	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate,@function
 _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	.cfi_startproc
@@ -2172,13 +2172,13 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	.cfi_offset %r14, -32
 	.cfi_offset %r15, -24
 	.cfi_offset %rbp, -16
-.LBB11_1:
+.LBB18_1:
 	movl	56(%rdi), %eax
 	cmpl	48(%rdi), %eax
-	jae	.LBB11_94
+	jae	.LBB18_94
 	movq	24(%rdi), %rsi
 	cmpq	%rax, %rsi
-	jbe	.LBB11_101
+	jbe	.LBB18_101
 	movq	16(%rdi), %rcx
 	movl	(%rcx,%rax,4), %ebp
 	incl	%eax
@@ -2188,79 +2188,79 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movl	%ebp, %r8d
 	movl	%ebp, 4(%rsp)
 	xorl	%ecx, %ecx
-.LBB11_4:
+.LBB18_4:
 	movl	%r15d, %edx
 	movl	%esi, %r13d
 	movl	%ecx, %esi
 	testb	$1, %cl
-	je	.LBB11_13
+	je	.LBB18_13
 	cmpl	$-1, %ebp
-	je	.LBB11_89
+	je	.LBB18_89
 	cmpl	$-17, %ebp
-	ja	.LBB11_89
+	ja	.LBB18_89
 	leal	16(%rbp), %eax
 	cmpl	$268435456, %eax
-	ja	.LBB11_89
+	ja	.LBB18_89
 	movq	80(%rdi), %rcx
 	cmpl	12(%rcx), %eax
-	ja	.LBB11_89
+	ja	.LBB18_89
 	testb	$3, %bpl
-	jne	.LBB11_89
+	jne	.LBB18_89
 	cmpl	8(%rcx), %eax
-	ja	.LBB11_89
+	ja	.LBB18_89
 	movq	(%rcx), %rax
 	testq	%rax, %rax
-	je	.LBB11_89
+	je	.LBB18_89
 	movl	%ebp, %ecx
 	movq	8(%rax,%rcx), %rax
 	movq	%rax, 80(%rsp)
 	movl	%edx, %eax
 	movl	80(%rsp,%rax,4), %ebx
-	jmp	.LBB11_15
+	jmp	.LBB18_15
 	.p2align	4
-.LBB11_13:
+.LBB18_13:
 	movl	%ebp, %eax
 	cmpq	%rax, 72(%rdi)
-	jbe	.LBB11_86
+	jbe	.LBB18_86
 	movq	64(%rdi), %rcx
 	movl	(%rcx,%rax,4), %ebx
-.LBB11_15:
+.LBB18_15:
 	cmpl	$-1, %ebx
-	je	.LBB11_86
+	je	.LBB18_86
 	movl	$1280, %r15d
 	cmpl	$-17, %ebx
-	ja	.LBB11_90
+	ja	.LBB18_90
 	leal	16(%rbx), %r12d
 	xorl	%eax, %eax
 	cmpl	$268435456, %r12d
-	ja	.LBB11_91
+	ja	.LBB18_91
 	movq	80(%rdi), %rcx
 	movl	12(%rcx), %r11d
 	cmpl	%r11d, %r12d
-	ja	.LBB11_91
+	ja	.LBB18_91
 	xorl	%eax, %eax
 	testb	$3, %bl
-	jne	.LBB11_91
+	jne	.LBB18_91
 	movl	8(%rcx), %r9d
 	cmpl	%r9d, %r12d
-	ja	.LBB11_91
+	ja	.LBB18_91
 	movq	(%rcx), %r10
 	testq	%r10, %r10
-	je	.LBB11_90
+	je	.LBB18_90
 	movb	%r13b, 2(%rsp)
 	movl	%edx, 40(%rsp)
 	movl	%ebx, %r13d
 	movl	(%r10,%r13), %edx
 	xorl	%eax, %eax
 	testq	%rdx, %rdx
-	je	.LBB11_91
+	je	.LBB18_91
 	cmpl	$268435436, %ebx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	leal	20(%rbx), %ecx
 	cmpl	%r11d, %ecx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	%r9d, %ecx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	movl	%r14d, 36(%rsp)
 	movq	%r8, 24(%rsp)
 	movl	%r12d, %r8d
@@ -2271,7 +2271,7 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movl	%r14d, %eax
 	xorl	$1, %eax
 	cmpl	%edx, %eax
-	jae	.LBB11_90
+	jae	.LBB18_90
 	movl	%ecx, 32(%rsp)
 	movb	%sil, 3(%rsp)
 	movl	%eax, %eax
@@ -2279,13 +2279,13 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	leal	4(%rsi), %ecx
 	xorl	%eax, %eax
 	cmpl	%r9d, %ecx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	$268435455, %esi
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	%r11d, %ecx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	%r14d, %edx
-	jbe	.LBB11_90
+	jbe	.LBB18_90
 	movq	%rsi, 8(%rsp)
 	xorl	%eax, %eax
 	movl	4(%rsp), %ecx
@@ -2295,13 +2295,13 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	leal	4(%rsi), %r8d
 	xorl	%eax, %eax
 	cmpl	%r9d, %r8d
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	$268435455, %esi
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	%r11d, %r8d
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	(%r10,%rsi), %ecx
-	jne	.LBB11_90
+	jne	.LBB18_90
 	movl	%r8d, 44(%rsp)
 	movq	%rsi, 72(%rsp)
 	movq	%rbp, 56(%rsp)
@@ -2311,7 +2311,7 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movl	%r14d, %r15d
 	movl	%ebx, %ebp
 	movb	$1, %cl
-	jne	.LBB11_4
+	jne	.LBB18_4
 	movq	8(%rsp), %rax
 	movl	(%r10,%rax), %eax
 	movq	%rax, 16(%rsp)
@@ -2320,114 +2320,114 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movq	%rax, 48(%rsp)
 	movq	%rsi, 64(%rsp)
 	cmpq	%rax, %rsi
-	jbe	.LBB11_41
+	jbe	.LBB18_41
 	movq	(%rdi), %rax
 	movq	48(%rsp), %rcx
 	movzbl	(%rax,%rcx), %eax
 	cmpl	$2, %eax
-	je	.LBB11_40
+	je	.LBB18_40
 	cmpl	$1, %eax
 	movb	$1, %sil
-	jne	.LBB11_41
+	jne	.LBB18_41
 	movl	%ebx, %r8d
 	movl	%r14d, %r15d
 	movl	%ebx, %ebp
 	movb	$1, %cl
 	testb	$1, 16(%rsp)
-	je	.LBB11_4
-	jmp	.LBB11_41
-.LBB11_40:
+	je	.LBB18_4
+	jmp	.LBB18_41
+.LBB18_40:
 	movl	%ebx, %r8d
 	movl	%r14d, %r15d
 	movl	%ebx, %ebp
 	movb	$1, %cl
 	testb	$1, 16(%rsp)
 	movb	$1, %sil
-	jne	.LBB11_4
-.LBB11_41:
+	jne	.LBB18_4
+.LBB18_41:
 	cmpl	$3, %edx
 	movl	4(%rsp), %ecx
-	jb	.LBB11_71
+	jb	.LBB18_71
 	leal	24(%rbx), %esi
 	cmpl	%r12d, %esi
-	jb	.LBB11_100
+	jb	.LBB18_100
 	movl	$2, %r8d
-	jmp	.LBB11_46
-.LBB11_44:
+	jmp	.LBB18_46
+.LBB18_44:
 	testb	$1, 8(%rsp)
 	movl	4(%rsp), %ecx
-	jne	.LBB11_53
-.LBB11_45:
+	jne	.LBB18_53
+.LBB18_45:
 	incq	%r8
 	movl	%r15d, %esi
 	cmpq	%r8, %rdx
-	je	.LBB11_71
-.LBB11_46:
+	je	.LBB18_71
+.LBB18_46:
 	leal	4(%rsi), %r15d
 	xorl	%eax, %eax
 	cmpl	%r9d, %r15d
-	ja	.LBB11_96
+	ja	.LBB18_96
 	cmpl	$268435455, %esi
-	ja	.LBB11_96
+	ja	.LBB18_96
 	cmpl	%r11d, %r15d
-	ja	.LBB11_96
+	ja	.LBB18_96
 	movl	%esi, %eax
 	movq	%rax, %rbp
 	movl	(%r10,%rax), %eax
 	movq	%rax, 8(%rsp)
 	shrl	%eax
 	cmpq	%rax, 64(%rsp)
-	jbe	.LBB11_53
+	jbe	.LBB18_53
 	movq	(%rdi), %rcx
 	movzbl	(%rcx,%rax), %eax
 	cmpl	$2, %eax
-	je	.LBB11_44
+	je	.LBB18_44
 	cmpl	$1, %eax
 	movl	4(%rsp), %ecx
-	jne	.LBB11_53
+	jne	.LBB18_53
 	testb	$1, 8(%rsp)
-	jne	.LBB11_45
-.LBB11_53:
+	jne	.LBB18_45
+.LBB18_53:
 	xorl	%eax, %eax
 	cmpl	%r8d, %edx
-	jbe	.LBB11_96
+	jbe	.LBB18_96
 	cmpl	%r12d, %esi
 	movl	$1280, %r15d
-	jb	.LBB11_91
+	jb	.LBB18_91
 	movl	%ecx, (%r10,%rbp)
 	movq	80(%rdi), %rax
 	movl	12(%rax), %ecx
 	cmpl	%ecx, %r12d
-	ja	.LBB11_90
+	ja	.LBB18_90
 	movl	8(%rax), %edx
 	cmpl	%edx, %r12d
-	ja	.LBB11_90
+	ja	.LBB18_90
 	movq	(%rax), %rsi
 	testq	%rsi, %rsi
-	je	.LBB11_90
+	je	.LBB18_90
 	cmpl	%r14d, (%rsi,%r13)
-	jbe	.LBB11_90
+	jbe	.LBB18_90
 	xorl	%eax, %eax
 	movl	44(%rsp), %r8d
 	cmpl	%ecx, %r8d
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	%edx, %r8d
 	movl	4(%rsp), %ecx
 	movl	36(%rsp), %r14d
 	movq	8(%rsp), %rdx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	movq	72(%rsp), %rax
 	movl	%edx, (%rsi,%rax)
 	movq	80(%rdi), %rax
 	movl	12(%rax), %r11d
 	cmpl	%r11d, %r12d
-	ja	.LBB11_90
+	ja	.LBB18_90
 	movl	8(%rax), %r10d
 	cmpl	%r10d, %r12d
-	ja	.LBB11_90
+	ja	.LBB18_90
 	movq	(%rax), %r8
 	testq	%r8, %r8
-	je	.LBB11_90
+	je	.LBB18_90
 	xorl	%edx, %edx
 	cmpl	32(%rsp), %ecx
 	setne	%sil
@@ -2436,21 +2436,21 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	cmoveq	%rax, %rcx
 	movl	(%rcx), %r9d
 	testb	$1, 2(%rsp)
-	je	.LBB11_77
+	je	.LBB18_77
 	movq	24(%rsp), %rax
 	cmpl	$-17, %eax
-	ja	.LBB11_90
+	ja	.LBB18_90
 	leal	16(%rax), %ecx
 	xorl	%eax, %eax
 	cmpl	$268435456, %ecx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	cmpl	%r11d, %ecx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	xorl	%eax, %eax
 	testb	$3, 24(%rsp)
-	jne	.LBB11_91
+	jne	.LBB18_91
 	cmpl	%r10d, %ecx
-	ja	.LBB11_91
+	ja	.LBB18_91
 	movq	24(%rsp), %rcx
 	movl	%ecx, %eax
 	addq	%rax, %r8
@@ -2460,29 +2460,29 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movl	$-1, %eax
 	movq	8(%rsp), %r9
 	cmpq	%r9, 72(%rdi)
-	ja	.LBB11_81
-.LBB11_79:
+	ja	.LBB18_81
+.LBB18_79:
 	movq	80(%rdi), %rcx
 	cmpl	12(%rcx), %r12d
-	jbe	.LBB11_82
-	jmp	.LBB11_90
-.LBB11_71:
+	jbe	.LBB18_82
+	jmp	.LBB18_90
+.LBB18_71:
 	movq	48(%rsp), %rcx
 	cmpq	%rcx, 64(%rsp)
-	jbe	.LBB11_76
+	jbe	.LBB18_76
 	movq	(%rdi), %rax
 	movzbl	(%rax,%rcx), %eax
 	cmpl	$2, %eax
-	je	.LBB11_75
+	je	.LBB18_75
 	cmpl	$1, %eax
-	jne	.LBB11_76
+	jne	.LBB18_76
 	testb	$1, 16(%rsp)
-	je	.LBB11_76
-	jmp	.LBB11_87
-.LBB11_75:
+	je	.LBB18_76
+	jmp	.LBB18_87
+.LBB18_75:
 	testb	$1, 16(%rsp)
-	je	.LBB11_87
-.LBB11_76:
+	je	.LBB18_87
+.LBB18_76:
 	movq	%rdi, %r12
 	movq	16(%rsp), %rsi
 	movl	%ebx, %edx
@@ -2494,37 +2494,37 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movb	$1, %cl
 	cmpb	$-1, %al
 	movb	$1, %sil
-	je	.LBB11_4
-	jmp	.LBB11_99
-.LBB11_77:
+	je	.LBB18_4
+	jmp	.LBB18_99
+.LBB18_77:
 	movq	24(%rsp), %r8
 	movl	%r8d, %eax
 	cmpq	%rax, 72(%rdi)
-	jbe	.LBB11_78
+	jbe	.LBB18_78
 	movq	64(%rdi), %rcx
 	movl	%r9d, (%rcx,%rax,4)
 	movl	$-1, %eax
 	movq	8(%rsp), %r9
 	cmpq	%r9, 72(%rdi)
-	jbe	.LBB11_79
-	jmp	.LBB11_81
-.LBB11_78:
+	jbe	.LBB18_79
+	jmp	.LBB18_81
+.LBB18_78:
 	movl	$-1, %eax
 	movq	8(%rsp), %r9
 	cmpq	%r9, 72(%rdi)
-	jbe	.LBB11_79
-.LBB11_81:
+	jbe	.LBB18_79
+.LBB18_81:
 	movq	64(%rdi), %rax
 	movl	(%rax,%r9,4), %eax
 	movq	80(%rdi), %rcx
 	cmpl	12(%rcx), %r12d
-	ja	.LBB11_90
-.LBB11_82:
+	ja	.LBB18_90
+.LBB18_82:
 	cmpl	8(%rcx), %r12d
-	ja	.LBB11_90
+	ja	.LBB18_90
 	movq	(%rcx), %rcx
 	testq	%rcx, %rcx
-	je	.LBB11_90
+	je	.LBB18_90
 	movb	%sil, %dl
 	addq	%r13, %rcx
 	movl	%eax, 8(%rcx,%rdx,4)
@@ -2536,7 +2536,7 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movzbl	3(%rsp), %eax
 	movl	%eax, %ecx
 	cmpq	%r9, 72(%rdi)
-	jbe	.LBB11_4
+	jbe	.LBB18_4
 	movq	64(%rdi), %rax
 	movl	%ebx, (%rax,%r9,4)
 	movl	36(%rsp), %r14d
@@ -2549,38 +2549,38 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	movl	%eax, %ebp
 	movzbl	3(%rsp), %eax
 	movl	%eax, %ecx
-	jmp	.LBB11_4
-.LBB11_86:
+	jmp	.LBB18_4
+.LBB18_86:
 	xorl	%edx, %edx
 	xorl	%r13d, %r13d
 	xorl	%r15d, %r15d
 	testb	$1, %r15b
-	je	.LBB11_1
-	jmp	.LBB11_88
-.LBB11_87:
+	je	.LBB18_1
+	jmp	.LBB18_88
+.LBB18_87:
 	movq	%r13, %r15
 	shlq	$32, %r15
 	incq	%r15
 	movl	$1, %edx
 	testb	$1, %r15b
-	je	.LBB11_1
-.LBB11_88:
+	je	.LBB18_1
+.LBB18_88:
 	movl	%r13d, %ecx
 	andl	$2147418112, %ecx
 	shrq	$32, %r15
 	andl	$2147483392, %r15d
-	jmp	.LBB11_93
-.LBB11_89:
+	jmp	.LBB18_93
+.LBB18_89:
 	movl	$1280, %r15d
-.LBB11_90:
+.LBB18_90:
 	xorl	%eax, %eax
-.LBB11_91:
+.LBB18_91:
 	movzbl	%al, %r13d
 	orq	%r15, %r13
 	movl	$2, %edx
-.LBB11_92:
+.LBB18_92:
 	xorl	%ecx, %ecx
-.LBB11_93:
+.LBB18_93:
 	andl	$65280, %r15d
 	orl	%r15d, %ecx
 	movzbl	%r13b, %eax
@@ -2602,28 +2602,28 @@ _RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate:
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB11_94:
+.LBB18_94:
 	.cfi_def_cfa_offset 144
 	xorl	%r15d, %r15d
 	xorl	%r13d, %r13d
 	xorl	%edx, %edx
-	jmp	.LBB11_92
-.LBB11_96:
+	jmp	.LBB18_92
+.LBB18_96:
 	movl	$1280, %r15d
-	jmp	.LBB11_91
-.LBB11_99:
+	jmp	.LBB18_91
+.LBB18_99:
 	xorl	%r15d, %r15d
-	jmp	.LBB11_91
-.LBB11_100:
+	jmp	.LBB18_91
+.LBB18_100:
 	xorl	%eax, %eax
 	movl	$1280, %r15d
-	jmp	.LBB11_91
-.LBB11_101:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.13(%rip), %rdx
+	jmp	.LBB18_91
+.LBB18_101:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.24(%rip), %rdx
 	movq	%rax, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.Lfunc_end11:
-	.size	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate, .Lfunc_end11-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate
+.Lfunc_end18:
+	.size	_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate, .Lfunc_end18-_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate
 	.cfi_endproc
 
 

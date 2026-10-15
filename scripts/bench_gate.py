@@ -53,6 +53,13 @@ CEP_BASELINES = {
     "atp_subsumption_verify": 136.35,
     "sat_preprocess_round": 1235076.13,
     "sat_drat_record": 1.19,
+    # Phase 4 additions (recorded 2026-10-16, same host class as above):
+    "avatar_split_step": 780.71,
+    "avatar_intern_step": 76.99,
+    "deque_push_pop": 31.44,
+    "deque_steal": 68.65,
+    "mpmc_enqueue_dequeue": 1008.83,
+    "codec_roundtrip": 2281.13,
 }
 
 

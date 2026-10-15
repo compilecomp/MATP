@@ -11,3 +11,4 @@
 
 pub mod drat_checker;
 pub mod drat_writer;
+pub mod tstp;

@@ -1244,7 +1244,7 @@ _RNvCs5tlsjq5Gn9H_20sat_preprocess_bench4main:
 	leaq	.Lanon.98608ff72e40f011601b19d95ef33619.9(%rip), %rdi
 	jmp	.LBB2_260
 .LBB2_264:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.165(%rip), %rcx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.205(%rip), %rcx
 .LBB2_265:
 .Ltmp61:
 	movl	$512, %edx
@@ -3173,18 +3173,18 @@ _RNvCs5tlsjq5Gn9H_20sat_preprocess_bench4main:
 	retq
 .LBB2_781:
 	.cfi_def_cfa_offset 8064
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.164(%rip), %rcx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.204(%rip), %rcx
 	jmp	.LBB2_265
 .LBB2_782:
 	movq	%rax, %r15
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.163(%rip), %rcx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.203(%rip), %rcx
 	jmp	.LBB2_265
 .LBB2_783:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.159(%rip), %rcx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.199(%rip), %rcx
 	jmp	.LBB2_265
 .LBB2_784:
 	movq	%rdx, %r15
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.160(%rip), %rcx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.200(%rip), %rcx
 	jmp	.LBB2_265
 .LBB2_788:
 	movb	$5, %al
@@ -3239,7 +3239,7 @@ _RNvCs5tlsjq5Gn9H_20sat_preprocess_bench4main:
 .LBB2_785:
 	movq	%rcx, %r13
 .LBB2_786:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.156(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.196(%rip), %rdx
 .LBB2_787:
 .Ltmp72:
 	movq	%r13, %rdi
@@ -3247,22 +3247,22 @@ _RNvCs5tlsjq5Gn9H_20sat_preprocess_bench4main:
 .Ltmp73:
 	jmp	.LBB2_807
 .LBB2_797:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.16(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.27(%rip), %rdx
 	jmp	.LBB2_787
 .LBB2_798:
 	movq	%rdx, %r13
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.17(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.28(%rip), %rdx
 	jmp	.LBB2_787
 .LBB2_799:
 	movq	%rcx, %r13
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.110(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.135(%rip), %rdx
 	jmp	.LBB2_787
 .LBB2_800:
 	movq	%rcx, %r13
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.111(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.136(%rip), %rdx
 	jmp	.LBB2_787
 .LBB2_801:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.88(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.113(%rip), %rdx
 	jmp	.LBB2_787
 .LBB2_802:
 	movzbl	1872(%rsp), %eax
@@ -3295,7 +3295,7 @@ _RNvCs5tlsjq5Gn9H_20sat_preprocess_bench4main:
 	callq	_RNvNtCsevLNFiNqfJP_4core6option13expect_failed
 .LBB2_806:
 .Ltmp89:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.115(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.140(%rip), %rdx
 	movq	%rbx, %rsi
 	callq	_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check
 .Ltmp90:
@@ -3303,12 +3303,12 @@ _RNvCs5tlsjq5Gn9H_20sat_preprocess_bench4main:
 	ud2
 .LBB2_808:
 	movl	$512, %esi
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.161(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.201(%rip), %rdx
 	jmp	.LBB2_787
 .LBB2_809:
 	movl	$512, %r13d
 	movl	$512, %esi
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.162(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.202(%rip), %rdx
 	jmp	.LBB2_787
 .LBB2_810:
 	movb	$5, %al
@@ -3531,7 +3531,7 @@ GCC_except_table2:
 
 	.section	.text._RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify,"ax",@progbits
 	.globl	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify
-	.prefalign	4, .Lfunc_end127, nop
+	.prefalign	4, .Lfunc_end149, nop
 	.type	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify,@function
 _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	.cfi_startproc
@@ -3566,23 +3566,23 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	xorl	%esi, %esi
 	callq	*memset@GOTPCREL(%rip)
 	cmpl	$1, 180(%r14)
-	jne	.LBB127_3
+	jne	.LBB149_3
 	leaq	128(%r14), %rdi
 	callq	*_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate@GOTPCREL(%rip)
 	cmpl	$2, %eax
-	jne	.LBB127_6
+	jne	.LBB149_6
 	shrq	$24, %rax
 	movl	%eax, %ecx
 	orl	$7, %ecx
 	shrl	$16, %eax
 	movb	%al, 2(%r12)
 	movw	%cx, (%r12)
-	jmp	.LBB127_4
-.LBB127_3:
+	jmp	.LBB149_4
+.LBB149_3:
 	movw	$775, (%r12)
-.LBB127_4:
+.LBB149_4:
 	movb	$-1, %bpl
-.LBB127_5:
+.LBB149_5:
 	movb	%bpl, 32(%r12)
 	movq	%r12, %rax
 	addq	$6280, %rsp
@@ -3600,16 +3600,16 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB127_6:
+.LBB149_6:
 	.cfi_def_cfa_offset 6336
 	testb	$1, %al
-	je	.LBB127_11
+	je	.LBB149_11
 	movq	(%r14), %rax
 	testq	%rax, %rax
-	je	.LBB127_10
+	je	.LBB149_10
 	movl	48(%r14), %ecx
 	cmpq	%rcx, 8(%r14)
-	jbe	.LBB127_172
+	jbe	.LBB149_172
 	movl	56(%r14), %edx
 	movl	60(%r14), %esi
 	shlq	$4, %rcx
@@ -3620,13 +3620,13 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	incl	48(%r14)
 	incl	%esi
 	movl	%esi, 60(%r14)
-.LBB127_10:
+.LBB149_10:
 	xorps	%xmm0, %xmm0
 	movups	%xmm0, 16(%r12)
 	movups	%xmm0, (%r12)
 	movb	$1, %bpl
-	jmp	.LBB127_5
-.LBB127_11:
+	jmp	.LBB149_5
+.LBB149_11:
 	movl	(%rbx), %eax
 	movl	%eax, 108(%rsp)
 	movl	4(%rbx), %eax
@@ -3646,50 +3646,50 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	xorl	%ebx, %ebx
 	movq	%r12, 16(%rsp)
 	movq	%r14, 128(%rsp)
-.LBB127_12:
+.LBB149_12:
 	cmpl	108(%rsp), %ebx
-	je	.LBB127_178
+	je	.LBB149_178
 	incl	%ebx
 	movl	480(%r14), %edx
 	xorl	%r12d, %r12d
 	testq	%rdx, %rdx
 	movl	%ebx, 32(%rsp)
-	je	.LBB127_39
+	je	.LBB149_39
 	movl	%r13d, 28(%rsp)
 	movl	$12, %r13d
 	xorl	%ebx, %ebx
 	movq	$0, 8(%rsp)
 	movq	%rdx, 80(%rsp)
-	jmp	.LBB127_20
-.LBB127_15:
+	jmp	.LBB149_20
+.LBB149_15:
 	leaq	440(%r14), %rdi
 	movq	%r15, %rsi
 	movl	%ebp, %edx
 	callq	*_RNvMs0_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8registryNtB5_14ClauseRegistry6delete@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	jne	.LBB127_173
+	jne	.LBB149_173
 	incl	104(%rsp)
-.LBB127_17:
+.LBB149_17:
 	movb	$1, %al
 	movq	%rax, 8(%rsp)
-.LBB127_18:
+.LBB149_18:
 	movq	80(%rsp), %rdx
-.LBB127_19:
+.LBB149_19:
 	incq	%rbx
 	addq	$16, %r13
 	cmpq	%rbx, %rdx
-	je	.LBB127_40
-.LBB127_20:
+	je	.LBB149_40
+.LBB149_20:
 	movl	480(%r14), %eax
 	cmpq	%rax, %rbx
-	jae	.LBB127_19
+	jae	.LBB149_19
 	movq	448(%r14), %rsi
 	cmpq	%rbx, %rsi
-	jbe	.LBB127_237
+	jbe	.LBB149_237
 	leaq	440(%r14), %rax
 	movq	(%rax), %rax
 	cmpb	$0, (%rax,%r13)
-	jne	.LBB127_19
+	jne	.LBB149_19
 	movl	-4(%rax,%r13), %ebp
 	leaq	48(%rsp), %rdi
 	movq	%r14, %rsi
@@ -3698,32 +3698,32 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess11read_clause
 	movzbl	60(%rsp), %eax
 	cmpb	$2, %al
-	je	.LBB127_164
+	je	.LBB149_164
 	testb	$1, %al
-	je	.LBB127_29
+	je	.LBB149_29
 	cmpq	$0, (%r14)
-	je	.LBB127_27
+	je	.LBB149_27
 	movq	%r14, %rdi
 	movl	%ebp, %esi
 	movq	%r15, %rdx
 	callq	*_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat5proofNtB4_13ProofRecorder13record_delete@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	jne	.LBB127_174
-.LBB127_27:
+	jne	.LBB149_174
+.LBB149_27:
 	leaq	440(%r14), %rdi
 	movq	%r15, %rsi
 	movl	%ebp, %edx
 	callq	*_RNvMs0_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8registryNtB5_14ClauseRegistry6delete@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	jne	.LBB127_173
+	jne	.LBB149_173
 	incl	112(%rsp)
-	jmp	.LBB127_17
-.LBB127_29:
+	jmp	.LBB149_17
+.LBB149_29:
 	cmpl	$0, 56(%rsp)
-	je	.LBB127_18
+	je	.LBB149_18
 	movq	48(%rsp), %r15
 	cmpq	$513, %r15
-	jae	.LBB127_214
+	jae	.LBB149_214
 	leaq	(,%r15,4), %rdx
 	leaq	4232(%rsp), %r14
 	movq	%r14, %rdi
@@ -3740,20 +3740,20 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat6solverNtB4_10CdclSolver20add_clause_with_kind
 	movq	%rax, %rsi
 	cmpl	$-1, %esi
-	je	.LBB127_35
+	je	.LBB149_35
 	cmpl	$3, %esi
 	movq	%r15, %r14
 	leaq	208(%r15), %r15
-	je	.LBB127_187
+	je	.LBB149_187
 	leaq	128(%r14), %rdi
 	callq	*_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate@GOTPCREL(%rip)
 	movq	%rax, %rsi
 	cmpl	$2, %esi
-	je	.LBB127_183
+	je	.LBB149_183
 	testb	$1, %sil
-	je	.LBB127_37
-	jmp	.LBB127_184
-.LBB127_35:
+	je	.LBB149_37
+	jmp	.LBB149_184
+.LBB149_35:
 	movq	%rsi, %rdx
 	shrq	$32, %rdx
 	movq	%rsi, %rax
@@ -3761,63 +3761,63 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	cmpb	$-1, %dl
 	movq	%r15, %r14
 	leaq	208(%r15), %r15
-	jne	.LBB127_182
+	jne	.LBB149_182
 	testb	$1, %al
-	je	.LBB127_187
-.LBB127_37:
+	je	.LBB149_187
+.LBB149_37:
 	cmpq	$0, (%r14)
-	je	.LBB127_15
+	je	.LBB149_15
 	movq	%r14, %rdi
 	movl	%ebp, %esi
 	movq	%r15, %rdx
 	callq	*_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat5proofNtB4_13ProofRecorder13record_delete@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	je	.LBB127_15
-	jmp	.LBB127_174
-.LBB127_39:
+	je	.LBB149_15
+	jmp	.LBB149_174
+.LBB149_39:
 	movq	$0, 8(%rsp)
-	jmp	.LBB127_105
-.LBB127_40:
+	jmp	.LBB149_105
+.LBB149_40:
 	xorl	%r15d, %r15d
-.LBB127_41:
+.LBB149_41:
 	movl	%r15d, %r13d
 	incl	%r15d
 	movl	%r15d, %ebx
 	movq	%r13, %r15
 	shlq	$4, %r13
 	orq	$12, %r13
-	jmp	.LBB127_43
+	jmp	.LBB149_43
 	.p2align	4
-.LBB127_42:
+.LBB149_42:
 	incq	%r15
 	addq	$16, %r13
 	incl	%ebx
 	cmpq	%rdx, %r15
-	jae	.LBB127_104
-.LBB127_43:
+	jae	.LBB149_104
+.LBB149_43:
 	movl	480(%r14), %eax
 	cmpq	%rax, %r15
-	jae	.LBB127_42
+	jae	.LBB149_42
 	movq	448(%r14), %rsi
 	cmpq	%r15, %rsi
-	jbe	.LBB127_238
+	jbe	.LBB149_238
 	leaq	440(%r14), %rax
 	movq	(%rax), %rax
 	cmpb	$0, (%rax,%r13)
-	jne	.LBB127_42
+	jne	.LBB149_42
 	movl	-4(%rax,%r13), %edx
 	leaq	48(%rsp), %rdi
 	movq	%r14, %rsi
 	leaq	136(%rsp), %rcx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess11read_clause
 	cmpb	$2, 60(%rsp)
-	je	.LBB127_165
+	je	.LBB149_165
 	movq	48(%rsp), %rbp
 	testq	%rbp, %rbp
 	movq	80(%rsp), %rdx
-	je	.LBB127_42
+	je	.LBB149_42
 	cmpl	%ebx, %edx
-	jbe	.LBB127_104
+	jbe	.LBB149_104
 	incq	%r15
 	movl	28(%rsp), %r13d
 	movl	116(%rsp), %edi
@@ -3825,34 +3825,34 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	cmoval	%r13d, %edi
 	movq	%r15, %rbx
 	movl	%edi, 36(%rsp)
-	jmp	.LBB127_53
-.LBB127_50:
+	jmp	.LBB149_53
+.LBB149_50:
 	movb	$1, %al
 	movq	%rax, 8(%rsp)
-.LBB127_51:
+.LBB149_51:
 	movq	80(%rsp), %rdx
 	movl	36(%rsp), %edi
 	.p2align	4
-.LBB127_52:
+.LBB149_52:
 	incq	%rbx
 	cmpl	%ebx, %edx
-	je	.LBB127_103
-.LBB127_53:
+	je	.LBB149_103
+.LBB149_53:
 	cmpl	%edi, %r13d
-	je	.LBB127_179
+	je	.LBB149_179
 	incl	%r13d
 	movl	480(%r14), %eax
 	cmpq	%rax, %rbx
-	jae	.LBB127_52
+	jae	.LBB149_52
 	movq	448(%r14), %rsi
 	cmpq	%rbx, %rsi
-	jbe	.LBB127_237
+	jbe	.LBB149_237
 	leaq	440(%r14), %rax
 	movq	(%rax), %rax
 	movq	%rbx, %rcx
 	shlq	$4, %rcx
 	cmpb	$0, 12(%rax,%rcx)
-	jne	.LBB127_52
+	jne	.LBB149_52
 	addq	%rcx, %rax
 	movl	8(%rax), %edx
 	leaq	48(%rsp), %rdi
@@ -3861,41 +3861,41 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	leaq	2184(%rsp), %rcx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess11read_clause
 	cmpb	$2, 60(%rsp)
-	je	.LBB127_167
+	je	.LBB149_167
 	movq	48(%rsp), %rsi
 	testq	%rsi, %rsi
 	movq	80(%rsp), %rdx
 	movl	36(%rsp), %edi
-	je	.LBB127_52
+	je	.LBB149_52
 	cmpq	$513, %rbp
-	jae	.LBB127_225
+	jae	.LBB149_225
 	cmpq	$513, %rsi
 	movl	40(%rsp), %edx
-	jae	.LBB127_226
+	jae	.LBB149_226
 	xorl	%eax, %eax
 	xorl	%ecx, %ecx
 	.p2align	4
-.LBB127_62:
+.LBB149_62:
 	movl	2184(%rsp,%rcx,4), %edi
 	cmpl	%edi, 136(%rsp,%rax,4)
-	jne	.LBB127_64
+	jne	.LBB149_64
 	incq	%rax
-	jmp	.LBB127_65
+	jmp	.LBB149_65
 	.p2align	4
-.LBB127_64:
-	jbe	.LBB127_72
-.LBB127_65:
+.LBB149_64:
+	jbe	.LBB149_72
+.LBB149_65:
 	cmpq	%rbp, %rax
-	jae	.LBB127_67
+	jae	.LBB149_67
 	incq	%rcx
 	cmpq	%rsi, %rcx
-	jb	.LBB127_62
-.LBB127_67:
+	jb	.LBB149_62
+.LBB149_67:
 	cmpq	%rbp, %rax
-	jne	.LBB127_72
+	jne	.LBB149_72
 	cmpq	$0, (%r14)
 	leaq	208(%r14), %rcx
-	je	.LBB127_70
+	je	.LBB149_70
 	movq	%r14, %rdi
 	movl	%edx, %esi
 	movq	%rcx, %rdx
@@ -3904,130 +3904,130 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	movq	8(%rsp), %rcx
 	movl	40(%rsp), %edx
 	cmpb	$-1, %al
-	jne	.LBB127_174
-.LBB127_70:
+	jne	.LBB149_174
+.LBB149_70:
 	leaq	440(%r14), %rdi
 	movq	%rcx, %rsi
 	callq	*_RNvMs0_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8registryNtB5_14ClauseRegistry6delete@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	jne	.LBB127_173
+	jne	.LBB149_173
 	incl	96(%rsp)
-	jmp	.LBB127_50
-.LBB127_72:
+	jmp	.LBB149_50
+.LBB149_72:
 	movl	%r13d, 28(%rsp)
 	leaq	(,%rsi,4), %rax
 	leaq	136(%rsp), %rcx
 	xorl	%edx, %edx
-	jmp	.LBB127_74
+	jmp	.LBB149_74
 	.p2align	4
-.LBB127_73:
+.LBB149_73:
 	leaq	(%rsp,%rbp,4), %rdi
 	addq	$136, %rdi
 	cmpq	%rdi, %rcx
-	je	.LBB127_96
-.LBB127_74:
+	je	.LBB149_96
+.LBB149_74:
 	movq	%rdx, %r8
 	incq	%rdx
 	movl	(%rcx), %r9d
 	addq	$4, %rcx
 	xorl	%edi, %edi
 	.p2align	4
-.LBB127_75:
+.LBB149_75:
 	movl	2184(%rsp,%rdi,4), %r10d
 	xorl	%r9d, %r10d
 	cmpl	$1, %r10d
-	je	.LBB127_77
+	je	.LBB149_77
 	incq	%rdi
 	cmpq	%rdi, %rsi
-	jne	.LBB127_75
-	jmp	.LBB127_73
-.LBB127_77:
+	jne	.LBB149_75
+	jmp	.LBB149_73
+.LBB149_77:
 	xorl	%r9d, %r9d
 	leaq	136(%rsp), %r10
-	jmp	.LBB127_79
+	jmp	.LBB149_79
 	.p2align	4
-.LBB127_78:
+.LBB149_78:
 	addq	$4, %r10
 	incq	%r9
 	leaq	(%rsp,%rbp,4), %r11
 	addq	$136, %r11
 	cmpq	%r11, %r10
-	je	.LBB127_83
-.LBB127_79:
+	je	.LBB149_83
+.LBB149_79:
 	cmpq	%r8, %r9
-	je	.LBB127_78
+	je	.LBB149_78
 	movl	(%r10), %r11d
 	xorl	%r13d, %r13d
 	.p2align	4
-.LBB127_81:
+.LBB149_81:
 	cmpq	%r13, %rax
-	je	.LBB127_73
+	je	.LBB149_73
 	cmpl	%r11d, 2184(%rsp,%r13)
 	leaq	4(%r13), %r13
-	jne	.LBB127_81
-	jmp	.LBB127_78
-.LBB127_83:
+	jne	.LBB149_81
+	jmp	.LBB149_78
+.LBB149_83:
 	cmpq	$511, %rdi
-	ja	.LBB127_239
+	ja	.LBB149_239
 	xorl	%eax, %eax
 	xorl	%edx, %edx
 	movl	28(%rsp), %r13d
-.LBB127_85:
+.LBB149_85:
 	cmpq	%rsi, %rax
 	movq	%rsi, %rcx
 	cmovaq	%rax, %rcx
 	.p2align	4
-.LBB127_86:
+.LBB149_86:
 	cmpq	%rax, %rcx
-	je	.LBB127_90
+	je	.LBB149_90
 	movl	2184(%rsp,%rax,4), %r8d
 	incq	%rax
 	cmpl	2184(%rsp,%rdi,4), %r8d
-	je	.LBB127_86
+	je	.LBB149_86
 	cmpq	$512, %rdx
-	je	.LBB127_240
+	je	.LBB149_240
 	movl	%r8d, 4232(%rsp,%rdx,4)
 	incq	%rdx
-	jmp	.LBB127_85
-.LBB127_90:
+	jmp	.LBB149_85
+.LBB149_90:
 	testq	%rdx, %rdx
-	je	.LBB127_210
+	je	.LBB149_210
 	cmpq	$513, %rdx
-	jae	.LBB127_233
+	jae	.LBB149_233
 	movq	%r14, %rdi
 	leaq	4232(%rsp), %rsi
 	xorl	%ecx, %ecx
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat6solverNtB4_10CdclSolver20add_clause_with_kind
 	movq	%rax, %rsi
 	cmpl	$-1, %esi
-	je	.LBB127_97
+	je	.LBB149_97
 	cmpl	$3, %esi
-	je	.LBB127_219
+	je	.LBB149_219
 	leaq	128(%r14), %rdi
 	callq	*_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate@GOTPCREL(%rip)
 	movq	%rax, %rsi
 	cmpl	$2, %esi
-	je	.LBB127_183
+	je	.LBB149_183
 	testb	$1, %sil
-	je	.LBB127_99
-	jmp	.LBB127_215
-.LBB127_96:
+	je	.LBB149_99
+	jmp	.LBB149_215
+.LBB149_96:
 	movl	28(%rsp), %r13d
-	jmp	.LBB127_51
-.LBB127_97:
+	jmp	.LBB149_51
+.LBB149_97:
 	movq	%rsi, %rdx
 	shrq	$32, %rdx
 	movq	%rsi, %rax
 	shrq	$40, %rax
 	cmpb	$-1, %dl
-	jne	.LBB127_182
+	jne	.LBB149_182
 	testb	$1, %al
-	je	.LBB127_219
-.LBB127_99:
+	je	.LBB149_219
+.LBB149_99:
 	cmpq	$0, (%r14)
 	leaq	208(%r14), %rcx
 	movl	40(%rsp), %edx
-	je	.LBB127_101
+	je	.LBB149_101
 	movq	%r14, %rdi
 	movl	%edx, %esi
 	movq	%rcx, %rdx
@@ -4036,23 +4036,23 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	movq	8(%rsp), %rcx
 	movl	40(%rsp), %edx
 	cmpb	$-1, %al
-	jne	.LBB127_174
-.LBB127_101:
+	jne	.LBB149_174
+.LBB149_101:
 	leaq	440(%r14), %rdi
 	movq	%rcx, %rsi
 	callq	*_RNvMs0_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8registryNtB5_14ClauseRegistry6delete@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	jne	.LBB127_173
+	jne	.LBB149_173
 	incl	100(%rsp)
-	jmp	.LBB127_50
-.LBB127_103:
+	jmp	.LBB149_50
+.LBB149_103:
 	movl	%r13d, 28(%rsp)
-	jmp	.LBB127_41
-.LBB127_104:
+	jmp	.LBB149_41
+.LBB149_104:
 	movl	28(%rsp), %r13d
 	movl	32(%rsp), %ebx
 	leaq	208(%r14), %r15
-.LBB127_105:
+.LBB149_105:
 	movl	480(%r14), %eax
 	movl	%eax, 80(%rsp)
 	movl	68(%rsp), %eax
@@ -4062,37 +4062,37 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	movl	%ecx, 36(%rsp)
 	xorl	%ebp, %ebp
 	movl	%r13d, 28(%rsp)
-.LBB127_106:
+.LBB149_106:
 	movq	%rbp, 40(%rsp)
 	movl	80(%rsp), %ebp
 	subl	%r12d, %ebp
-	jbe	.LBB127_166
-.LBB127_107:
+	jbe	.LBB149_166
+.LBB149_107:
 	movl	36(%rsp), %eax
 	cmpl	%eax, 68(%rsp)
-	je	.LBB127_181
+	je	.LBB149_181
 	movl	%r12d, %r12d
 	movq	%r12, %r13
 	shlq	$4, %r13
 	orq	$12, %r13
-	jmp	.LBB127_110
+	jmp	.LBB149_110
 	.p2align	4
-.LBB127_109:
+.LBB149_109:
 	addq	$16, %r13
 	incq	%r12
 	decl	%ebp
-	je	.LBB127_162
-.LBB127_110:
+	je	.LBB149_162
+.LBB149_110:
 	movl	480(%r14), %eax
 	cmpq	%rax, %r12
-	jae	.LBB127_109
+	jae	.LBB149_109
 	movq	448(%r14), %rsi
 	cmpq	%r12, %rsi
-	jbe	.LBB127_236
+	jbe	.LBB149_236
 	leaq	440(%r14), %rax
 	movq	(%rax), %rax
 	cmpb	$0, (%rax,%r13)
-	jne	.LBB127_109
+	jne	.LBB149_109
 	movl	-4(%rax,%r13), %r15d
 	leaq	48(%rsp), %rdi
 	movq	%r14, %rsi
@@ -4100,109 +4100,109 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	leaq	136(%rsp), %rcx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess11read_clause
 	cmpb	$2, 60(%rsp)
-	je	.LBB127_163
+	je	.LBB149_163
 	movq	48(%rsp), %rbx
 	cmpq	$2, %rbx
-	jb	.LBB127_109
+	jb	.LBB149_109
 	cmpq	$513, %rbx
-	jae	.LBB127_232
+	jae	.LBB149_232
 	movb	$5, %sil
 	movb	$7, %dl
 	cmpl	$-17, %r15d
-	ja	.LBB127_190
+	ja	.LBB149_190
 	leal	16(%r15), %ecx
 	cmpl	$268435456, %ecx
-	ja	.LBB127_202
+	ja	.LBB149_202
 	leaq	208(%r14), %rax
 	movq	(%rax), %rax
 	cmpl	12(%rax), %ecx
-	ja	.LBB127_202
+	ja	.LBB149_202
 	testb	$3, %r15b
-	jne	.LBB127_202
+	jne	.LBB149_202
 	cmpl	8(%rax), %ecx
-	ja	.LBB127_202
+	ja	.LBB149_202
 	movq	(%rax), %rax
 	testq	%rax, %rax
-	je	.LBB127_190
+	je	.LBB149_190
 	movl	%ecx, 88(%rsp)
 	movzwl	4(%rax,%r15), %ecx
 	testb	$4, %cl
-	jne	.LBB127_203
+	jne	.LBB149_203
 	movl	%ecx, %edx
 	orl	$4, %edx
 	movw	%dx, 4(%rax,%r15)
 	testb	$1, %cl
-	je	.LBB127_125
+	je	.LBB149_125
 	movl	224(%r14), %eax
 	subl	$1, %eax
 	movl	$0, %ecx
 	cmovbl	%ecx, %eax
 	movl	%eax, 224(%r14)
-.LBB127_125:
+.LBB149_125:
 	incq	%r12
 	incl	68(%rsp)
 	movl	120(%rsp), %r13d
 	xorl	%ebp, %ebp
-.LBB127_126:
+.LBB149_126:
 	cmpq	%rbx, %rbp
-	jae	.LBB127_150
+	jae	.LBB149_150
 	subl	$1, %r13d
-	jb	.LBB127_160
+	jb	.LBB149_160
 	movq	136(%r14), %rax
 	movl	136(%rsp,%rbp,4), %esi
 	incq	%rbp
 	movl	%esi, %edx
 	shrl	%edx
 	cmpq	%rdx, %rax
-	jbe	.LBB127_136
+	jbe	.LBB149_136
 	leaq	128(%r14), %rcx
 	movq	(%rcx), %rcx
 	.p2align	4
-.LBB127_130:
+.LBB149_130:
 	movzbl	(%rcx,%rdx), %edx
 	cmpl	$2, %edx
-	je	.LBB127_133
+	je	.LBB149_133
 	cmpl	$1, %edx
-	jne	.LBB127_136
+	jne	.LBB149_136
 	testb	$1, %sil
-	jne	.LBB127_134
-	jmp	.LBB127_150
+	jne	.LBB149_134
+	jmp	.LBB149_150
 	.p2align	4
-.LBB127_133:
+.LBB149_133:
 	testb	$1, %sil
-	jne	.LBB127_150
-.LBB127_134:
+	jne	.LBB149_150
+.LBB149_134:
 	cmpq	%rbx, %rbp
-	jae	.LBB127_150
+	jae	.LBB149_150
 	movl	136(%rsp,%rbp,4), %esi
 	incq	%rbp
 	movl	%esi, %edx
 	shrl	%edx
 	cmpq	%rdx, %rax
-	ja	.LBB127_130
-.LBB127_136:
+	ja	.LBB149_130
+.LBB149_136:
 	xorl	$1, %esi
 	leaq	128(%r14), %rdi
 	movq	%rdi, 72(%rsp)
 	callq	*_RNvMs1_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8databaseNtB5_7SatCore6decide@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	jne	.LBB127_191
+	jne	.LBB149_191
 	movq	72(%rsp), %rdi
 	callq	*_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate@GOTPCREL(%rip)
 	cmpl	$2, %eax
-	je	.LBB127_193
+	je	.LBB149_193
 	testb	$1, %al
-	je	.LBB127_126
+	je	.LBB149_126
 	leaq	128(%r14), %rdi
 	xorl	%esi, %esi
 	callq	*_RNvMs1_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8databaseNtB5_7SatCore12cancel_until@GOTPCREL(%rip)
 	cmpq	%rbx, %rbp
-	jae	.LBB127_161
+	jae	.LBB149_161
 	cmpq	$0, (%r14)
 	movl	28(%rsp), %r13d
 	movl	32(%rsp), %ebx
 	leaq	208(%r14), %rcx
-	je	.LBB127_142
+	je	.LBB149_142
 	movq	%r14, %rdi
 	movl	%r15d, %esi
 	movq	%rcx, 8(%rsp)
@@ -4210,14 +4210,14 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	callq	*_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat5proofNtB4_13ProofRecorder13record_delete@GOTPCREL(%rip)
 	movq	8(%rsp), %rcx
 	cmpb	$-1, %al
-	jne	.LBB127_235
-.LBB127_142:
+	jne	.LBB149_235
+.LBB149_142:
 	leaq	440(%r14), %rdi
 	movq	%rcx, %rsi
 	movl	%r15d, %edx
 	callq	*_RNvMs0_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8registryNtB5_14ClauseRegistry17complete_deletion@GOTPCREL(%rip)
 	cmpb	$-1, %al
-	jne	.LBB127_220
+	jne	.LBB149_220
 	movq	%r14, %rdi
 	leaq	136(%rsp), %rsi
 	movq	%rbp, %rdx
@@ -4226,101 +4226,101 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	movq	%rax, %rsi
 	cmpl	$-1, %esi
 	leaq	208(%r14), %r15
-	je	.LBB127_147
+	je	.LBB149_147
 	cmpl	$3, %esi
-	je	.LBB127_221
+	je	.LBB149_221
 	leaq	128(%r14), %rdi
 	callq	*_RNvMNtNtCs9NJWXRiuNhZ_8mapt_hot3sat3bcpNtNtB4_8database7SatCore9propagate@GOTPCREL(%rip)
 	movq	%rax, %rsi
 	cmpl	$2, %esi
-	je	.LBB127_227
+	je	.LBB149_227
 	testb	$1, %sil
-	je	.LBB127_149
-	jmp	.LBB127_228
-.LBB127_147:
+	je	.LBB149_149
+	jmp	.LBB149_228
+.LBB149_147:
 	movq	%rsi, %rdx
 	shrq	$32, %rdx
 	movq	%rsi, %rax
 	shrq	$40, %rax
 	cmpb	$-1, %dl
-	jne	.LBB127_182
+	jne	.LBB149_182
 	testb	$1, %al
-	je	.LBB127_221
-.LBB127_149:
+	je	.LBB149_221
+.LBB149_149:
 	incl	92(%rsp)
 	movb	$1, %al
 	movq	%rax, 8(%rsp)
 	movl	80(%rsp), %ebp
 	subl	%r12d, %ebp
-	ja	.LBB127_107
-	jmp	.LBB127_166
-.LBB127_150:
+	ja	.LBB149_107
+	jmp	.LBB149_166
+.LBB149_150:
 	movb	$1, %al
 	movl	%eax, 72(%rsp)
 	movq	40(%rsp), %rbp
-.LBB127_151:
+.LBB149_151:
 	leaq	128(%r14), %rdi
 	xorl	%esi, %esi
 	callq	*_RNvMs1_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat8databaseNtB5_7SatCore12cancel_until@GOTPCREL(%rip)
 	movl	28(%rsp), %r13d
 	movl	32(%rsp), %ebx
-.LBB127_152:
+.LBB149_152:
 	leaq	208(%r14), %rax
 	movq	(%rax), %rax
 	movl	88(%rsp), %ecx
 	cmpl	12(%rax), %ecx
 	movb	$7, %dl
-	ja	.LBB127_190
+	ja	.LBB149_190
 	cmpl	8(%rax), %ecx
-	ja	.LBB127_190
+	ja	.LBB149_190
 	movq	(%rax), %rax
 	testq	%rax, %rax
-	je	.LBB127_190
+	je	.LBB149_190
 	movzwl	4(%rax,%r15), %ecx
 	testb	$4, %cl
-	je	.LBB127_203
+	je	.LBB149_203
 	testb	$1, %cl
 	movl	72(%rsp), %esi
-	je	.LBB127_159
+	je	.LBB149_159
 	movl	224(%r14), %ecx
 	incl	%ecx
 	movl	$-1, %edx
 	cmovel	%edx, %ecx
 	cmpl	$100000, %ecx
-	ja	.LBB127_212
+	ja	.LBB149_212
 	movl	%ecx, 224(%r14)
 	movzwl	4(%rax,%r15), %ecx
-.LBB127_159:
+.LBB149_159:
 	andl	$65531, %ecx
 	movw	%cx, 4(%rax,%r15)
 	testb	%sil, %sil
 	leaq	208(%r14), %r15
-	jne	.LBB127_106
-	jmp	.LBB127_169
-.LBB127_160:
+	jne	.LBB149_106
+	jmp	.LBB149_169
+.LBB149_160:
 	movl	$0, 72(%rsp)
 	movb	$3, %bpl
-	jmp	.LBB127_151
-.LBB127_161:
+	jmp	.LBB149_151
+.LBB149_161:
 	movb	$1, %al
 	movl	%eax, 72(%rsp)
 	movl	28(%rsp), %r13d
 	movl	32(%rsp), %ebx
 	movq	40(%rsp), %rbp
-	jmp	.LBB127_152
-.LBB127_162:
+	jmp	.LBB149_152
+.LBB149_162:
 	movq	16(%rsp), %r12
 	movl	28(%rsp), %r13d
 	movl	32(%rsp), %ebx
 	leaq	208(%r14), %r15
 	movq	40(%rsp), %rbp
-.LBB127_170:
+.LBB149_170:
 	testb	%bpl, %bpl
-	jne	.LBB127_189
+	jne	.LBB149_189
 	testb	$1, 8(%rsp)
-	jne	.LBB127_12
-	jmp	.LBB127_189
-.LBB127_163:
+	jne	.LBB149_12
+	jmp	.LBB149_189
+.LBB149_163:
 	movzbl	48(%rsp), %edx
 	movzbl	49(%rsp), %eax
 	movq	%rax, 8(%rsp)
@@ -4331,9 +4331,9 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	cmpb	$-1, %dl
 	movq	16(%rsp), %r12
 	movl	32(%rsp), %ebx
-	je	.LBB127_170
-	jmp	.LBB127_177
-.LBB127_164:
+	je	.LBB149_170
+	jmp	.LBB149_177
+.LBB149_164:
 	movzbl	48(%rsp), %edx
 	movzbl	49(%rsp), %eax
 	movq	%rax, 8(%rsp)
@@ -4343,99 +4343,99 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	cmpb	$-1, %dl
 	movq	16(%rsp), %r12
 	movl	32(%rsp), %ebx
-	je	.LBB127_170
-	jmp	.LBB127_177
-.LBB127_165:
+	je	.LBB149_170
+	jmp	.LBB149_177
+.LBB149_165:
 	movzbl	48(%rsp), %edx
 	movzbl	49(%rsp), %eax
 	movq	%rax, 8(%rsp)
 	movzbl	50(%rsp), %esi
 	xorl	%ebp, %ebp
 	movl	28(%rsp), %r13d
-.LBB127_168:
+.LBB149_168:
 	leaq	208(%r14), %r15
 	cmpb	$-1, %dl
 	movq	16(%rsp), %r12
 	movl	32(%rsp), %ebx
-	je	.LBB127_170
-	jmp	.LBB127_177
-.LBB127_166:
+	je	.LBB149_170
+	jmp	.LBB149_177
+.LBB149_166:
 	movq	16(%rsp), %r12
 	movq	40(%rsp), %rbp
-	jmp	.LBB127_170
-.LBB127_167:
+	jmp	.LBB149_170
+.LBB149_167:
 	movzbl	48(%rsp), %edx
 	movzbl	49(%rsp), %eax
 	movq	%rax, 8(%rsp)
 	movzbl	50(%rsp), %esi
 	xorl	%ebp, %ebp
-	jmp	.LBB127_168
-.LBB127_169:
+	jmp	.LBB149_168
+.LBB149_169:
 	movq	16(%rsp), %r12
-	jmp	.LBB127_170
-.LBB127_172:
+	jmp	.LBB149_170
+.LBB149_172:
 	movw	$1798, (%r12)
-	jmp	.LBB127_4
-.LBB127_173:
+	jmp	.LBB149_4
+.LBB149_173:
 	movzbl	%al, %eax
 	movzbl	%dl, %esi
 	shll	$8, %esi
 	orl	%eax, %esi
 	movb	$5, %dl
-	jmp	.LBB127_175
-.LBB127_174:
+	jmp	.LBB149_175
+.LBB149_174:
 	movzbl	%al, %esi
 	movb	$6, %dl
-.LBB127_175:
+.LBB149_175:
 	movq	%rsi, 8(%rsp)
 	shrl	$8, %esi
-.LBB127_176:
+.LBB149_176:
 	movq	16(%rsp), %r12
-.LBB127_177:
+.LBB149_177:
 	movb	%dl, (%r12)
 	movq	8(%rsp), %rax
 	movb	%al, 1(%r12)
 	movb	%sil, 2(%r12)
-	jmp	.LBB127_4
-.LBB127_178:
+	jmp	.LBB149_4
+.LBB149_178:
 	xorl	%ebp, %ebp
 	movl	108(%rsp), %ebx
-	jmp	.LBB127_189
-.LBB127_179:
+	jmp	.LBB149_189
+.LBB149_179:
 	movb	$2, %bpl
 	movl	%edi, %r13d
-.LBB127_180:
+.LBB149_180:
 	movq	16(%rsp), %r12
 	movl	32(%rsp), %ebx
-	jmp	.LBB127_189
-.LBB127_181:
+	jmp	.LBB149_189
+.LBB149_181:
 	movb	$3, %bpl
 	movl	36(%rsp), %eax
 	movl	%eax, 68(%rsp)
 	movq	16(%rsp), %r12
-	jmp	.LBB127_189
-.LBB127_182:
+	jmp	.LBB149_189
+.LBB149_182:
 	movq	%rax, 8(%rsp)
 	shrq	$48, %rsi
-	jmp	.LBB127_176
-.LBB127_183:
+	jmp	.LBB149_176
+.LBB149_183:
 	movq	%rsi, %rax
 	shrq	$32, %rax
 	movq	%rax, 8(%rsp)
 	shrq	$40, %rsi
 	movb	$7, %dl
-	jmp	.LBB127_176
-.LBB127_184:
+	jmp	.LBB149_176
+.LBB149_184:
 	movq	(%r14), %rax
 	testq	%rax, %rax
-	je	.LBB127_187
+	je	.LBB149_187
 	movl	48(%r14), %ecx
 	cmpq	%rcx, 8(%r14)
 	movq	16(%rsp), %r12
 	movl	28(%rsp), %r13d
 	movl	32(%rsp), %ebx
 	movb	$1, %bpl
-	jbe	.LBB127_218
+	jbe	.LBB149_218
 	movl	56(%r14), %edx
 	movl	60(%r14), %esi
 	shlq	$4, %rcx
@@ -4446,14 +4446,14 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	incl	48(%r14)
 	incl	%esi
 	movl	%esi, 60(%r14)
-	jmp	.LBB127_189
-.LBB127_187:
+	jmp	.LBB149_189
+.LBB149_187:
 	movq	16(%rsp), %r12
 	movl	28(%rsp), %r13d
-.LBB127_188:
+.LBB149_188:
 	movl	32(%rsp), %ebx
 	movb	$1, %bpl
-.LBB127_189:
+.LBB149_189:
 	movl	112(%rsp), %eax
 	movl	%eax, (%r12)
 	movl	104(%rsp), %eax
@@ -4468,12 +4468,12 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	movl	68(%rsp), %eax
 	movl	%eax, 24(%r12)
 	movl	%ebx, 28(%r12)
-	jmp	.LBB127_5
-.LBB127_190:
+	jmp	.LBB149_5
+.LBB149_190:
 	movq	$0, 8(%rsp)
 	movb	$5, %sil
-	jmp	.LBB127_176
-.LBB127_191:
+	jmp	.LBB149_176
+.LBB149_191:
 	movl	%eax, %ebp
 	movq	%rdx, %rbx
 	movq	72(%rsp), %rdi
@@ -4483,14 +4483,14 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	movq	(%rax), %rax
 	movl	88(%rsp), %ecx
 	cmpl	12(%rax), %ecx
-	jbe	.LBB127_204
+	jbe	.LBB149_204
 	movl	%ebp, %eax
 	movq	%rax, 8(%rsp)
 	movq	16(%rsp), %r12
 	movb	$7, %dl
 	movq	%rbx, %rsi
-	jmp	.LBB127_177
-.LBB127_193:
+	jmp	.LBB149_177
+.LBB149_193:
 	leaq	128(%r14), %rdi
 	movq	%rax, %rbx
 	xorl	%esi, %esi
@@ -4502,94 +4502,94 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	cmpl	12(%rax), %ecx
 	movq	16(%rsp), %r12
 	movb	$7, %dl
-	ja	.LBB127_201
+	ja	.LBB149_201
 	cmpl	8(%rax), %ecx
-	ja	.LBB127_201
+	ja	.LBB149_201
 	movq	(%rax), %rax
 	testq	%rax, %rax
-	je	.LBB127_201
+	je	.LBB149_201
 	movzwl	4(%rax,%r15), %ecx
 	testb	$4, %cl
-	je	.LBB127_201
+	je	.LBB149_201
 	testb	$1, %cl
-	je	.LBB127_200
+	je	.LBB149_200
 	movl	224(%r14), %edx
 	incl	%edx
 	movl	$-1, %ecx
 	cmovnel	%edx, %ecx
 	movb	$7, %dl
 	cmpl	$100000, %ecx
-	ja	.LBB127_201
+	ja	.LBB149_201
 	movl	%ecx, 224(%r14)
 	movzwl	4(%rax,%r15), %ecx
-.LBB127_200:
+.LBB149_200:
 	andl	$65531, %ecx
 	movw	%cx, 4(%rax,%r15)
-.LBB127_201:
+.LBB149_201:
 	movq	%rsi, %rax
 	shrq	$32, %rax
 	movq	%rax, 8(%rsp)
 	shrq	$40, %rsi
-	jmp	.LBB127_177
-.LBB127_202:
+	jmp	.LBB149_177
+.LBB149_202:
 	movq	$0, 8(%rsp)
-	jmp	.LBB127_176
-.LBB127_203:
+	jmp	.LBB149_176
+.LBB149_203:
 	movq	$0, 8(%rsp)
 	movb	$6, %sil
-	jmp	.LBB127_176
-.LBB127_204:
+	jmp	.LBB149_176
+.LBB149_204:
 	cmpl	8(%rax), %ecx
 	movq	16(%rsp), %r12
 	movb	$7, %dl
 	movq	%rbx, %rsi
-	ja	.LBB127_224
+	ja	.LBB149_224
 	movq	(%rax), %rax
 	testq	%rax, %rax
-	je	.LBB127_224
+	je	.LBB149_224
 	movzwl	4(%rax,%r15), %ecx
 	testb	$4, %cl
-	je	.LBB127_224
+	je	.LBB149_224
 	testb	$1, %cl
-	je	.LBB127_223
+	je	.LBB149_223
 	movl	224(%r14), %edx
 	incl	%edx
 	movl	$-1, %ecx
 	cmovnel	%edx, %ecx
 	cmpl	$100000, %ecx
-	jbe	.LBB127_222
+	jbe	.LBB149_222
 	movl	%ebp, %eax
 	movq	%rax, 8(%rsp)
 	movb	$7, %dl
-	jmp	.LBB127_177
-.LBB127_210:
+	jmp	.LBB149_177
+.LBB149_210:
 	movb	$1, %bpl
 	cmpq	$0, (%r14)
-	je	.LBB127_180
+	je	.LBB149_180
 	movq	%r14, %rdi
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot3sat5proofNtB4_13ProofRecorder19record_empty_clause
-	jmp	.LBB127_180
-.LBB127_212:
+	jmp	.LBB149_180
+.LBB149_212:
 	movb	$3, %sil
 	movq	$0, 8(%rsp)
-.LBB127_213:
+.LBB149_213:
 	movq	16(%rsp), %r12
 	movb	$7, %dl
-	jmp	.LBB127_177
-.LBB127_214:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.165(%rip), %rcx
+	jmp	.LBB149_177
+.LBB149_214:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.205(%rip), %rcx
 	movl	$512, %edx
 	xorl	%edi, %edi
 	movq	%r15, %rsi
 	callq	*_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail@GOTPCREL(%rip)
-.LBB127_215:
+.LBB149_215:
 	movq	(%r14), %rax
 	testq	%rax, %rax
-	je	.LBB127_219
+	je	.LBB149_219
 	movl	48(%r14), %ecx
 	cmpq	%rcx, 8(%r14)
 	movq	16(%rsp), %r12
-	jbe	.LBB127_218
+	jbe	.LBB149_218
 	movl	56(%r14), %edx
 	movl	60(%r14), %esi
 	shlq	$4, %rcx
@@ -4600,60 +4600,60 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	incl	48(%r14)
 	incl	%esi
 	movl	%esi, 60(%r14)
-	jmp	.LBB127_188
-.LBB127_218:
+	jmp	.LBB149_188
+.LBB149_218:
 	movb	$7, %al
 	movq	%rax, 8(%rsp)
 	movb	$6, %dl
-	jmp	.LBB127_177
-.LBB127_219:
+	jmp	.LBB149_177
+.LBB149_219:
 	movq	16(%rsp), %r12
-	jmp	.LBB127_188
-.LBB127_220:
+	jmp	.LBB149_188
+.LBB149_220:
 	movl	%edx, %esi
 	movq	%rax, 8(%rsp)
 	movb	$5, %dl
-	jmp	.LBB127_176
-.LBB127_221:
+	jmp	.LBB149_176
+.LBB149_221:
 	movb	$1, %bpl
 	movq	16(%rsp), %r12
-	jmp	.LBB127_189
-.LBB127_222:
+	jmp	.LBB149_189
+.LBB149_222:
 	movl	%ecx, 224(%r14)
 	movzwl	4(%rax,%r15), %ecx
 	movb	$7, %dl
-.LBB127_223:
+.LBB149_223:
 	andl	$65531, %ecx
 	movw	%cx, 4(%rax,%r15)
-.LBB127_224:
+.LBB149_224:
 	movl	%ebp, %eax
 	movq	%rax, 8(%rsp)
-	jmp	.LBB127_177
-.LBB127_225:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.164(%rip), %rcx
+	jmp	.LBB149_177
+.LBB149_225:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.204(%rip), %rcx
 	movl	$512, %edx
 	xorl	%edi, %edi
 	movq	%rbp, %rsi
 	callq	*_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail@GOTPCREL(%rip)
-.LBB127_226:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.163(%rip), %rcx
+.LBB149_226:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.203(%rip), %rcx
 	movl	$512, %edx
 	xorl	%edi, %edi
 	callq	*_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail@GOTPCREL(%rip)
-.LBB127_227:
+.LBB149_227:
 	movq	%rsi, %rax
 	shrq	$32, %rax
 	movq	%rax, 8(%rsp)
 	shrq	$40, %rsi
-	jmp	.LBB127_213
-.LBB127_228:
+	jmp	.LBB149_213
+.LBB149_228:
 	movq	(%r14), %rax
 	testq	%rax, %rax
-	je	.LBB127_231
+	je	.LBB149_231
 	movq	%r14, %rdx
 	movl	48(%rdx), %ecx
 	cmpq	%rcx, 8(%rdx)
-	jbe	.LBB127_234
+	jbe	.LBB149_234
 	movq	%rdx, %rdi
 	movl	56(%rdx), %edx
 	movl	60(%rdi), %esi
@@ -4665,53 +4665,53 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify:
 	incl	48(%rdi)
 	incl	%esi
 	movl	%esi, 60(%rdi)
-.LBB127_231:
+.LBB149_231:
 	movb	$1, %bpl
 	movq	16(%rsp), %r12
 	movl	28(%rsp), %r13d
 	movl	32(%rsp), %ebx
-	jmp	.LBB127_189
-.LBB127_232:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.159(%rip), %rcx
+	jmp	.LBB149_189
+.LBB149_232:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.199(%rip), %rcx
 	movl	$512, %edx
 	xorl	%edi, %edi
 	movq	%rbx, %rsi
 	callq	*_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail@GOTPCREL(%rip)
-.LBB127_233:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.160(%rip), %rcx
+.LBB149_233:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.200(%rip), %rcx
 	movq	%rdx, %rsi
 	movl	$512, %edx
 	xorl	%edi, %edi
 	callq	*_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail@GOTPCREL(%rip)
-.LBB127_234:
+.LBB149_234:
 	movb	$7, %al
-.LBB127_235:
+.LBB149_235:
 	movq	%rax, 8(%rsp)
 	movb	$6, %dl
-	jmp	.LBB127_176
-.LBB127_236:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.156(%rip), %rdx
+	jmp	.LBB149_176
+.LBB149_236:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.196(%rip), %rdx
 	movq	%r12, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB127_237:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.156(%rip), %rdx
+.LBB149_237:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.196(%rip), %rdx
 	movq	%rbx, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB127_238:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.156(%rip), %rdx
+.LBB149_238:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.196(%rip), %rdx
 	movq	%r15, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB127_239:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.161(%rip), %rdx
+.LBB149_239:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.201(%rip), %rdx
 	movl	$512, %esi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB127_240:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.162(%rip), %rdx
+.LBB149_240:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.202(%rip), %rdx
 	movl	$512, %edi
 	movl	$512, %esi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.Lfunc_end127:
-	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify, .Lfunc_end127-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify
+.Lfunc_end149:
+	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify, .Lfunc_end149-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot3sat10preprocess8simplify
 	.cfi_endproc
 
 

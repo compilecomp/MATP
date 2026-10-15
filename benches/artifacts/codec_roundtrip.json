@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0035",
+  "name": "codec_roundtrip",
+  "iterations": 1024,
+  "cycles_median": 2281.3887329101563,
+  "cycles_min": 2273.9722900390625,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1792092817
+}

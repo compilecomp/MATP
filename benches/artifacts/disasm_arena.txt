@@ -1841,7 +1841,7 @@ _RNvCsd73Vr2nQnvw_11arena_bench4main:
 .Ltmp94:
 	jmp	.LBB2_10
 .LBB2_553:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.13(%rip), %rcx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.45(%rip), %rcx
 	movq	%rbx, %rdx
 	callq	_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail
 .LBB2_432:

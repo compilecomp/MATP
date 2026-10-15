@@ -106,9 +106,9 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 	movups	%xmm0, 168(%rsp)
 	movq	344(%rsp), %rsi
 	movq	%rsi, 184(%rsp)
-	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1(%rip), %xmm0
+	movdqu	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1(%rip), %xmm0
 	movdqu	%xmm0, 200(%rsp)
-	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1+16(%rip), %xmm1
+	movdqu	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1+16(%rip), %xmm1
 	movdqu	%xmm1, 216(%rsp)
 	movq	%rax, 232(%rsp)
 	movq	%rdx, 240(%rsp)
@@ -614,7 +614,7 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 	jne	.LBB3_76
 .LBB3_77:
 	addq	%r14, %r13
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.61(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.86(%rip), %rdx
 	movq	112(%rsp), %r14
 	.p2align	4
 .LBB3_78:
@@ -3196,7 +3196,7 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 	jmp	.LBB3_772
 .LBB3_717:
 	.cfi_escape 0x2e, 0x00
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.13(%rip), %rcx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.45(%rip), %rcx
 	movq	%rbx, %rdx
 	callq	_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail
 .LBB3_718:
@@ -3293,7 +3293,7 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 .Ltmp101:
 	jmp	.LBB3_772
 .LBB3_735:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.5(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.31(%rip), %rdx
 .LBB3_736:
 .Ltmp39:
 	.cfi_escape 0x2e, 0x00
@@ -3370,7 +3370,7 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 	leaq	328(%rsp), %r12
 	jmp	.LBB3_730
 .LBB3_748:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.60(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.85(%rip), %rdx
 	jmp	.LBB3_734
 .LBB3_749:
 	movb	$5, %r15b
@@ -3470,7 +3470,7 @@ _RNvCscxHGWSqmlnY_12search_bench4main:
 .LBB3_772:
 	ud2
 .LBB3_773:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.6(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.32(%rip), %rdx
 	movq	%r13, %rsi
 	jmp	.LBB3_736
 .LBB3_774:
@@ -3748,7 +3748,7 @@ GCC_except_table3:
 
 	.section	.text._RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push,"ax",@progbits
 	.globl	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push
-	.prefalign	4, .Lfunc_end115, nop
+	.prefalign	4, .Lfunc_end135, nop
 	.type	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push,@function
 _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push:
 	.cfi_startproc
@@ -3769,18 +3769,18 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push:
 	movl	16(%rdi), %r9d
 	movq	8(%rdi), %r10
 	cmpq	%r9, %r10
-	jbe	.LBB115_16
+	jbe	.LBB135_16
 	leaq	(%r9,%r9,2), %r11
 	shlq	$3, %r11
 	addq	(%rdi), %r11
 	movzbl	20(%rdi), %eax
 	testl	%eax, %eax
-	je	.LBB115_4
+	je	.LBB135_4
 	cmpl	$1, %eax
-	jne	.LBB115_6
+	jne	.LBB135_6
 	movl	%r8d, %eax
-	jmp	.LBB115_9
-.LBB115_4:
+	jmp	.LBB135_9
+.LBB135_4:
 	movl	%edx, %ebx
 	cmpl	$1, %r8d
 	adcl	$0, %r8d
@@ -3789,35 +3789,35 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push:
 	movq	%rax, %rcx
 	shrq	$32, %rcx
 	testw	%cx, %cx
-	je	.LBB115_7
+	je	.LBB135_7
 	xorl	%edx, %edx
 	divq	%r8
-	jmp	.LBB115_8
-.LBB115_6:
+	jmp	.LBB135_8
+.LBB135_6:
 	movl	%ecx, %eax
-	jmp	.LBB115_9
-.LBB115_7:
+	jmp	.LBB135_9
+.LBB135_7:
 	xorl	%edx, %edx
 	divl	%r8d
-.LBB115_8:
+.LBB135_8:
 	movl	%ebx, %edx
-.LBB115_9:
+.LBB135_9:
 	movq	%rax, (%r11)
 	movq	%rsi, 8(%r11)
 	movl	%edx, 16(%r11)
 	incl	16(%rdi)
 	testq	%r9, %r9
-	je	.LBB115_16
+	je	.LBB135_16
 	movq	%r9, %rcx
 	.p2align	4
-.LBB115_11:
+.LBB135_11:
 	movq	8(%rdi), %rsi
 	cmpq	%rsi, %rcx
-	jae	.LBB115_17
+	jae	.LBB135_17
 	leaq	-1(%rcx), %rax
 	shrq	%rax
 	cmpq	%rsi, %rax
-	jae	.LBB115_18
+	jae	.LBB135_18
 	movq	(%rdi), %rsi
 	leaq	(%rcx,%rcx,2), %r11
 	movq	(%rsi,%r11,8), %rcx
@@ -3833,7 +3833,7 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push:
 	setb	%r15b
 	cmovel	%ebp, %r15d
 	testb	%r15b, %r15b
-	je	.LBB115_16
+	je	.LBB135_16
 	leaq	(%rsi,%r11,8), %r15
 	movq	16(%rsi,%r11,8), %r11
 	leaq	(%rsi,%r8,8), %rsi
@@ -3843,15 +3843,15 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push:
 	movq	%rsi, 16(%r15)
 	movq	8(%rdi), %rsi
 	cmpq	%rsi, %rax
-	jae	.LBB115_19
+	jae	.LBB135_19
 	movq	(%rdi), %rsi
 	movq	%rcx, (%rsi,%r8,8)
 	movq	%rdx, 8(%rsi,%r8,8)
 	movq	%r11, 16(%rsi,%r8,8)
 	movq	%rax, %rcx
 	testq	%rax, %rax
-	jne	.LBB115_11
-.LBB115_16:
+	jne	.LBB135_11
+.LBB135_16:
 	cmpq	%r9, %r10
 	setbe	%al
 	addq	$8, %rsp
@@ -3865,21 +3865,21 @@ _RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push:
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB115_17:
+.LBB135_17:
 	.cfi_def_cfa_offset 48
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.144(%rip), %rdx
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.177(%rip), %rdx
 	movq	%rcx, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB115_18:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.145(%rip), %rdx
+.LBB135_18:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.178(%rip), %rdx
 	movq	%rax, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.LBB115_19:
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.146(%rip), %rdx
+.LBB135_19:
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.179(%rip), %rdx
 	movq	%rax, %rdi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.Lfunc_end115:
-	.size	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push, .Lfunc_end115-_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push
+.Lfunc_end135:
+	.size	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push, .Lfunc_end135-_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot6search7passiveNtB4_11PassiveHeap4push
 	.cfi_endproc
 
 

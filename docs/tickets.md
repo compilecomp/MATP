@@ -11,10 +11,10 @@ Work items referenced by CEP:TODO, CEP:OPTNOTE, and CEP:ASSUMES fields across th
 | CEP-1005 | mapt-team | search | CLOSED in Phase 3: the injected should-stop callback is checked every kBudgetCheckInterval iterations in hot/search/given_clause.rs::saturate (hot stays clock-free; the CEP-1 driver supplies wall time; tests inject deterministic predicates) | 3 |
 | CEP-1006 | mapt-team | cold/parsing | TPTP/SMT-LIB/DIMACS parsers with the full §6.3 bound set | 3 |
 | CEP-1007 | mapt-team | hot/memory | Arena compaction (cold) above kMaxArenaFragmentationRatioPercent | 3 |
-| CEP-1008 | mapt-team | concurrency | Portfolio manager, clause sharing pool, work stealing (design 19) | 4 |
+| CEP-1008 | mapt-team | concurrency | CLOSED in Phase 4: portfolio manager (scoped threads, wall-clock slices, first-to-finish, graceful shutdown), bounded MPMC sharing pool, Chase-Lev work-stealing deques (pool-spill frames), portable clause codec, and the CI tsan job delivered per Spec 13; thread pinning and NUMA-aware placement deferred to CEP-1037 | 4 |
 | CEP-1009 | mapt-team | hot/ir | Cached-slice term reads to remove per-read bounds checks in the probe path; measure first | 2 |
 | CEP-1010 | mapt-team | hot/ir | Hash-word caching in term records to shorten probe misses; measure first | 2 |
-| CEP-1011 | mapt-team | hot/ir | AVATAR component tags on literals (design 5.2) | 4 |
+| CEP-1011 | mapt-team | hot/ir | CLOSED in Phase 4: literal avatar_component_tag accessors (mask 0x07, theory bit preserved) set on every materialized component clause; the authoritative identity is the clause record's split_level (u16) per Spec 12 section 4 | 4 |
 | CEP-1012 | mapt-team | hot/ir | Theory-laden literal flags (design 5.2) | 5 |
 | CEP-1013 | mapt-team | hot/ordering | KBO and LPO with cached comparison (design 8.3); formal spec 03 | 2 |
 | CEP-1014 | mapt-team | hot/ir | Merge-sort path for overflow-clause canonicalization if profiling demands | 2 |
@@ -34,5 +34,9 @@ Work items referenced by CEP:TODO, CEP:OPTNOTE, and CEP:ASSUMES fields across th
 | CEP-1033 | mapt-team | hot/ordering | Higher-order orderings (Application/Lambda heads) for the Phase 5 fragment | 5 |
 | CEP-1034 | mapt-team | hot/inference | Subsumption resolution (Riazanov 2003) and condensation (design 10.1 rows deferred with Phase 3 scope: the build order names superposition + resolution + factoring); both strengthen clauses beyond demodulation | 4 |
 | CEP-1035 | mapt-team | search | Conjecture-distance and set-of-support selection strategies (design 15.2 rows 2 and 5) and the config/strategy.rs module (design 15.2); the three deterministic strategies (ratio, weight, age) are delivered | 4 |
+| CEP-1036 | mapt-team | hot/ir | Record the demodulating rule's clause id in DerivationStep parents[1] so the TSTP replay checker can fully replay demodulation steps (the Phase 4 structural variant check is the interim, Spec 14 section 6) | 4 |
+| CEP-1037 | mapt-team | target | Thread pinning and NUMA-aware arena placement (design 19.1/19.8) behind a target/ abstraction; blocked on the OS-affinity bindings decision (unsafe libc is deferred, not half-implemented) | 5 |
+| CEP-1038 | mapt-team | cold/portfolio | Worker-arena pooling across portfolio runs (the Phase 4 workers leak their arenas until process exit - the documented fixture discipline) | 4 |
+| CEP-1039 | mapt-team | hot/avatar | Derived-clause splitting (Phase 4 splits inputs only, Spec 12 section 7) and full-record deferred-import frames beyond the pool-spill protocol | 5 |
 | CEP-1036 | mapt-team | cold | LRAT text emission (hint-annotated additions; the recorder already carries stable ids, but conflict analysis does not record the hint chain - co-design with the analyzer when an external LRAT consumer exists) | 4 |
 | CEP-1019 | mapt-team | benches | Cross-host benchmark regression tier: dedicated measurement host or per-op reference normalization so the fine-grained 13.4 gate can run on shared CI runners without flaking (fleet medians for throughput-bound micro-ops swing up to 2.3x; observed runs 37963490245 vs 37964196220) | 2 |

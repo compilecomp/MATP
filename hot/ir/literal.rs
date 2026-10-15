@@ -261,4 +261,29 @@ impl Literal {
     pub fn set_theory_flags(&mut self, theory_flags: u8) {
         self.theory_flags = theory_flags;
     }
+
+    // CEP:WHAT: Returns the AVATAR component membership tag (bits 0-2; 0 = not a split-component literal).
+    // CEP:WHY: Design 5.2 and ticket CEP-1011: literals of an AVATAR component clause carry the component's membership tag; the tag is a fast per-literal hint - the authoritative component identity is the clause record's split_level (u16), and the 3-bit tag wraps modulo 8 beyond component 7 (Spec 12 section 4).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: tag values 0-7; theory-laden bit is preserved independently.
+    // CEP:COST: 1 load plus 1 mask.
+    // CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::component_literals_tagged.
+    // CEP:SECURITY: none.
+    pub fn avatar_component_tag(&self) -> u8 {
+        self.theory_flags & LiteralFlags::kAvatarComponentMask
+    }
+
+    // CEP:WHAT: Sets the AVATAR component membership tag without touching the theory-laden bit.
+    // CEP:WHY: The splitter tags each component clause's literals at creation (CEP-1011); preserving the theory bit keeps the Phase 5 hook intact.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: tag <= kAvatarComponentMask (values beyond wrap by masking - the caller passes slot mod 8).
+    // CEP:COST: 2 loads, 1 store, 2 masks.
+    // CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::component_literals_tagged.
+    // CEP:SECURITY: none.
+    pub fn set_avatar_component_tag(&mut self, tag: u8) {
+        self.theory_flags = (self.theory_flags & !LiteralFlags::kAvatarComponentMask)
+            | (tag & LiteralFlags::kAvatarComponentMask);
+    }
 }

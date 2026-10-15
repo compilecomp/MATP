@@ -57,8 +57,17 @@ fn make_space(
 ) {
     let (arena, symbols, builder, terms, precedence, _substitution) = make_inference_fixture();
     let options = SearchOptions::new();
-    let space = SearchSpace::new_with(arena, &options, passive_capacity, 4096, 8192, 8192, 65536)
-        .expect("space");
+    let space = SearchSpace::new_with(
+        arena,
+        &options,
+        passive_capacity,
+        4096,
+        8192,
+        8192,
+        65536,
+        4096,
+    )
+    .expect("space");
     (space, symbols, builder, terms, precedence)
 }
 
@@ -843,7 +852,8 @@ fn inference_deferral_resumes() {
     let (arena, symbols, builder, terms, precedence, _substitution) = make_inference_fixture();
     let mut options = SearchOptions::new();
     options.selection = mapt::hot::inference::SelectionFunction::FirstNegative;
-    let space = SearchSpace::new_with(arena, &options, 512, 256, 4096, 8192, 65536).expect("space");
+    let space =
+        SearchSpace::new_with(arena, &options, 512, 256, 4096, 8192, 65536, 4096).expect("space");
     let context = InferenceContext {
         terms: &terms,
         symbols: &symbols,
@@ -907,7 +917,8 @@ fn inference_deferral_resumes() {
 fn retrieval_overflow_counts_drops() {
     let (arena, symbols, builder, terms, precedence, _substitution) = make_inference_fixture();
     let options = SearchOptions::new();
-    let space = SearchSpace::new_with(arena, &options, 512, 64, 2048, 4096, 65536).expect("space");
+    let space =
+        SearchSpace::new_with(arena, &options, 512, 64, 2048, 4096, 65536, 4096).expect("space");
     let context = InferenceContext {
         terms: &terms,
         symbols: &symbols,

@@ -15,6 +15,9 @@ These documents are normative for MAPT (design section 23): every `CEP:HPC-PASS-
 | 09 | `09_sat_preprocessing.md` | SAT preprocessing: tautology, duplicates, subsumption, strengthening, vivification; preservation theorems; proof-trace order | Complete (Phase 3 scope) |
 | 10 | `10_incremental_solving.md` | Assumption solving, root levels, final analysis, failed cores, incremental hygiene | Complete (Phase 3 scope) |
 | 11 | `11_drat_proof_logging.md` | DRAT recording, step kinds, RUP/RAT semantics, text format, internal checker | Complete (Phase 3 scope) |
-| 12+ | reserved | AVATAR, DPLL(T), theory reasoning, benchmark suite — Phases 4-6 | Not started |
+| 12 | `12_avatar_splitting.md` | AVATAR: splitting lemma, component interning, monotone-activation protocol, conflict soundness, assertability lemma, saturation terminal, degradation policy | Complete (Phase 4 scope) |
+| 13 | `13_portfolio_concurrency.md` | Bounded MPMC pool, Chase-Lev deque, portable clause codec, worker protocol, import soundness, first-to-finish linearization | Complete (Phase 4 scope) |
+| 14 | `14_unified_proof_reconstruction.md` | Derivation walk, reachability pruning, TSTP grammar subset, AVATAR presentation, replay checker | Complete (Phase 4 scope; demodulation full replay deferred - ticket CEP-1036) |
+| 15+ | reserved | DPLL(T), theory reasoning, benchmark suite — Phases 5-6 | Not started |
 
-Numbering follows the design document's plan; gaps are reserved for their future owners as listed in `docs/tickets.md`.
+Numbering follows the design document's plan; gaps are reserved for their future owners as listed in `docs/tickets.md` (15 onward: DPLL(T) integration, theory reasoning, benchmark suite).

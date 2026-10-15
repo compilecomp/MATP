@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0033",
+  "name": "deque_push_pop",
+  "iterations": 1024,
+  "cycles_median": 31.279693603515625,
+  "cycles_min": 31.044845581054688,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1792092817
+}

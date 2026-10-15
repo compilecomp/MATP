@@ -2,11 +2,11 @@
   "bench": "CEP-BENCH-0012",
   "name": "atp_subsumption_verify",
   "iterations": 100000,
-  "cycles_median": 134.14756,
-  "cycles_min": 133.66316,
+  "cycles_median": 135.14464,
+  "cycles_min": 133.90492,
   "rustc": "1.99.0",
   "profile": "release",
   "target": "x86-64",
   "cycle_counter": "serialized-rdtsc",
-  "date_unix": 1792021211
+  "date_unix": 1792092823
 }

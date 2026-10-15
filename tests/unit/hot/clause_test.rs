@@ -535,3 +535,100 @@ fn input_derivation() -> DerivationStep {
         substitution: kInvalidSubstitutionOffset,
     }
 }
+
+#[test]
+// CEP:WHAT: The clause-id side table resolves every stored clause's id to its record offset (round trip through offset_of_id and clause_by_id).
+// CEP:WHY: Design 18.2/12.2 id resolution: proof walks and AVATAR ancestry depend on the dense side table (Spec 14 section 2).
+// CEP:STATUS: complete
+// CEP:FAILURE: panics on any unresolvable id or a wrong record.
+// CEP:ASSUMES: the store was constructed through new_with (a table-less store resolves nothing).
+// CEP:COST: a few clause creations.
+// CEP:EVIDENCE: backs unit/hot/clause_test.rs::side_table_resolves_ids and unit/cold/tstp_test.rs::proof_walk_resolves_parents.
+// CEP:SECURITY: bounds-checked resolution.
+fn side_table_resolves_ids() {
+    let (_arena, symbols, builder, terms, _default_store) = make_term_fixture();
+    let store = mapt::hot::ir::clause::ClauseStore::new_with(_arena, 64).expect("store");
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let mut offsets: Vec<u32> = Vec::new();
+    let mut ids: Vec<u64> = Vec::new();
+    for index in 0..4u64 {
+        let atom = a;
+        let literals = [mapt::hot::ir::literal::Literal::new(atom, index % 2 == 0)];
+        let derivation = mapt::hot::ir::clause::DerivationStep {
+            rule: mapt::hot::ir::clause::InferenceRule::Input,
+            parent_count: 0,
+            reserved: 0,
+            parents: [
+                mapt_config::limits::kInvalidClauseId,
+                mapt_config::limits::kInvalidClauseId,
+                mapt_config::limits::kInvalidClauseId,
+                mapt_config::limits::kInvalidClauseId,
+            ],
+            substitution: mapt_config::limits::kInvalidClauseOffset,
+        };
+        let ptr = store
+            .new_clause(&terms, &literals, index as u32, derivation)
+            .expect("clause");
+        offsets.push(ptr.as_u32());
+        ids.push(store.clause(ptr).expect("record").id.0);
+    }
+    for (index, id) in ids.iter().enumerate() {
+        let resolved = store
+            .offset_of_id(mapt::hot::ir::clause::ClauseId(*id))
+            .expect("id resolves");
+        assert_eq!(resolved, offsets[index], "the side table maps id to record");
+        let record = store
+            .clause_by_id(mapt::hot::ir::clause::ClauseId(*id))
+            .expect("record by id");
+        assert_eq!(record.id.0, *id);
+    }
+    // A table-less store (Phase 1 construction) resolves nothing.
+    let plain = mapt::hot::ir::clause::ClauseStore::new(_arena);
+    assert!(plain
+        .offset_of_id(mapt::hot::ir::clause::ClauseId(ids[0]))
+        .is_none());
+}
+
+#[test]
+// CEP:WHAT: The side-table capacity bound fires loudly (OffsetTableFull) at the injected capacity and never wraps.
+// CEP:WHY: CEP&CC 34.3: the kClauseOffsetTableCapacity bound must be exercisable at a small scale on the production path.
+// CEP:STATUS: complete
+// CEP:FAILURE: panics if the bound is not enforced.
+// CEP:ASSUMES: capacity 2.
+// CEP:COST: three clause creations.
+// CEP:EVIDENCE: backs unit/hot/clause_test.rs::side_table_capacity_enforced.
+// CEP:SECURITY: resource-exhaustion guard.
+fn side_table_capacity_enforced() {
+    let (arena, symbols, builder, terms, _default_store) = make_term_fixture();
+    let store = mapt::hot::ir::clause::ClauseStore::new_with(arena, 2).expect("store");
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let make = |polarity: bool| -> Result<(), mapt::hot::ir::clause::ClauseError> {
+        let literals = [mapt::hot::ir::literal::Literal::new(a, polarity)];
+        let derivation = mapt::hot::ir::clause::DerivationStep {
+            rule: mapt::hot::ir::clause::InferenceRule::Input,
+            parent_count: 0,
+            reserved: 0,
+            parents: [
+                mapt_config::limits::kInvalidClauseId,
+                mapt_config::limits::kInvalidClauseId,
+                mapt_config::limits::kInvalidClauseId,
+                mapt_config::limits::kInvalidClauseId,
+            ],
+            substitution: mapt_config::limits::kInvalidClauseOffset,
+        };
+        store
+            .new_clause(&terms, &literals, 0, derivation)
+            .map(|_| ())
+    };
+    make(true).expect("first");
+    make(false).expect("second");
+    assert_eq!(
+        make(true),
+        Err(mapt::hot::ir::clause::ClauseError::OffsetTableFull),
+        "the third clause exceeds the injected capacity 2"
+    );
+}

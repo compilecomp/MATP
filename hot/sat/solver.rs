@@ -811,6 +811,18 @@ impl<'a> CdclSolver<'a> {
     // CEP:COST: see file header; measured in bench CEP-BENCH-0009.
     // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{trivially_satisfiable, pigeonhole_is_unsat, unit_conflict_at_root_is_unsat, restart_returns_to_level_zero, deterministic_across_repeated_solves, conflict_budget_returns_indeterminate}; property/cdcl_property_test.rs::{solve_agrees_with_brute_force, models_satisfy_formulas, learnt_clauses_are_entailed}; fuzz/cdcl_fuzz_test.rs.
     // CEP:SECURITY: bounded by the conflict budget and every substructure bound.
+    // CEP:WHAT: Backtracks the trail to level 0, ending the current model's readability.
+    // CEP:WHY: The AVATAR incremental loop (design 12.2 rule 4) reads the model after a Satisfiable plain solve, then adds conflict clauses before the next solve; add_clause requires level 0, and a plain (assumption-free) solve exits without the epilogue that assumption solves run, so the controller must cancel between reading the model and adding clauses - the model contract (read first, cancel after) is documented here once instead of duplicating trail surgery in every caller.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none; backtracking to 0 is always legal (learnt clauses of a plain solve are assumption-free and stay).
+    // CEP:ASSUMES: the caller finished reading model_value.
+    // CEP:COST: one trail unwind (O(assignments)).
+    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    // CEP:SECURITY: none.
+    pub fn cancel(&self) {
+        self.backtrack(0);
+    }
+
     pub fn solve(&self) -> SolveResult {
         match self.solve_with_assumptions(&[]) {
             AssumptionOutcome::Satisfiable => SolveResult::Satisfiable,

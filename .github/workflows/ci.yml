@@ -70,7 +70,7 @@ jobs:
       - name: Disassembly evidence extraction (23.4)
         run: |
           cargo rustc -p mapt-hot --release -- --emit asm
-          for bench in arena_bench term_bench clause_bench substitution_bench sat_bench unify_bench ordering_bench index_bench cdcl_bench atp_bench search_bench subsumption_bench sat_preprocess_bench; do
+          for bench in arena_bench term_bench clause_bench substitution_bench sat_bench unify_bench ordering_bench index_bench cdcl_bench atp_bench search_bench subsumption_bench sat_preprocess_bench avatar_bench concurrency_bench; do
             cargo rustc --bench $bench --release -- --emit asm
           done
           python3 scripts/extract_disasm.py
@@ -92,5 +92,18 @@ jobs:
             --skip table_full_after_load_factor_bound
       - name: Leak detection is intentionally off
         run: echo "Test fixtures deliberately Box::leak one arena per test for 'static lifetimes (tests/common/mod.rs); LeakSanitizer would report the documented design, not defects. ASan memory-error detection and -Zub-checks remain fully active."
-      - name: ThreadSanitizer is not applicable in Phase 1
-        run: echo "Phase 1 is single-threaded by construction (Cell-based stores are !Sync); TSan starts with Phase 4 concurrency (ticket CEP-1008)."
+      - name: ThreadSanitizer is not applicable to the single-threaded suites
+        run: echo "The hot crate's Cell-based stores are !Sync by construction; the concurrency suites run under TSan in the tsan job (Phase 4, ticket CEP-1008)."
+
+  tsan:
+    name: tsan (Phase 4 concurrency suites)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-10-01
+          components: rust-src
+      - name: ThreadSanitizer on the lock-free suites and the portfolio (CEP-1008)
+        run: |
+          TSAN_OPTIONS="halt_on_error=1"           RUSTFLAGS="-Zsanitizer=thread"           cargo +nightly-2026-10-01 test --target x86_64-unknown-linux-gnu             --test chase_lev_test --test mpmc_pool_test --test clause_codec_test             --test concurrency_property_test --test portfolio_test

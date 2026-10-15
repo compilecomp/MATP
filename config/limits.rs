@@ -919,6 +919,116 @@ pub const kInferenceClauseLiterals: usize = 64;
 /// CEP:SECURITY: soundness precondition, not a resource bound.
 pub const kMaxInferenceVariables: u32 = kMaxVariablesPerClause;
 
+/// CEP:WHAT: Capacity of the AVATAR component table (interned split components; design 12.2/12.3).
+/// CEP:WHY: Components are hash-consed into an open-addressing table so identical components from different splits share one propositional assertion variable (Voronkov 2014, section on component sharing); a named power-of-two capacity keeps the table a fixed arena allocation with a loud ComponentTableFull error at the bound.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: split registration returns AvatarError::ComponentTableFull past the capacity; the controller falls back to adding the unsplit clause (sound, documented degradation).
+/// CEP:ASSUMES: 65_536 interned components cover realistic splits (each split needs at least two components of at least kAvatarMinComponentSize literals); the assertion-variable space is exactly this capacity (dense 0-based variables, Spec 12 section 4).
+/// CEP:COST: 12 bytes per slot (open addressing over 8-byte canonical words plus the record array), about 3 MiB at the default capacity.
+/// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::{components_interned_once, capacity_enforced}; security/phase4_bounds_test.rs::component_table_capacity_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on the abstraction state.
+pub const kAvatarComponentCapacity: u32 = 65_536;
+
+/// CEP:WHAT: Capacity of the AVATAR component table's canonical-word blob (design 12.2).
+/// CEP:WHY: Each interned component stores its canonical literal words (one u32 per literal) in one shared bump region; 1_048_576 words (4 MiB) host the full 65_536-component capacity at an average of 16 literals per component, and the blob exhaustion is a loud WordBudgetExceeded that degrades to the unsplit clause (sound, Spec 12 section 7).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: interning returns AvatarError::WordBudgetExceeded past the blob; the controller keeps the clause whole.
+/// CEP:ASSUMES: the blob capacity >= record capacity (each record needs at least one word); enforced by static assertion.
+/// CEP:COST: 4 MiB fixed arena allocation.
+/// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::word_budget_enforced; security/phase4_bounds_test.rs::component_word_budget_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on the abstraction state.
+pub const kAvatarComponentWordCapacity: u32 = 1_048_576;
+
+/// CEP:WHAT: Node budget of one AVATAR splitter variable walk (design 12.3).
+/// CEP:WHY: The variable-dependency walk is iterative but its cost is proportional to the atom's tree size; hash-consed DAGs can expand exponentially as trees, so the named budget turns adversarial terms into a sound Unsplittable degradation instead of unbounded work (CEP&CC 22.10).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: try_split returns Unsplittable when the budget is exhausted (never an error; the clause stays whole).
+/// CEP:ASSUMES: 4_096 nodes cover realistic clause atoms (the index's kIndexTermCapacity uses the same scale for flat symbol sequences).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::walk_budget_degrades_to_unsplittable; security/phase4_bounds_test.rs::splitter_node_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on adversarial term sizes.
+pub const kAvatarSplitNodeBudget: u32 = 4_096;
+
+/// CEP:WHAT: Maximum conflict-driven re-solve rounds of the AVATAR abstraction loop (design 12.2 rule 4).
+/// CEP:WHY: Each round adds one conflict clause and excludes at least the model that produced it (the model satisfies every assertion variable of the refutation's component ancestry, so the added clause falsifies it); the abstraction has finitely many models, but the named round budget converts pathological oscillation into a loud bounded give-up long before memory bounds fire.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: saturate_with_avatar returns GaveUp(GaveUpReason::AvatarConflictBudget) past the budget.
+/// CEP:ASSUMES: 4_096 rounds cover real refutations (each round requires a complete first-order refutation of the activated component set).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::conflict_round_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on the abstraction loop.
+pub const kAvatarMaxConflictRounds: u32 = 4_096;
+
+/// CEP:WHAT: Maximum model-rotation attempts at first-order saturation with waiting components (design 12.2 rule 3).
+/// CEP:WHY: When the search saturates while some components wait, the controller tries to activate waiting components by solving the abstraction under each waiting assertion variable as an assumption (Spec 12 section 6); the named bound caps the per-saturation rotation sweep.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: saturate_with_avatar returns GaveUp(GaveUpReason::AvatarModelBudget) past the budget instead of claiming Saturated without having tested every waiting component.
+/// CEP:ASSUMES: 4_096 rotation attempts cover the waiting set at the component capacity (the sweep stops early once any assumption solve is satisfiable).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::model_rotation_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on the rotation sweep.
+pub const kAvatarMaxModelRotations: u32 = 4_096;
+
+/// CEP:WHAT: Capacity of the clause-id-to-offset side table of the clause store.
+/// CEP:WHY: Proof reconstruction (design 18.2) and AVATAR ancestry collection (design 12.2 rule 4) walk the derivation DAG by parent clause id; the dense side array (index = id - kFirstClauseId) makes the id-to-record lookup O(1) without a per-record linked list; 4_194_304 slots x 4 bytes = 16 MiB, and the minimum 152-byte clause footprint means the 256 MiB arena can hold at most about 1.76M clauses, so the side table always outlives the arena (the bound is unreachable, documented in Spec 14 section 2).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: clause creation returns ClauseError::ArenaFull before the side table can fill (the unreachability argument above); a defensive check still rejects the write loudly.
+/// CEP:ASSUMES: clause ids stay dense and monotonic from kFirstClauseId (the store's contract).
+/// CEP:COST: 16 MiB fixed arena allocation at store construction.
+/// CEP:EVIDENCE: unit/hot/clause_test.rs::{ids_are_monotonic, side_table_resolves_ids, side_table_capacity_enforced}; unit/cold/tstp_test.rs::proof_walk_resolves_parents.
+/// CEP:SECURITY: bounds the side table under record floods.
+pub const kClauseOffsetTableCapacity: u32 = 4_194_304;
+
+/// CEP:WHAT: Ring capacity of one Chase-Lev work-stealing deque (design 19.3).
+/// CEP:WHY: The deque is a fixed power-of-two ring masked by capacity-1 (Chase and Lev 2005, SPAA); the named capacity bounds the deferred-import backlog of one portfolio worker.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: owner push returns DequeError::Full past the capacity (the owner then drops the oldest by popping first, a documented degradation).
+/// CEP:ASSUMES: 8_192 pending imports per worker cover realistic share bursts; storage is supplied by the CEP-1 caller (the hot module is storage-agnostic).
+/// CEP:COST: 8 bytes per slot, 64 KiB per deque at the default capacity.
+/// CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{owner_fifo_order, capacity_enforced, steal_returns_empty_when_idle}.
+/// CEP:SECURITY: memory bound supplied by the caller.
+pub const kChaseLevCapacity: u32 = 8_192;
+
+/// CEP:WHAT: Ring capacity of the bounded MPMC clause-sharing pool (design 19.2).
+/// CEP:WHY: The pool is a Vyukov-style bounded MPMC queue (one sequence number per cell); the named power-of-two capacity bounds shared-clause memory for the whole portfolio.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: enqueue returns PoolError::Full past the capacity (exporters count the drop in stats; never silent).
+/// CEP:ASSUMES: 1_024 in-flight shared clauses cover realistic exchange rates; storage is supplied by the CEP-1 caller.
+/// CEP:COST: one kSharedClauseMaxWords-word record per cell, 2 MiB at the default capacity and word budget.
+/// CEP:EVIDENCE: unit/hot/mpmc_pool_test.rs::{fifo_order_single_thread, exactly_once_delivery_under_threads, capacity_enforced}.
+/// CEP:SECURITY: memory bound supplied by the caller.
+pub const kMpmcPoolCapacity: u32 = 1_024;
+
+/// CEP:WHAT: Word budget of one portable shared-clause record (design 19.2).
+/// CEP:WHY: Shared clauses cross worker arenas by value, encoded as u64 words (header, per-literal headers, one word per term node - Spec 13 section 4); the named budget bounds the per-clause encoding cost, and clauses whose encoding exceeds it are not exported (counted loudly in the exporter's stats as a documented degradation next to the design 19.2 weight/LBD/rule filters).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the codec returns CodecError::TooLarge and the exporter skips the clause (counted).
+/// CEP:ASSUMES: 256 words cover shareable clauses (weight below kSharedClauseMaxWeight = 100 plus literal headers; the bound is the ceiling of 1 + kMaxClauseLiterals/4 literals x average depth for weight-100 clauses).
+/// CEP:COST: 2 KiB per record.
+/// CEP:EVIDENCE: unit/hot/clause_codec_test.rs::{roundtrip_preserves_literals, word_bound_enforced}.
+/// CEP:SECURITY: denial-of-service bound on per-clause encoding.
+pub const kSharedClauseMaxWords: usize = 256;
+
+/// CEP:WHAT: Maximum worker count of one portfolio run (design 19.1).
+/// CEP:WHY: The manager validates the worker count against a named ceiling before spawning threads (threads are created once at initialization, design 19.4); the default count stays kPortfolioThreadCount while the ceiling documents the hard bound.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: portfolio construction returns PortfolioError::TooManyWorkers past the ceiling.
+/// CEP:ASSUMES: 64 workers fit every supported host (kPortfolioThreadCount = 8 by default).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/cold/portfolio_test.rs::worker_count_validated.
+/// CEP:SECURITY: resource-exhaustion bound on thread creation.
+pub const kPortfolioMaxWorkers: u32 = 64;
+
+/// CEP:WHAT: Maximum clauses one portfolio worker exports per slice boundary.
+/// CEP:WHY: Export scans the exporting worker's clause store by id range at slice boundaries (Spec 13 section 5); the per-slice export bound keeps one worker's scan-and-encode cost loud and bounded instead of proportional to unbounded slice growth.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the export stops early at the bound and resumes from the same id at the next boundary (progress is preserved; counted in stats).
+/// CEP:ASSUMES: 256 exports per slice cover realistic derivation rates between import drains.
+/// CEP:COST: one codec encode per exported clause.
+/// CEP:EVIDENCE: unit/cold/portfolio_test.rs::exports_bounded_per_slice.
+/// CEP:SECURITY: denial-of-service bound on export work.
+pub const kPortfolioExportPerSlice: u32 = 256;
+
 // CEP:WHAT: Static invariant checks for limit constants.
 // CEP:WHY: CEP&CC Law 3 bans comment-only invariants; every cross-constant assumption above is enforced here at compile time.
 // CEP:STATUS: complete
@@ -1002,4 +1112,21 @@ const _: () = {
     assert!(kInferenceClauseLiterals >= kInlineClauseLiterals);
     assert!(kInferenceClauseLiterals <= kMaxClauseLiterals as usize);
     assert!(kMaxInferenceVariables == kMaxVariablesPerClause);
+    // Phase 4 (Integration) invariants: AVATAR, concurrency, proof reconstruction.
+    assert!(kAvatarComponentCapacity.count_ones() == 1);
+    assert!(kAvatarComponentCapacity <= kMaxSatVariables);
+    assert!(kAvatarComponentWordCapacity >= kAvatarComponentCapacity);
+    assert!(kAvatarSplitNodeBudget >= kMaxTermDepth as u32);
+    assert!(kAvatarMaxConflictRounds >= 1);
+    assert!(kAvatarMaxModelRotations >= 1);
+    assert!(kClauseOffsetTableCapacity >= 1);
+    assert!(kClauseOffsetTableCapacity < kMaxClauses as u32);
+    assert!(kChaseLevCapacity.count_ones() == 1);
+    assert!(kChaseLevCapacity >= 2);
+    assert!(kMpmcPoolCapacity.count_ones() == 1);
+    assert!(kMpmcPoolCapacity >= 2);
+    assert!(kSharedClauseMaxWords >= 4);
+    assert!(kPortfolioMaxWorkers >= kPortfolioThreadCount);
+    assert!(kPortfolioExportPerSlice >= 1);
+    assert!(kAvatarMinComponentSize <= kMaxClauseLiterals / 2);
 };

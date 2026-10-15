@@ -119,9 +119,9 @@ _RNvCs6okcGS0KElL_17subsumption_bench4main:
 	movups	%xmm0, 168(%rsp)
 	movq	648(%rsp), %rsi
 	movq	%rsi, 184(%rsp)
-	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1(%rip), %xmm0
+	movdqu	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1(%rip), %xmm0
 	movdqu	%xmm0, 200(%rsp)
-	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1+16(%rip), %xmm1
+	movdqu	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1+16(%rip), %xmm1
 	movdqu	%xmm1, 216(%rsp)
 	movq	%rax, 232(%rsp)
 	movq	%rdx, 240(%rsp)
@@ -628,7 +628,7 @@ _RNvCs6okcGS0KElL_17subsumption_bench4main:
 	jne	.LBB3_76
 .LBB3_77:
 	addq	%r12, %r13
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.61(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.86(%rip), %rdx
 	.p2align	4
 .LBB3_78:
 	cmpq	%rcx, %rsi
@@ -3363,7 +3363,7 @@ _RNvCs6okcGS0KElL_17subsumption_bench4main:
 .LBB3_768:
 .Ltmp74:
 	.cfi_escape 0x2e, 0x00
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.11(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.22(%rip), %rdx
 	movl	$4096, %esi
 	callq	_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check
 .Ltmp75:
@@ -3479,7 +3479,7 @@ _RNvCs6okcGS0KElL_17subsumption_bench4main:
 	jmp	.LBB3_64
 .LBB3_789:
 	.cfi_escape 0x2e, 0x00
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.13(%rip), %rcx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.45(%rip), %rcx
 	movq	%rbx, %rdx
 	callq	_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail
 .LBB3_790:
@@ -3585,7 +3585,7 @@ _RNvCs6okcGS0KElL_17subsumption_bench4main:
 .Ltmp104:
 	jmp	.LBB3_846
 .LBB3_809:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.5(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.31(%rip), %rdx
 .LBB3_810:
 .Ltmp39:
 	.cfi_escape 0x2e, 0x00
@@ -3659,7 +3659,7 @@ _RNvCs6okcGS0KElL_17subsumption_bench4main:
 	leaq	632(%rsp), %r12
 	jmp	.LBB3_802
 .LBB3_822:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.60(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.85(%rip), %rdx
 	jmp	.LBB3_808
 .LBB3_823:
 	movb	$5, 16(%rsp)
@@ -3761,7 +3761,7 @@ _RNvCs6okcGS0KElL_17subsumption_bench4main:
 .LBB3_846:
 	ud2
 .LBB3_847:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.6(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.32(%rip), %rdx
 	movq	%r15, %rsi
 	jmp	.LBB3_810
 .LBB3_848:
@@ -4035,7 +4035,7 @@ GCC_except_table3:
 
 	.section	.text._RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes,"ax",@progbits
 	.globl	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes
-	.prefalign	4, .Lfunc_end154, nop
+	.prefalign	4, .Lfunc_end179, nop
 	.type	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes,@function
 _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes:
 	.cfi_startproc
@@ -4053,9 +4053,9 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes:
 	xorl	%edx, %edx
 	movl	$0, %eax
 	cmpq	%r9, %rcx
-	ja	.LBB154_4
+	ja	.LBB179_4
 	testq	%rcx, %rcx
-	je	.LBB154_9
+	je	.LBB179_9
 	movq	16(%rdi), %rbx
 	movl	16648(%rbx), %r14d
 	movq	%rcx, %rdx
@@ -4063,10 +4063,10 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes:
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption14assign_literal
 	movl	16648(%rbx), %edi
 	cmpl	%r14d, %edi
-	ja	.LBB154_6
-.LBB154_3:
+	ja	.LBB179_6
+.LBB179_3:
 	movl	%edi, 16648(%rbx)
-.LBB154_4:
+.LBB179_4:
 	addq	$8, %rsp
 	.cfi_def_cfa_offset 24
 	popq	%rbx
@@ -4075,21 +4075,21 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes:
 	.cfi_def_cfa_offset 8
 	retq
 	.p2align	4
-.LBB154_5:
+.LBB179_5:
 	.cfi_def_cfa_offset 32
 	movl	$0, 260(%rbx,%rdi,4)
 	decq	%rdi
 	cmpq	%r14, %rdi
-	jbe	.LBB154_3
-.LBB154_6:
+	jbe	.LBB179_3
+.LBB179_6:
 	cmpq	$4096, %rdi
-	ja	.LBB154_10
+	ja	.LBB179_10
 	movl	260(%rbx,%rdi,4), %ecx
 	cmpq	$64, %rcx
-	jae	.LBB154_5
+	jae	.LBB179_5
 	movl	$-1, 8(%rbx,%rcx,4)
-	jmp	.LBB154_5
-.LBB154_9:
+	jmp	.LBB179_5
+.LBB179_9:
 	movb	$1, %dl
 	xorl	%eax, %eax
 	addq	$8, %rsp
@@ -4099,14 +4099,14 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes:
 	popq	%r14
 	.cfi_def_cfa_offset 8
 	retq
-.LBB154_10:
+.LBB179_10:
 	.cfi_def_cfa_offset 32
 	decq	%rdi
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.11(%rip), %rdx
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.22(%rip), %rdx
 	movl	$4096, %esi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.Lfunc_end154:
-	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes, .Lfunc_end154-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes
+.Lfunc_end179:
+	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes, .Lfunc_end179-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot9inference11subsumption8subsumes
 	.cfi_endproc
 
 

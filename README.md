@@ -1,6 +1,21 @@
 # MAPT
 
-MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-3: Foundations, Core Engines, and Search Loops** (design section 26), built to the letter of the **CEP&CC 0.1** coding standard (`standard.md`).
+MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-4: Foundations, Core Engines, Search Loops, and Integration** (design section 26), built to the letter of the **CEP&CC 0.1** coding standard (`standard.md`).
+
+## Phase 4 contents (design section 26)
+
+| Component | Status | Location |
+|---|---|---|
+| AVATAR splitter (variable-dependency components, min-size gate, node budget) | complete | `hot/avatar/splitter.rs` |
+| AVATAR component table (hash-consing, dense assertion variables) | complete | `hot/avatar/component.rs` |
+| AVATAR controller (model-guided activation, conflict clauses, rotation; monotone protocol) | complete | `hot/avatar/controller.rs` |
+| Chase-Lev work-stealing deque (owner LIFO, thief FIFO, last-element CAS race) | complete | `hot/concurrency/chase_lev.rs` |
+| Bounded MPMC clause-sharing pool (Vyukov cells, exactly-once) | complete | `hot/concurrency/mpmc_pool.rs` |
+| Portable clause codec (fixed-budget word records, validated decode) | complete | `hot/concurrency/clause_codec.rs` |
+| Portfolio manager (scoped threads, wall-clock slices, first-to-finish, graceful shutdown, sharing) | complete | `cold/portfolio/manager.rs` |
+| Unified proof reconstruction (walk, pruning, TSTP writer, replay checker) | complete | `cold/proof_output/tstp.rs` |
+| Clause-id side table (proof walks, ancestry, export scans) | complete | `hot/ir/clause.rs` |
+| Formal specs 12-14 (AVATAR, concurrency, proof reconstruction) | complete | `docs/formal/` |
 
 ## Phase 3 contents (design section 26)
 

@@ -109,8 +109,8 @@ fn run_loop(problem: &[Vec<usize>]) -> SearchOutcome {
     let (arena, symbols, builder, terms, precedence, _substitution) = make_inference_fixture();
     let mut options = SearchOptions::new();
     options.inference_budget = 512;
-    let space =
-        SearchSpace::new_with(arena, &options, 4096, 1024, 4096, 8192, 131072).expect("space");
+    let space = SearchSpace::new_with(arena, &options, 4096, 1024, 4096, 8192, 131072, 4096)
+        .expect("space");
     let context = InferenceContext {
         terms: &terms,
         symbols: &symbols,

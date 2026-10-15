@@ -268,6 +268,68 @@ path = "tests/security/literal_encoding_test.rs"
 name = "ir_debug_print_test"
 path = "tests/golden/ir_debug_print_test.rs"
 
+[[test]]
+name = "avatar_splitter_test"
+path = "tests/unit/hot/avatar_splitter_test.rs"
+
+[[test]]
+name = "avatar_component_test"
+path = "tests/unit/hot/avatar_component_test.rs"
+
+[[test]]
+name = "avatar_controller_test"
+path = "tests/unit/hot/avatar_controller_test.rs"
+
+[[test]]
+name = "chase_lev_test"
+path = "tests/unit/hot/chase_lev_test.rs"
+
+[[test]]
+name = "mpmc_pool_test"
+path = "tests/unit/hot/mpmc_pool_test.rs"
+
+[[test]]
+name = "clause_codec_test"
+path = "tests/unit/hot/clause_codec_test.rs"
+
+[[test]]
+name = "tstp_test"
+path = "tests/unit/cold/tstp_test.rs"
+
+[[test]]
+name = "portfolio_test"
+path = "tests/unit/cold/portfolio_test.rs"
+
+[[test]]
+name = "avatar_property_test"
+path = "tests/property/avatar_property_test.rs"
+
+[[test]]
+name = "concurrency_property_test"
+path = "tests/property/concurrency_property_test.rs"
+
+[[test]]
+name = "tstp_property_test"
+path = "tests/property/tstp_property_test.rs"
+
+[[test]]
+name = "phase4_bounds_test"
+path = "tests/security/phase4_bounds_test.rs"
+
+[[test]]
+name = "avatar_fuzz_test"
+path = "tests/fuzz/avatar_fuzz_test.rs"
+
+[[bench]]
+name = "avatar_bench"
+path = "benches/hot/avatar_bench.rs"
+harness = false
+
+[[bench]]
+name = "concurrency_bench"
+path = "benches/hot/concurrency_bench.rs"
+harness = false
+
 [[bench]]
 name = "atp_bench"
 path = "benches/hot/atp_bench.rs"

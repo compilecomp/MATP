@@ -106,9 +106,9 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 	movups	%xmm0, 296(%rsp)
 	movq	56(%rsp), %rsi
 	movq	%rsi, 312(%rsp)
-	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1(%rip), %xmm0
+	movdqu	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1(%rip), %xmm0
 	movdqu	%xmm0, 328(%rsp)
-	movdqu	.Lanon.133af2d7c339746ebbe9339949d489fe.1+16(%rip), %xmm1
+	movdqu	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.1+16(%rip), %xmm1
 	movdqu	%xmm1, 344(%rsp)
 	movq	%rax, 360(%rsp)
 	movq	%rdx, 368(%rsp)
@@ -503,7 +503,7 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 .LBB3_65:
 	orq	%rdx, %r9
 	addq	%r15, %r14
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.61(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.86(%rip), %rdx
 	.p2align	4
 .LBB3_66:
 	cmpq	%rcx, %rsi
@@ -3829,7 +3829,7 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 	jmp	.LBB3_956
 .LBB3_923:
 	.cfi_escape 0x2e, 0x00
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.13(%rip), %rcx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.45(%rip), %rcx
 	movq	%rbx, %rdx
 	callq	_RNvNtNtCsevLNFiNqfJP_4core5slice5index16slice_index_fail
 .LBB3_924:
@@ -3939,7 +3939,7 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 .Ltmp94:
 	jmp	.LBB3_956
 .LBB3_942:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.5(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.31(%rip), %rdx
 .LBB3_943:
 .Ltmp26:
 	.cfi_escape 0x2e, 0x00
@@ -4004,7 +4004,7 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 	leaq	.Lanon.811b0a4a3e2f4fd47fbf7cb7751f06ab.24(%rip), %rdi
 	jmp	.LBB3_939
 .LBB3_953:
-	leaq	.Lanon.8bad723cb0846a4398c8f89354b74eb1.60(%rip), %rdx
+	leaq	.Lanon.ca7d6f10e03aaf8944967cb4a90e2f93.85(%rip), %rdx
 	jmp	.LBB3_941
 .LBB3_954:
 	movb	%r12b, 40(%rsp)
@@ -4024,7 +4024,7 @@ _RNvCsaFvvHpeAnSG_14ordering_bench4main:
 .LBB3_956:
 	ud2
 .LBB3_957:
-	leaq	.Lanon.133af2d7c339746ebbe9339949d489fe.6(%rip), %rdx
+	leaq	.Lanon.ec7e4a6fef3fe25783314037e1cc4346.32(%rip), %rdx
 	movq	%r14, %rsi
 	jmp	.LBB3_943
 .LBB3_958:
@@ -4274,7 +4274,7 @@ GCC_except_table3:
 
 
 	.section	.text._RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded,"ax",@progbits
-	.prefalign	4, .Lfunc_end142, nop
+	.prefalign	4, .Lfunc_end167, nop
 	.type	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded,@function
 _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	.cfi_startproc
@@ -4302,21 +4302,21 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	movl	(%r9), %edx
 	movb	$1, %al
 	testl	%edx, %edx
-	je	.LBB142_4
+	je	.LBB167_4
 	decl	%edx
 	movl	%edx, (%r9)
 	movb	$4, %dl
 	cmpl	$129, %r8d
-	jae	.LBB142_5
+	jae	.LBB167_5
 	cmpl	%ecx, %ebp
-	jne	.LBB142_6
-.LBB142_3:
+	jne	.LBB167_6
+.LBB167_3:
 	xorl	%eax, %eax
 	movb	$2, %dl
-	jmp	.LBB142_5
-.LBB142_4:
+	jmp	.LBB167_5
+.LBB167_4:
 	xorl	%edx, %edx
-.LBB142_5:
+.LBB167_5:
 	addq	$72, %rsp
 	.cfi_def_cfa_offset 56
 	popq	%rbx
@@ -4332,7 +4332,7 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB142_6:
+.LBB167_6:
 	.cfi_def_cfa_offset 128
 	movq	(%rdi), %r11
 	movl	12(%r11), %ebx
@@ -4344,31 +4344,31 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	movb	$1, %dl
 	orb	%al, %r14b
 	movb	$1, %al
-	jne	.LBB142_5
+	jne	.LBB167_5
 	movb	$1, %dl
 	movb	$1, %al
 	cmpl	$268435456, %ebx
-	ja	.LBB142_5
+	ja	.LBB167_5
 	movb	$1, %dl
 	movb	$1, %al
 	testb	$3, %bl
-	jne	.LBB142_5
+	jne	.LBB167_5
 	cmpl	8(%r11), %ebx
-	ja	.LBB142_5
+	ja	.LBB167_5
 	movq	(%r11), %r14
 	testq	%r14, %r14
-	je	.LBB142_54
+	je	.LBB167_54
 	movb	$1, %dl
 	movb	$1, %al
 	cmpl	$16, %r10d
-	jb	.LBB142_5
+	jb	.LBB167_5
 	movl	%ebp, %r15d
 	addq	%r14, %r15
 	movl	(%r15), %r12d
 	movb	$1, %dl
 	movb	$1, %al
 	cmpb	$6, %r12b
-	ja	.LBB142_5
+	ja	.LBB167_5
 	shrl	$2, %r10d
 	movl	%r12d, %r13d
 	shrl	$16, %r13d
@@ -4376,7 +4376,7 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	movb	$1, %dl
 	movb	$1, %al
 	cmpl	%r11d, %r10d
-	jb	.LBB142_5
+	jb	.LBB167_5
 	subl	%ecx, %ebx
 	setbe	%al
 	testb	$3, %cl
@@ -4384,28 +4384,28 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	movb	$1, %dl
 	orb	%al, %r11b
 	movb	$1, %al
-	jne	.LBB142_5
+	jne	.LBB167_5
 	movb	$1, %dl
 	movb	$1, %al
 	cmpl	$16, %ebx
-	jb	.LBB142_5
+	jb	.LBB167_5
 	movl	%ecx, %eax
 	addq	%rax, %r14
 	movl	(%r14), %r11d
 	movb	$1, %dl
 	movb	$1, %al
 	cmpb	$6, %r11b
-	ja	.LBB142_5
+	ja	.LBB167_5
 	shrl	$2, %ebx
 	movl	%r11d, %edx
 	shrl	$16, %edx
 	addl	$4, %edx
 	movb	$1, %al
 	cmpl	%edx, %ebx
-	jae	.LBB142_19
+	jae	.LBB167_19
 	movb	$1, %dl
-	jmp	.LBB142_5
-.LBB142_19:
+	jmp	.LBB167_5
+.LBB167_19:
 	movq	%rsi, 32(%rsp)
 	movq	%r9, 64(%rsp)
 	movq	%rdi, 8(%rsp)
@@ -4415,51 +4415,51 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	movl	%r12d, %eax
 	andb	$6, %al
 	cmpb	$4, %al
-	je	.LBB142_23
+	je	.LBB167_23
 	movl	%r11d, %eax
 	andb	$6, %al
 	cmpb	$4, %al
-	je	.LBB142_23
+	je	.LBB167_23
 	movl	12(%r15), %eax
 	movl	12(%r14), %ecx
 	cmpl	%ecx, %eax
-	jbe	.LBB142_24
-.LBB142_22:
+	jbe	.LBB167_24
+.LBB167_22:
 	movq	8(%rsp), %rdi
 	movl	4(%rsp), %esi
 	movl	(%rsp), %edx
 	movq	16(%rsp), %rcx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo24variable_counts_dominate
 	testb	$1, %al
-	jne	.LBB142_26
+	jne	.LBB167_26
 	xorl	%eax, %eax
 	testb	$1, %dl
 	sete	%al
 	leal	(%rax,%rax,2), %edx
-	jmp	.LBB142_65
-.LBB142_23:
+	jmp	.LBB167_65
+.LBB167_23:
 	movb	$3, %dl
 	movb	$1, %al
-	jmp	.LBB142_5
-.LBB142_24:
-	jae	.LBB142_27
-.LBB142_25:
+	jmp	.LBB167_5
+.LBB167_24:
+	jae	.LBB167_27
+.LBB167_25:
 	movq	8(%rsp), %rdi
 	movl	(%rsp), %esi
 	movl	4(%rsp), %edx
 	movq	16(%rsp), %rcx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo24variable_counts_dominate
 	testb	$1, %al
-	je	.LBB142_64
-.LBB142_26:
+	je	.LBB167_64
+.LBB167_26:
 	movb	$1, %al
-	jmp	.LBB142_5
-.LBB142_27:
+	jmp	.LBB167_5
+.LBB167_27:
 	testb	%r12b, %r12b
-	je	.LBB142_62
+	je	.LBB167_62
 	movl	%r11d, %ebp
 	testb	%bpl, %bpl
-	je	.LBB142_62
+	je	.LBB167_62
 	movl	%r10d, %ecx
 	movq	32(%rsp), %rax
 	movq	(%rax), %rdi
@@ -4471,90 +4471,90 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo9head_rank
 	movq	%rax, 24(%rsp)
 	testb	$1, %al
-	je	.LBB142_31
+	je	.LBB167_31
 	movq	24(%rsp), %rax
-	jmp	.LBB142_32
-.LBB142_64:
+	jmp	.LBB167_32
+.LBB167_64:
 	notb	%dl
 	andb	$1, %dl
 	addb	%dl, %dl
 	incb	%dl
-.LBB142_65:
+.LBB167_65:
 	xorl	%eax, %eax
-	jmp	.LBB142_5
-.LBB142_31:
+	jmp	.LBB167_5
+.LBB167_31:
 	movq	48(%rsp), %rdi
 	movq	40(%rsp), %rsi
 	movq	%r14, %rdx
 	movq	%rbx, %rcx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo9head_rank
 	testb	$1, %al
-	je	.LBB142_33
-.LBB142_32:
+	je	.LBB167_33
+.LBB167_32:
 	shrl	$8, %eax
 	movl	%eax, %edx
 	movb	$1, %al
-	jmp	.LBB142_5
-.LBB142_33:
+	jmp	.LBB167_5
+.LBB167_33:
 	cmpb	$3, %r12b
-	je	.LBB142_38
+	je	.LBB167_38
 	movzbl	%r12b, %edx
 	cmpl	$2, %edx
-	je	.LBB142_37
+	je	.LBB167_37
 	movb	$6, %cl
 	cmpl	$1, %edx
-	jne	.LBB142_39
+	jne	.LBB167_39
 	movb	$1, %cl
-	jmp	.LBB142_39
-.LBB142_37:
+	jmp	.LBB167_39
+.LBB167_37:
 	movb	$2, %cl
-	jmp	.LBB142_39
-.LBB142_38:
+	jmp	.LBB167_39
+.LBB167_38:
 	movb	$3, %cl
-.LBB142_39:
+.LBB167_39:
 	cmpb	$3, %bpl
-	je	.LBB142_44
+	je	.LBB167_44
 	movzbl	%bpl, %esi
 	cmpl	$2, %esi
-	je	.LBB142_43
+	je	.LBB167_43
 	movb	$6, %dl
 	cmpl	$1, %esi
-	jne	.LBB142_45
+	jne	.LBB167_45
 	movb	$1, %dl
-	jmp	.LBB142_45
-.LBB142_43:
+	jmp	.LBB167_45
+.LBB167_43:
 	movb	$2, %dl
-	jmp	.LBB142_45
-.LBB142_44:
+	jmp	.LBB167_45
+.LBB167_44:
 	movb	$3, %dl
-.LBB142_45:
+.LBB167_45:
 	cmpb	%dl, %cl
-	jne	.LBB142_55
+	jne	.LBB167_55
 	movl	4(%r15), %ecx
 	cmpl	4(%r14), %ecx
-	jne	.LBB142_55
+	jne	.LBB167_55
 	xorl	%ebp, %ebp
-.LBB142_48:
+.LBB167_48:
 	cmpw	%bp, %r13w
-	je	.LBB142_3
+	je	.LBB167_3
 	movq	%r15, %rdi
 	movq	56(%rsp), %rsi
 	movl	%ebp, %edx
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir4termNtB4_8TermView5child
 	movq	%rax, %r12
 	testb	$1, %r12b
-	jne	.LBB142_54
+	jne	.LBB167_54
 	movq	%r14, %rdi
 	movq	%rbx, %rsi
 	movl	%ebp, %edx
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir4termNtB4_8TermView5child
 	testb	$1, %al
-	jne	.LBB142_54
+	jne	.LBB167_54
 	shrq	$32, %r12
 	shrq	$32, %rax
 	incl	%ebp
 	cmpl	%eax, %r12d
-	je	.LBB142_48
+	je	.LBB167_48
 	movq	16(%rsp), %rcx
 	leal	1(%rcx), %r8d
 	movq	8(%rsp), %rdi
@@ -4564,46 +4564,46 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded:
 	movq	64(%rsp), %r9
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded
 	testb	$1, %al
-	je	.LBB142_59
+	je	.LBB167_59
 	movb	$1, %al
-	jmp	.LBB142_5
-.LBB142_54:
+	jmp	.LBB167_5
+.LBB167_54:
 	movb	$1, %dl
 	movb	$1, %al
-	jmp	.LBB142_5
-.LBB142_55:
+	jmp	.LBB167_5
+.LBB167_55:
 	movq	24(%rsp), %rdx
 	shrq	$32, %rdx
 	shrq	$32, %rax
 	cmpl	%eax, %edx
-	ja	.LBB142_22
+	ja	.LBB167_22
 	movq	%rdx, %rcx
 	cmpl	%ecx, %eax
-	ja	.LBB142_25
-.LBB142_62:
+	ja	.LBB167_25
+.LBB167_62:
 	xorl	%eax, %eax
 	movb	$3, %dl
-	jmp	.LBB142_5
-.LBB142_59:
+	jmp	.LBB167_5
+.LBB167_59:
 	movzbl	%dl, %eax
-	leaq	.LJTI142_0(%rip), %rcx
+	leaq	.LJTI167_0(%rip), %rcx
 	movslq	(%rcx,%rax,4), %rax
 	addq	%rcx, %rax
 	jmpq	*%rax
-.Lfunc_end142:
-	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded, .Lfunc_end142-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded
+.Lfunc_end167:
+	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded, .Lfunc_end167-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded
 	.cfi_endproc
 	.section	.rodata._RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo15compare_bounded,"a",@progbits
 	.p2align	2, 0x0
-.LJTI142_0:
-	.long	.LBB142_22-.LJTI142_0
-	.long	.LBB142_25-.LJTI142_0
-	.long	.LBB142_3-.LJTI142_0
-	.long	.LBB142_62-.LJTI142_0
+.LJTI167_0:
+	.long	.LBB167_22-.LJTI167_0
+	.long	.LBB167_25-.LJTI167_0
+	.long	.LBB167_3-.LJTI167_0
+	.long	.LBB167_62-.LJTI167_0
 
 
 	.section	.text._RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater,"ax",@progbits
-	.prefalign	4, .Lfunc_end149, nop
+	.prefalign	4, .Lfunc_end174, nop
 	.type	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater,@function
 _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	.cfi_startproc
@@ -4631,13 +4631,13 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	movl	(%r9), %ecx
 	movb	$1, %r15b
 	testl	%ecx, %ecx
-	je	.LBB149_1
+	je	.LBB174_1
 	movl	%edx, %eax
 	decl	%ecx
 	movl	%ecx, (%r9)
 	movb	$4, %dl
 	cmpl	$129, %r8d
-	jae	.LBB149_67
+	jae	.LBB174_67
 	movq	(%rdi), %r10
 	movl	12(%r10), %r14d
 	movl	%r14d, %ecx
@@ -4648,31 +4648,31 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	movb	$1, %dl
 	orb	%r11b, %bl
 	movb	$1, %r15b
-	jne	.LBB149_67
+	jne	.LBB174_67
 	movb	$1, %dl
 	movb	$1, %r15b
 	cmpl	$268435456, %r14d
-	ja	.LBB149_67
+	ja	.LBB174_67
 	movb	$1, %dl
 	movb	$1, %r15b
 	testb	$3, %r14b
-	jne	.LBB149_67
+	jne	.LBB174_67
 	cmpl	8(%r10), %r14d
-	ja	.LBB149_67
+	ja	.LBB174_67
 	movq	(%r10), %r10
 	testq	%r10, %r10
-	je	.LBB149_8
+	je	.LBB174_8
 	movb	$1, %dl
 	movb	$1, %r15b
 	cmpl	$16, %ecx
-	jb	.LBB149_67
+	jb	.LBB174_67
 	movl	%ebp, %ebx
 	addq	%r10, %rbx
 	movl	(%rbx), %r13d
 	movb	$1, %dl
 	movb	$1, %r15b
 	cmpb	$6, %r13b
-	ja	.LBB149_67
+	ja	.LBB174_67
 	shrl	$2, %ecx
 	movl	%r13d, %r12d
 	shrl	$16, %r12d
@@ -4680,9 +4680,9 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	movb	$1, %dl
 	movb	$1, %r15b
 	cmpl	%r11d, %ecx
-	jb	.LBB149_67
+	jb	.LBB174_67
 	testb	%r13b, %r13b
-	je	.LBB149_13
+	je	.LBB174_13
 	movl	%eax, %edx
 	subl	%eax, %r14d
 	setbe	%r11b
@@ -4691,11 +4691,11 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	movb	$1, %dl
 	orb	%r11b, %r15b
 	movb	$1, %r15b
-	jne	.LBB149_67
+	jne	.LBB174_67
 	movb	$1, %dl
 	movb	$1, %r15b
 	cmpl	$16, %r14d
-	jb	.LBB149_67
+	jb	.LBB174_67
 	movl	%eax, %edx
 	movq	%rdx, 16(%rsp)
 	addq	%r10, %rdx
@@ -4704,7 +4704,7 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	movb	$1, %dl
 	movb	$1, %r15b
 	cmpb	$6, %r11b
-	ja	.LBB149_67
+	ja	.LBB174_67
 	shrl	$2, %r14d
 	movl	%r11d, %edx
 	shrl	$16, %edx
@@ -4712,12 +4712,12 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	leal	4(%rdx), %r15d
 	movb	$1, %dl
 	cmpl	%r15d, %r14d
-	jae	.LBB149_20
+	jae	.LBB174_20
 	movb	$1, %r15b
-	jmp	.LBB149_67
-.LBB149_1:
+	jmp	.LBB174_67
+.LBB174_1:
 	xorl	%edx, %edx
-.LBB149_67:
+.LBB174_67:
 	movl	%r15d, %eax
 	addq	$88, %rsp
 	.cfi_def_cfa_offset 56
@@ -4734,33 +4734,33 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	popq	%rbp
 	.cfi_def_cfa_offset 8
 	retq
-.LBB149_13:
+.LBB174_13:
 	.cfi_def_cfa_offset 144
 	movl	4(%rbx), %esi
 	movl	%eax, %edx
 	movl	%r8d, %ecx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo10occurs_raw
 	movl	%eax, %r15d
-	jmp	.LBB149_67
-.LBB149_20:
+	jmp	.LBB174_67
+.LBB174_20:
 	movzbl	%r11b, %r11d
 	leal	-4(%r11), %edx
 	cmpl	$2, %edx
-	jae	.LBB149_21
-.LBB149_68:
+	jae	.LBB174_21
+.LBB174_68:
 	movb	$3, %dl
 	movb	$1, %r15b
-	jmp	.LBB149_67
-.LBB149_21:
+	jmp	.LBB174_67
+.LBB174_21:
 	xorl	%edx, %edx
 	movl	$0, %r15d
 	movq	%r11, 80(%rsp)
 	testl	%r11d, %r11d
-	je	.LBB149_67
+	je	.LBB174_67
 	movl	%r13d, %edx
 	andb	$6, %dl
 	cmpb	$4, %dl
-	je	.LBB149_68
+	je	.LBB174_68
 	movl	%ecx, %ecx
 	movq	%rcx, 40(%rsp)
 	incl	%r8d
@@ -4774,20 +4774,20 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	movl	%eax, 68(%rsp)
 	movq	%rdi, 48(%rsp)
 	movq	%rsi, 24(%rsp)
-.LBB149_24:
+.LBB174_24:
 	cmpq	%r10, 72(%rsp)
-	je	.LBB149_25
+	je	.LBB174_25
 	movq	32(%rsp), %rax
 	movzwl	2(%rax), %eax
 	cmpq	%rax, %r10
-	jae	.LBB149_8
+	jae	.LBB174_8
 	leaq	-4(%r14), %rax
 	cmpq	%r10, %rax
-	je	.LBB149_69
+	je	.LBB174_69
 	movq	16(%rsp), %rax
 	movl	(%rax,%r10,4), %edx
 	cmpl	%edx, %ebp
-	je	.LBB149_30
+	je	.LBB174_30
 	movq	%r10, %r15
 	movq	48(%rsp), %rdi
 	movq	24(%rsp), %rsi
@@ -4797,15 +4797,15 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater
 	movl	%edx, %ecx
 	testb	$1, %al
-	jne	.LBB149_65
+	jne	.LBB174_65
 	movq	%r15, %r10
 	incq	%r10
 	movb	$1, %dl
 	xorl	%r15d, %r15d
 	testb	$1, %cl
-	je	.LBB149_24
-	jmp	.LBB149_67
-.LBB149_25:
+	je	.LBB174_24
+	jmp	.LBB174_67
+.LBB174_25:
 	movq	24(%rsp), %rax
 	movq	(%rax), %r15
 	movq	8(%rax), %rbp
@@ -4816,103 +4816,103 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo9head_rank
 	movq	%rax, 16(%rsp)
 	testb	$1, %al
-	je	.LBB149_31
+	je	.LBB174_31
 	movq	16(%rsp), %rax
-	jmp	.LBB149_32
-.LBB149_65:
+	jmp	.LBB174_32
+.LBB174_65:
 	movb	$1, %r15b
 	movl	%ecx, %edx
-	jmp	.LBB149_67
-.LBB149_31:
+	jmp	.LBB174_67
+.LBB174_31:
 	movq	%r15, %rdi
 	movq	%rbp, %rsi
 	movq	%rbx, %rdx
 	movq	40(%rsp), %rcx
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3kbo9head_rank
 	testb	$1, %al
-	je	.LBB149_33
-.LBB149_32:
+	je	.LBB174_33
+.LBB174_32:
 	shrl	$8, %eax
 	movl	%eax, %edx
 	movb	$1, %r15b
-	jmp	.LBB149_67
-.LBB149_33:
+	jmp	.LBB174_67
+.LBB174_33:
 	movb	$6, %cl
 	movq	80(%rsp), %rdi
 	decl	%edi
 	movb	$6, %dl
 	cmpl	$4, %edi
-	ja	.LBB149_40
-	leaq	.LJTI149_0(%rip), %rdx
+	ja	.LBB174_40
+	leaq	.LJTI174_0(%rip), %rdx
 	movslq	(%rdx,%rdi,4), %rsi
 	addq	%rdx, %rsi
 	jmpq	*%rsi
-.LBB149_35:
+.LBB174_35:
 	movb	$1, %dl
-	jmp	.LBB149_40
-.LBB149_39:
+	jmp	.LBB174_40
+.LBB174_39:
 	movb	$5, %dl
-	jmp	.LBB149_40
-.LBB149_37:
+	jmp	.LBB174_40
+.LBB174_37:
 	movb	$3, %dl
-	jmp	.LBB149_40
-.LBB149_38:
+	jmp	.LBB174_40
+.LBB174_38:
 	movb	$4, %dl
-	jmp	.LBB149_40
-.LBB149_36:
+	jmp	.LBB174_40
+.LBB174_36:
 	movb	$2, %dl
-.LBB149_40:
+.LBB174_40:
 	movzbl	%r13b, %esi
 	decl	%esi
 	cmpl	$4, %esi
-	ja	.LBB149_47
-	leaq	.LJTI149_1(%rip), %rcx
+	ja	.LBB174_47
+	leaq	.LJTI174_1(%rip), %rcx
 	movslq	(%rcx,%rsi,4), %rsi
 	addq	%rcx, %rsi
 	jmpq	*%rsi
-.LBB149_42:
+.LBB174_42:
 	movb	$1, %cl
-	jmp	.LBB149_47
-.LBB149_46:
+	jmp	.LBB174_47
+.LBB174_46:
 	movb	$5, %cl
-	jmp	.LBB149_47
-.LBB149_44:
+	jmp	.LBB174_47
+.LBB174_44:
 	movb	$3, %cl
-	jmp	.LBB149_47
-.LBB149_45:
+	jmp	.LBB174_47
+.LBB174_45:
 	movb	$4, %cl
-	jmp	.LBB149_47
-.LBB149_43:
+	jmp	.LBB174_47
+.LBB174_43:
 	movb	$2, %cl
-.LBB149_47:
+.LBB174_47:
 	cmpb	%cl, %dl
-	jne	.LBB149_48
+	jne	.LBB174_48
 	movq	32(%rsp), %rcx
 	movl	4(%rcx), %ecx
 	cmpl	4(%rbx), %ecx
-	jne	.LBB149_48
+	jne	.LBB174_48
 	xorl	%ebp, %ebp
-.LBB149_55:
+.LBB174_55:
 	cmpw	%bp, 72(%rsp)
-	je	.LBB149_56
+	je	.LBB174_56
 	movq	32(%rsp), %rdi
 	movq	%r14, %rsi
 	movl	%ebp, %edx
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir4termNtB4_8TermView5child
 	movq	%rax, %r15
 	testb	$1, %r15b
-	jne	.LBB149_8
+	jne	.LBB174_8
 	movq	%rbx, %rdi
 	movq	40(%rsp), %rsi
 	movl	%ebp, %edx
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir4termNtB4_8TermView5child
 	testb	$1, %al
-	jne	.LBB149_8
+	jne	.LBB174_8
 	shrq	$32, %r15
 	shrq	$32, %rax
 	incl	%ebp
 	cmpl	%eax, %r15d
-	je	.LBB149_55
+	je	.LBB174_55
 	movq	48(%rsp), %rdi
 	movq	24(%rsp), %rsi
 	movl	%r15d, %edx
@@ -4921,30 +4921,30 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	movq	56(%rsp), %r9
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater
 	movl	%eax, %r15d
-	jmp	.LBB149_67
-.LBB149_8:
+	jmp	.LBB174_67
+.LBB174_8:
 	movb	$1, %dl
 	movb	$1, %r15b
-	jmp	.LBB149_67
-.LBB149_48:
+	jmp	.LBB174_67
+.LBB174_48:
 	movq	16(%rsp), %rcx
 	shrq	$32, %rcx
 	shrq	$32, %rax
 	xorl	%edx, %edx
 	movl	$0, %r15d
 	cmpl	%eax, %ecx
-	jbe	.LBB149_67
+	jbe	.LBB174_67
 	xorl	%ebp, %ebp
-.LBB149_50:
+.LBB174_50:
 	cmpw	%bp, %r12w
-	je	.LBB149_30
+	je	.LBB174_30
 	movq	%rbx, %rdi
 	movq	40(%rsp), %rsi
 	movl	%ebp, %edx
 	callq	_RNvMs_NtNtCs9NJWXRiuNhZ_8mapt_hot2ir4termNtB4_8TermView5child
 	movb	$1, %r15b
 	testb	$1, %al
-	jne	.LBB149_52
+	jne	.LBB174_52
 	shrq	$32, %rax
 	movq	48(%rsp), %rdi
 	movq	24(%rsp), %rsi
@@ -4955,49 +4955,49 @@ _RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater:
 	callq	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater
 	movl	%edx, %ecx
 	testb	$1, %al
-	jne	.LBB149_58
+	jne	.LBB174_58
 	incl	%ebp
 	xorl	%edx, %edx
 	movl	$0, %r15d
 	testb	$1, %cl
-	jne	.LBB149_50
-	jmp	.LBB149_67
-.LBB149_30:
+	jne	.LBB174_50
+	jmp	.LBB174_67
+.LBB174_30:
 	movb	$1, %dl
 	xorl	%r15d, %r15d
-	jmp	.LBB149_67
-.LBB149_52:
+	jmp	.LBB174_67
+.LBB174_52:
 	movb	$1, %dl
-	jmp	.LBB149_67
-.LBB149_58:
+	jmp	.LBB174_67
+.LBB174_58:
 	movl	%ecx, %edx
-	jmp	.LBB149_67
-.LBB149_56:
+	jmp	.LBB174_67
+.LBB174_56:
 	xorl	%edx, %edx
 	xorl	%r15d, %r15d
-	jmp	.LBB149_67
-.LBB149_69:
+	jmp	.LBB174_67
+.LBB174_69:
 	addq	$4, %r10
-	leaq	.Lanon.89b53e3e646fec6b5e20db0939850fa8.112(%rip), %rdx
+	leaq	.Lanon.42595ace426c20d90317b5b717644492.137(%rip), %rdx
 	movq	%r10, %rdi
 	movq	%r14, %rsi
 	callq	*_RNvNtCsevLNFiNqfJP_4core9panicking18panic_bounds_check@GOTPCREL(%rip)
-.Lfunc_end149:
-	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater, .Lfunc_end149-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater
+.Lfunc_end174:
+	.size	_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater, .Lfunc_end174-_RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater
 	.cfi_endproc
 	.section	.rodata._RNvNtNtCs9NJWXRiuNhZ_8mapt_hot8ordering3lpo11lpo_greater,"a",@progbits
 	.p2align	2, 0x0
-.LJTI149_0:
-	.long	.LBB149_35-.LJTI149_0
-	.long	.LBB149_36-.LJTI149_0
-	.long	.LBB149_37-.LJTI149_0
-	.long	.LBB149_38-.LJTI149_0
-	.long	.LBB149_39-.LJTI149_0
-.LJTI149_1:
-	.long	.LBB149_42-.LJTI149_1
-	.long	.LBB149_43-.LJTI149_1
-	.long	.LBB149_44-.LJTI149_1
-	.long	.LBB149_45-.LJTI149_1
-	.long	.LBB149_46-.LJTI149_1
+.LJTI174_0:
+	.long	.LBB174_35-.LJTI174_0
+	.long	.LBB174_36-.LJTI174_0
+	.long	.LBB174_37-.LJTI174_0
+	.long	.LBB174_38-.LJTI174_0
+	.long	.LBB174_39-.LJTI174_0
+.LJTI174_1:
+	.long	.LBB174_42-.LJTI174_1
+	.long	.LBB174_43-.LJTI174_1
+	.long	.LBB174_44-.LJTI174_1
+	.long	.LBB174_45-.LJTI174_1
+	.long	.LBB174_46-.LJTI174_1
 
 

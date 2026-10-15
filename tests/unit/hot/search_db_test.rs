@@ -179,7 +179,8 @@ fn small_space() -> (
     // The fixture arena also hosts the term table; build the space with small caps
     // against the remaining room.
     let options = SearchOptions::new();
-    let space = SearchSpace::new_with(arena, &options, 64, 32, 2048, 2048, 8192).expect("space");
+    let space =
+        SearchSpace::new_with(arena, &options, 64, 32, 2048, 2048, 8192, 4096).expect("space");
     (space, symbols, builder, terms)
 }
 
@@ -385,7 +386,8 @@ fn forward_subsumption_uses_filter() {
 fn active_capacity_enforced() {
     let (arena, symbols, builder, terms, _p, _s) = make_inference_fixture();
     let options = SearchOptions::new();
-    let space = SearchSpace::new_with(arena, &options, 8, 2, 1024, 1024, 4096).expect("space");
+    let space =
+        SearchSpace::new_with(arena, &options, 8, 2, 1024, 1024, 4096, 4096).expect("space");
     let a = terms
         .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
         .expect("a");
