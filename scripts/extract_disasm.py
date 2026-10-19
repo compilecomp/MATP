@@ -24,75 +24,75 @@ import sys
 # CEP:SECURITY: none.
 TARGETS = {
     "disasm_arena.txt": [
-        ("build/release/deps/arena_bench-*.s", "arena_bench4main,"),
+        ("build/release/deps/arena_bench-*.s", ["arena_bench4main,", "11arena_benchs_4main"]),
     ],
     "disasm_term.txt": [
-        ("build/release/deps/term_bench-*.s", "term_bench4main,"),
+        ("build/release/deps/term_bench-*.s", ["term_bench4main,", "10term_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "9TermStore6intern,"),
         ("build/release/deps/mapt_hot-*.s", "9TermStore10intern_fun,"),
     ],
     "disasm_clause.txt": [
-        ("build/release/deps/clause_bench-*.s", "clause_bench4main,"),
+        ("build/release/deps/clause_bench-*.s", ["clause_bench4main,", "12clause_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "11ClauseStore10new_clause,"),
     ],
     "disasm_substitution.txt": [
-        ("build/release/deps/substitution_bench-*.s", "substitution_bench4main,"),
+        ("build/release/deps/substitution_bench-*.s", ["substitution_bench4main,", "18substitution_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "12Substitution13apply_bounded,"),
     ],
     "disasm_sat.txt": [
-        ("build/release/deps/sat_bench-*.s", "sat_bench4main,"),
+        ("build/release/deps/sat_bench-*.s", ["sat_bench4main,", "9sat_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "7SatCore9propagate,"),
     ],
     "disasm_unify.txt": [
-        ("build/release/deps/unify_bench-*.s", "unify_bench4main,"),
+        ("build/release/deps/unify_bench-*.s", ["unify_bench4main,", "11unify_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "11unification5unify13unify_bounded,"),
     ],
     "disasm_ordering.txt": [
-        ("build/release/deps/ordering_bench-*.s", "ordering_bench4main,"),
+        ("build/release/deps/ordering_bench-*.s", ["ordering_bench4main,", "14ordering_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "15compare_bounded,"),
         ("build/release/deps/mapt_hot-*.s", "11lpo_greater,"),
     ],
     "disasm_index.txt": [
-        ("build/release/deps/index_bench-*.s", "index_bench4main,"),
+        ("build/release/deps/index_bench-*.s", ["index_bench4main,", "11index_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "18DiscriminationTree6insert,"),
         ("build/release/deps/mapt_hot-*.s", "18DiscriminationTree8retrieve,"),
     ],
     "disasm_cdcl.txt": [
-        ("build/release/deps/cdcl_bench-*.s", "cdcl_bench4main,"),
+        ("build/release/deps/cdcl_bench-*.s", ["cdcl_bench4main,", "10cdcl_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "16ConflictAnalyzer7analyze,"),
         ("build/release/deps/mapt_hot-*.s", "10CdclSolver5solve,"),
     ],
     "disasm_atp.txt": [
-        ("build/release/deps/atp_bench-*.s", "atp_bench4main,"),
+        ("build/release/deps/atp_bench-*.s", ["atp_bench4main,", "9atp_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "10resolution7resolve,"),
     ],
     "disasm_search.txt": [
-        ("build/release/deps/search_bench-*.s", "search_bench4main,"),
+        ("build/release/deps/search_bench-*.s", ["search_bench4main,", "12search_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "11PassiveHeap4push,"),
     ],
     "disasm_subsumption.txt": [
-        ("build/release/deps/subsumption_bench-*.s", "subsumption_bench4main,"),
+        ("build/release/deps/subsumption_bench-*.s", ["subsumption_bench4main,", "17subsumption_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "11subsumption8subsumes,"),
     ],
     "disasm_sat_preprocess.txt": [
-        ("build/release/deps/sat_preprocess_bench-*.s", "sat_preprocess_bench4main,"),
+        ("build/release/deps/sat_preprocess_bench-*.s", ["sat_preprocess_bench4main,", "20sat_preprocess_benchs_4main"]),
         ("build/release/deps/mapt_hot-*.s", "preprocess8simplify"),
     ],
     "disasm_avatar.txt": [
-        ("build/release/deps/avatar_bench-*.s", "avatar_bench4main,"),
+        ("build/release/deps/avatar_bench-*.s", ["avatar_bench4main,", "12avatar_benchs_4main"]),
     ],
     "disasm_concurrency.txt": [
-        ("build/release/deps/concurrency_bench-*.s", "concurrency_bench4main,"),
+        ("build/release/deps/concurrency_bench-*.s", ["concurrency_bench4main,", "17concurrency_benchs_4main"]),
     ],
     # Phase 4 (revised): the induction and conjecture modules inline fully
     # into their bench mains (small functions, single call sites), so the
     # bench-main sections are the honest artifacts (the script's documented
     # philosophy for inlined measurement loops).
     "disasm_induction.txt": [
-        ("build/release/deps/induction_bench-*.s", "induction_bench4main,"),
+        ("build/release/deps/induction_bench-*.s", ["induction_bench4main,", "15induction_benchs_4main"]),
     ],
     "disasm_conjecture.txt": [
-        ("build/release/deps/conjecture_bench-*.s", "conjecture_bench4main,"),
+        ("build/release/deps/conjecture_bench-*.s", ["conjecture_bench4main,", "16conjecture_benchs_4main"]),
     ],
 }
 
@@ -105,21 +105,32 @@ TARGETS = {
 # CEP:COST: linear in the file.
 # CEP:EVIDENCE: used by main.
 # CEP:SECURITY: none.
-def extract_section(path: str, needle: str):
+def extract_section(path: str, needles):
+    # CEP:WHAT: Accepts one needle or a list (alternation: the first needle
+    # whose section exists wins).
+    # CEP:WHY: Toolchain drift (observed 2026-10-19 on the CI runner and the
+    # recording host): some bench mains mangle as legacy (_ZN...bench4main,)
+    # and others as v0 (_RNv...benchs_4main) under the same pinned rustc,
+    # so each target lists both forms and the extractor tries them in order.
+    if isinstance(needles, str):
+        needles = [needles]
     with open(path) as handle:
         lines = handle.readlines()
-    collected = []
-    capture = False
-    for line in lines:
-        if line.startswith("\t.section") and needle in line:
-            capture = True
-            collected.append(line)
-            continue
-        if capture:
-            if line.startswith("\t.section") or line.startswith("\t.ident"):
-                break
-            collected.append(line)
-    return collected if collected else None
+    for needle in needles:
+        collected = []
+        capture = False
+        for line in lines:
+            if line.startswith("\t.section") and needle in line:
+                capture = True
+                collected.append(line)
+                continue
+            if capture:
+                if line.startswith("\t.section") or line.startswith("\t.ident"):
+                    break
+                collected.append(line)
+        if collected:
+            return collected
+    return None
 
 
 # CEP:WHAT: Entry point: extract sections and write artifacts.
@@ -143,7 +154,11 @@ def main() -> int:
                 continue
             section = extract_section(candidates[0], needle)
             if section is None:
-                print("warning: section not found: {} in {}".format(needle, candidates[-1]))
+                print(
+                    "warning: section not found: {} in {}".format(
+                        needle, candidates[-1]
+                    )
+                )
                 failed = True
                 continue
             collected.extend(section)
