@@ -539,11 +539,15 @@ pub fn add_induction_schemes(
             stats.structural_schemes += 1;
             attempts += 1;
         }
+        // The predicate is covered by its structural pair before the strong
+        // pair is attempted; a wf-budget shortfall must not recount the
+        // predicate as fully skipped (Task 26 sev-3(1) repair).
+        covered += 1;
         if let Some(order) = declaration.well_founded {
             if attempts + scheme::kWellFoundedClauseCount > max_attempts {
                 // The structural pair consumed the remaining budget; the strong
-                // pair for this predicate (and everything after) is skipped and
-                // counted (Law 4).
+                // pair for this predicate (and everything after) is skipped;
+                // the predicate itself stays covered (Law 4 accounting).
                 continue;
             }
             for clause_index in 0..scheme::kWellFoundedClauseCount {
@@ -567,7 +571,6 @@ pub fn add_induction_schemes(
                 attempts += 1;
             }
         }
-        covered += 1;
     }
     stats.predicates_skipped = stats.unary_predicates.saturating_sub(covered);
     Ok(stats)

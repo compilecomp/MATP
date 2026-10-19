@@ -625,6 +625,47 @@ fn attempts_budget_enforced() {
     assert_eq!(fixture.space.store.next_clause_id().0, kFirstClauseId + 4);
 }
 
+// CEP:WHAT: The well-founded partial-coverage accounting (Task 26 sev-3(1) repair): with the well-order declared and budget 3, one predicate receives its structural pair, the strong pair does not fit, and the predicate is NOT reported as fully skipped.
+// CEP:WHY: Law 4: a predicate that received its structural pair is covered even when the strong pair is short; the pre-repair code counted it as skipped (the `continue` bypassed the covered increment).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on the miscount.
+// CEP:ASSUMES: one occurring unary predicate; well-founded declared; budget 3.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/induction/mod.rs::add_induction_schemes (the covered accounting).
+// CEP:SECURITY: none.
+#[test]
+fn well_founded_partial_coverage_accounting() {
+    let fixture = make_induction_fixture();
+    let context = context_of(&fixture);
+    let atom = p_atom(&fixture, constant(&fixture, fixture.a));
+    fixture
+        .space
+        .add_input_clause(&context, &fixture.options, &[Literal::new(atom, true)])
+        .expect("input");
+    let declaration = InductionDeclaration {
+        zero: fixture.zero,
+        succ: fixture.succ,
+        skolem: fixture.sk,
+        well_founded: Some(fixture.lt),
+    };
+    let stats = add_induction_schemes(
+        &fixture.space,
+        &context,
+        &fixture.options,
+        &declaration,
+        3,
+        kInductionScanNodeBudget,
+    )
+    .expect("schemes");
+    assert_eq!(stats.structural_schemes, 2);
+    assert_eq!(stats.well_founded_schemes, 0);
+    assert_eq!(stats.unary_predicates, 1);
+    assert_eq!(
+        stats.predicates_skipped, 0,
+        "the predicate is covered by its structural pair"
+    );
+}
+
 // CEP:WHAT: A scan budget of 1 rejects the input with ScanBudgetExceeded and adds nothing.
 // CEP:WHY: CEP&CC 34.3: the node budget is injectable and its exhaustion path is pinned at small scale.
 // CEP:STATUS: complete

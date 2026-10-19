@@ -4,7 +4,7 @@
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
-// CEP:FAILURE: the harvest never fails the search: mini-run discards and aborts are counted outcomes (Law 4), and only MAIN-store structural errors (the lemma add) propagate as SearchError; never panics.
+// CEP:FAILURE: the harvest never fails the search: discards, aborts, and capacity errors are counted or silent-in-stats outcomes (Law 4; the Task 26 sev-2(1) repair - a speculative, options-gated feature must never change the main search's outcome class); never panics.
 // CEP:ASSUMES: called by the saturate loop (options.conjecture set, under kMaxConjectureHarvests) or by the CEP-1 driver pre-search (harvest_with_types with the induction declaration); the main space's input range is the axiom set.
 // CEP:COST: per harvest: one window scan (bounded), one enumeration (bounded), and at most kMaxConjectureCandidates filter runs at kConjectureRefuteInferences each; measured in bench CEP-BENCH-0037.
 // CEP:EVIDENCE: unit/hot/conjecture_test.rs; property/conjecture_property_test.rs::{only_proved_lemmas_added, harvest_deterministic_double_run, harvest_preserves_existing_clauses}; fuzz/conjecture_fuzz_test.rs; bench CEP-BENCH-0037.
@@ -19,7 +19,6 @@ pub mod template;
 use crate::induction::InductionDeclaration;
 use crate::inference::InferenceContext;
 use crate::search::given_clause::{SearchOptions, SearchSpace, SearchStats};
-use crate::search::SearchError;
 use filter::CandidateOutcome;
 
 // CEP:WHAT: One in-loop harvest: T1/T2 templates over the recent derived units.
@@ -35,7 +34,7 @@ pub fn harvest(
     context: &InferenceContext<'_>,
     options: &SearchOptions,
     stats: &mut SearchStats,
-) -> Result<(), SearchError> {
+) {
     harvest_with_types(space, context, options, None, stats)
 }
 
@@ -53,25 +52,30 @@ pub fn harvest_with_types(
     options: &SearchOptions,
     declaration: Option<&InductionDeclaration>,
     stats: &mut SearchStats,
-) -> Result<(), SearchError> {
+) {
     stats.harvests += 1;
     let window = template::collect_recent_units(space, context);
     let candidates = template::enumerate_candidates(space, context, &window, declaration);
     for index in 0..candidates.count {
         stats.candidates += 1;
+        // The Task 26 sev-2(1) repair: a speculative feature must never
+        // change the main search's outcome class - a capacity error on the
+        // lemma add or mid-import degrades to a silent-in-stats stop (the
+        // same condition the main loop reports as GaveUp(MemoryBudget)),
+        // and the half-imported state is sound (proof-only clauses are
+        // inert; the watermark keeps them invisible to later harvests).
         match filter::refute_and_maybe_import(
             space,
             context,
             options,
             candidates.literals[index],
             &filter::MiniCapacities::production(),
-        )? {
-            CandidateOutcome::Imported => {
+        ) {
+            Ok(CandidateOutcome::Imported) => {
                 stats.lemmas += 1;
             }
-            CandidateOutcome::Discarded => {}
-            CandidateOutcome::Aborted => break,
+            Ok(CandidateOutcome::Discarded) => {}
+            Ok(CandidateOutcome::Aborted) | Err(_) => break,
         }
     }
-    Ok(())
 }

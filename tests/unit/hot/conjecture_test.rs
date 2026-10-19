@@ -31,7 +31,7 @@ use mapt::hot::search::given_clause::{
     saturate, SearchOptions, SearchOutcome, SearchSpace, SearchStats,
 };
 use mapt_config::limits::{
-    kConjectureRefuteInferences, kInvalidClauseId, kInvalidSubstitutionOffset,
+    kConjectureRefuteInferences, kFirstClauseId, kInvalidClauseId, kInvalidSubstitutionOffset,
     kMaxConjectureCandidates, kMaxConjectureHarvests, kMaxDerivationParents,
 };
 
@@ -650,7 +650,7 @@ fn lemma_enters_passive_set() {
     add_derived_unit(&fixture, t_b, t_a);
     let next_before = fixture.space.store.next_clause_id().0;
     let mut stats = SearchStats::default();
-    harvest(&fixture.space, &context, &fixture.options, &mut stats).expect("harvest");
+    harvest(&fixture.space, &context, &fixture.options, &mut stats);
     assert_eq!(stats.harvests, 1);
     assert!(stats.candidates >= 1);
     assert!(stats.lemmas >= 1);
@@ -770,8 +770,7 @@ fn typed_harvest_enumerates_constructor_instances() {
         &fixture.options,
         Some(&declaration),
         &mut stats,
-    )
-    .expect("typed harvest");
+    );
     assert_eq!(stats.harvests, 1);
     // The T3 instances f(zero)=zero and f(succ(zero))=succ(zero) are provable
     // from the input unit (instantiation plus the instance itself), so both
@@ -948,4 +947,167 @@ fn checker_accepts_conjecture_lemma() {
         .offset_of_id(ClauseId(detached_id))
         .expect("offset");
     assert!(check_proof(&context, &fixture.space.store, detached_offset).is_err());
+}
+// CEP:WHAT: Two harvests stay sound after a successful import: the second harvest's premise set is the rule-identified axioms only (the proof watermark excludes the first import's subproof, including its negation premise and empty clause, and the lemma itself).
+// CEP:WHY: The Task 26 sev-0 regression: the first import's age consumption used to shift the id-range premise reading onto proof-only clauses, widening later mini premise sets with the imported negation of a proved lemma (unsound) and, with drift, the empty clause (feature-dead); the rule-based enumeration plus the watermark make the second premise set provably the staged axioms, pinned here by walking the second lemma's ancestry: every translated premise is an axiom-rule clause and neither a ConjectureNegation (beyond the candidate's own) nor a ConjectureLemma appears.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails if any proof-only or lemma clause leaks into the second harvest's premise set.
+// CEP:ASSUMES: the oriented axiom b=a; the derived unit b=a; both harvests import the same symmetry lemma.
+// CEP:COST: two harvests.
+// CEP:EVIDENCE: cited by hot/search/given_clause.rs::{proof_base, add_proof_clause}, hot/conjecture/filter.rs::{collect_axiom_ids, is_axiom_rule}, and docs/formal/16_conjecture_generation.md section 5.
+// CEP:SECURITY: soundness boundary.
+#[test]
+fn two_harvests_stay_sound() {
+    let fixture = make_conjecture_fixture();
+    let context = context_of(&fixture);
+    let t_a = constant(&fixture, fixture.a);
+    let t_b = constant(&fixture, fixture.b);
+    // Oriented axiom b = a.
+    fixture
+        .space
+        .add_input_clause(
+            &context,
+            &fixture.options,
+            &[Literal::new(eq_atom(&fixture, t_b, t_a), true)],
+        )
+        .expect("axiom");
+    // The derived unit feeding T1.
+    add_derived_unit(&fixture, t_b, t_a);
+    let mut first_stats = SearchStats::default();
+    harvest(&fixture.space, &context, &fixture.options, &mut first_stats);
+    assert!(first_stats.lemmas >= 1, "the first harvest must import");
+    // The watermark is set and below the store's next id.
+    let watermark = fixture.space.proof_base();
+    let next = fixture.space.store.next_clause_id().0;
+    assert!(watermark >= kFirstClauseId && watermark < next);
+    // The second harvest over the same state: the same candidate imports
+    // again, and its subproof must cite only axiom-rule premises.
+    let before = next;
+    let mut second_stats = SearchStats::default();
+    harvest(
+        &fixture.space,
+        &context,
+        &fixture.options,
+        &mut second_stats,
+    );
+    assert!(second_stats.lemmas >= 1, "the second harvest must import");
+    let after = fixture.space.store.next_clause_id().0;
+    assert!(after > before);
+    // Walk every ConjectureLemma clause added by the SECOND harvest (ids at or
+    // after the first harvest's lemma) and check its ancestry.
+    let first_lemma = before - 1;
+    for id in first_lemma..after {
+        let record = fixture
+            .space
+            .store
+            .clause_by_id(ClauseId(id))
+            .expect("record");
+        if record.derivation.rule != InferenceRule::ConjectureLemma {
+            continue;
+        }
+        let negation_id = record.derivation.parents[0];
+        let empty_id = record.derivation.parents[1];
+        // Ancestry walk from the empty clause.
+        let mut stack: Vec<u64> = vec![empty_id];
+        let mut visited: Vec<u64> = Vec::new();
+        while let Some(current) = stack.pop() {
+            if visited.contains(&current) || current < kFirstClauseId {
+                continue;
+            }
+            visited.push(current);
+            let record = fixture
+                .space
+                .store
+                .clause_by_id(ClauseId(current))
+                .expect("record");
+            for slot in 0..record.derivation.parent_count as usize {
+                let parent = record.derivation.parents[slot];
+                if parent != kInvalidClauseId && parent >= kFirstClauseId {
+                    stack.push(parent);
+                }
+            }
+        }
+        for ancestor in visited.iter() {
+            let record = fixture
+                .space
+                .store
+                .clause_by_id(ClauseId(*ancestor))
+                .expect("record");
+            if *ancestor == negation_id {
+                // The candidate's own negation premise is expected.
+                assert_eq!(record.derivation.rule, InferenceRule::ConjectureNegation);
+                continue;
+            }
+            assert!(
+                matches!(
+                    record.derivation.rule,
+                    InferenceRule::Input
+                        | InferenceRule::NegatedConjecture
+                        | InferenceRule::StructuralInduction
+                        | InferenceRule::WellFoundedInduction
+                        | InferenceRule::Superposition
+                        | InferenceRule::EqualityResolution
+                        | InferenceRule::Demodulation
+                        | InferenceRule::Factoring
+                        | InferenceRule::EqualityFactoring
+                ),
+                "proof-only or lemma clause c{} (rule {:?}) leaked into the second harvest's premise set",
+                ancestor,
+                record.derivation.rule
+            );
+        }
+    }
+}
+
+// CEP:WHAT: The proof watermark bounds the harvest's unit window: a proof-only positive equation unit added by an import is invisible to the window scan.
+// CEP:WHY: The Task 26 sev-0 repair's window half: collect_recent_units stops at proof_base, so imported subproof units never seed T1/T2 candidates; the test plants a proof-only derived-rule unit via add_proof_clause and asserts its absence from the window.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails if the window contains the proof-only unit.
+// CEP:ASSUMES: a fresh fixture with one derived unit in the window and one proof-only unit beyond the watermark.
+// CEP:COST: one window scan.
+// CEP:EVIDENCE: cited by hot/conjecture/template.rs::collect_recent_units (the watermark bound).
+// CEP:SECURITY: soundness boundary.
+#[test]
+fn proof_watermark_bounds_harvest_scans() {
+    let fixture = make_conjecture_fixture();
+    let context = context_of(&fixture);
+    let t_a = constant(&fixture, fixture.a);
+    let t_b = constant(&fixture, fixture.b);
+    add_derived_unit(&fixture, t_a, t_b);
+    // A proof-only positive equation unit (as an import would create): the
+    // same shape as a window unit but created through add_proof_clause.
+    let atom = eq_atom(&fixture, t_b, t_a);
+    let derivation = DerivationStep {
+        rule: InferenceRule::Demodulation,
+        parent_count: 0,
+        reserved: 0,
+        parents: [kInvalidClauseId; kMaxDerivationParents],
+        substitution: kInvalidSubstitutionOffset,
+    };
+    let proof_offset = fixture
+        .space
+        .add_proof_clause(
+            &context,
+            &fixture.options,
+            &[Literal::new(atom, true)],
+            9,
+            derivation,
+        )
+        .expect("proof clause");
+    let proof_id = fixture
+        .space
+        .store
+        .clause(ClausePtr::from_u32(proof_offset))
+        .expect("record")
+        .id
+        .0;
+    let watermark = fixture.space.proof_base();
+    assert_eq!(watermark, proof_id);
+    let window = mapt::hot::conjecture::template::collect_recent_units(&fixture.space, &context);
+    for index in 0..window.count {
+        assert_ne!(
+            window.units[index].id, proof_id,
+            "the proof-only unit leaked into the window"
+        );
+    }
 }

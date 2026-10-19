@@ -314,8 +314,7 @@ fn only_proved_lemmas_added() {
             &fixture.options,
             Some(&declaration),
             &mut stats,
-        )
-        .expect("harvest");
+        );
         // Every lemma in the store passes the oracle.
         let mut lemmas = 0;
         let next = fixture.space.store.next_clause_id().0;
@@ -361,8 +360,7 @@ fn harvest_deterministic_double_run() {
                 ordering: OrderingKind::Kbo,
             };
             let mut stats = SearchStats::default();
-            harvest_with_types(&fixture.space, &context, &fixture.options, None, &mut stats)
-                .expect("harvest");
+            harvest_with_types(&fixture.space, &context, &fixture.options, None, &mut stats);
             (
                 stats.harvests,
                 stats.candidates,
@@ -405,8 +403,7 @@ fn harvest_preserves_existing_clauses() {
             snapshot.push((id, record.literal_count, record.derivation.rule));
         }
         let mut stats = SearchStats::default();
-        harvest_with_types(&fixture.space, &context, &fixture.options, None, &mut stats)
-            .expect("harvest");
+        harvest_with_types(&fixture.space, &context, &fixture.options, None, &mut stats);
         for (id, literal_count, rule) in snapshot.iter() {
             let record = fixture
                 .space

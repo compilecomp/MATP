@@ -506,6 +506,15 @@ pub struct SearchSpace<'a> {
     /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
     /// CEP:SECURITY: none.
     pub arena: &'a Arena,
+    /// CEP:WHAT: The first proof-only clause id (the import watermark), or kInvalidClauseId before any import.
+    /// CEP:WHY: The conjecture import's proof-only clauses (Spec 17 section 3) share the store's dense id space with staged clauses but must never be mistaken for axioms: the harvest's premise enumeration, the unit window, and the constructor-instance scan all stop at this watermark, so imported subproof clauses can neither seed candidates nor pollute later mini refutations (the Task 26 sev-0 repair; the watermark is monotone because proof ids only grow).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: set once by the first add_proof_clause; never reset.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{proof_watermark_bounds_harvest_scans, two_harvests_stay_sound}.
+    /// CEP:SECURITY: soundness boundary of the conjecture feature.
+    proof_base: core::cell::Cell<u64>,
 }
 
 impl<'a> SearchSpace<'a> {
@@ -570,6 +579,7 @@ impl<'a> SearchSpace<'a> {
             substitution: Substitution::new(arena),
             input_age: core::cell::Cell::new(0),
             arena,
+            proof_base: core::cell::Cell::new(kInvalidClauseId),
         })
     }
 
@@ -679,7 +689,28 @@ impl<'a> SearchSpace<'a> {
             .store
             .new_clause(context.terms, &staged[..count], age, derivation)
             .map_err(SearchError::Clause)?;
+        let id = self.store.clause(ptr).map_err(SearchError::Clause)?.id.0;
+        // The import watermark: the first proof-only id. Monotone by the
+        // store's dense id counter; every harvest scan stops here.
+        if self.proof_base.get() == kInvalidClauseId {
+            self.proof_base.set(id);
+        }
         Ok(ptr.as_u32())
+    }
+
+    // CEP:WHAT: Returns the proof-only watermark: the first imported clause's id, or the next unstaged id when no import has happened.
+    // CEP:WHY: The harvest's premise enumeration, unit window, and constructor-instance scan treat every id below this bound as harvest-visible and everything at or above it as import-private (Spec 16 section 3, the Task 26 sev-0 repair); before any import the bound is the next id, so the un-imported space behaves exactly as before.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: called between clause creations (the returned bound is a snapshot; a concurrent creation only lowers what the caller sees, never raises it).
+    // CEP:COST: one load plus, before the first import, one next-id read.
+    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::{proof_watermark_bounds_harvest_scans, two_harvests_stay_sound}.
+    // CEP:SECURITY: the soundness boundary of the conjecture feature's id-space sharing.
+    pub fn proof_base(&self) -> u64 {
+        match self.proof_base.get() {
+            kInvalidClauseId => self.store.next_clause_id().0,
+            bound => bound,
+        }
     }
 
     // CEP:WHAT: Adds one derived clause with an explicit derivation into the passive set.
@@ -832,7 +863,7 @@ pub fn saturate<F: Fn(u64) -> bool>(
             && stats.harvests < kMaxConjectureHarvests
             && iterations.is_multiple_of(kConjectureHarvestInterval)
         {
-            crate::conjecture::harvest(space, context, options, stats)?;
+            crate::conjecture::harvest(space, context, options, stats);
         }
         if let Some((_given_offset, given_id, ref mut cursor)) = in_progress {
             // Deferred generation continues for the same given clause.

@@ -488,9 +488,32 @@ fn check_step(
             }
             let mut replay: Vec<Literal> =
                 vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
+            // Standardize apart before replay (the Task 26 sev-2(2) repair):
+            // production renames the target premise into the namespace above
+            // the equation premise's variable count before every rule call,
+            // and a verbatim replay under overlapping dense namespaces can
+            // miss the production mgu (same-index variables identified), so
+            // the checker renames the same way; a rename failure (namespace
+            // bound) skips the order, matching the generator's drop.
+            let mut renamed: Vec<Literal> =
+                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
             let orders: [(&Vec<Literal>, &Vec<Literal>); kBinaryPremises] =
                 [(&left, &right), (&right, &left)];
             for (equations, targets) in orders.iter() {
+                let equation_variables =
+                    mapt_hot::inference::count_clause_variables(context.terms, equations)
+                        .unwrap_or(0);
+                let renamed_len = match mapt_hot::inference::rename_clause_apart(
+                    context.terms,
+                    context.symbols,
+                    targets,
+                    equation_variables as u32,
+                    &mut renamed,
+                ) {
+                    Ok(count) => count,
+                    Err(_) => continue,
+                };
+                let targets = &renamed[..renamed_len];
                 for equation_index in 0..equations.len() {
                     for target_index in 0..targets.len() {
                         let atom = targets[target_index].atom();

@@ -126,7 +126,7 @@ fn run_random_harvest(seed: u64) -> (u32, u32, u32, u64) {
             .expect("derived");
     }
     let mut stats = SearchStats::default();
-    harvest(&space, &context, &options, &mut stats).expect("harvest");
+    harvest(&space, &context, &options, &mut stats);
     (
         stats.harvests,
         stats.candidates,

@@ -1159,6 +1159,16 @@ pub const kConjecturePoolWords: u32 = 32_768;
 /// CEP:SECURITY: memory bound per refutation attempt.
 pub const kConjectureIdOffsets: u32 = 4096;
 
+/// CEP:WHAT: Maximum axiom clauses collected for one conjecture mini-refutation premise set.
+/// CEP:WHY: The premise enumeration (Spec 16 section 5, Task 26 sev-0 repair) fills a fixed array (no allocation in the no_std hot crate) with the rule-identified axiom ids ascending below the proof watermark; the prefix truncation at this bound is SOUND (a lemma proved from an axiom subset is proved from the full set) and deterministic, and the bound is asserted to leave the mini passive set room for the premises plus the negation premise.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: axioms beyond the bound are not fed to the mini run (the prefix is used; the truncation is the documented bound, never an error).
+/// CEP:ASSUMES: the value plus one negation premise fits the mini passive capacity.
+/// CEP:COST: kConjectureMaxAxioms x 8 bytes on the stack per candidate.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::two_harvests_stay_sound; security/induction_conjecture_bounds_test.rs::mini_passive_capacity_discards.
+/// CEP:SECURITY: memory and work bound on the premise set.
+pub const kConjectureMaxAxioms: usize = 1023;
+
 /// CEP:WHAT: Inference budget of one conjecture mini-refutation run.
 /// CEP:WHY: The speculative work per candidate is bounded by a named inference budget (CEP&CC 23: measurable cost; 22.10: bounded work): the mini saturate runs with this budget and any GaveUp outcome discards the candidate without touching the main search (Spec 16 section 5).
 /// CEP:STATUS: complete
@@ -1305,6 +1315,8 @@ const _: () = {
     assert!(kConjecturePoolWords >= 1);
     assert!(kConjectureIdOffsets >= 1);
     assert!(kConjectureRefuteInferences >= 1);
+    assert!(kConjectureMaxAxioms >= 1);
+    assert!(kConjectureMaxAxioms < kConjecturePassiveCapacity as usize);
     assert!(kInductionScanNodeBudget >= 1);
     assert!(
         kInductionScanNodeBudget as u64

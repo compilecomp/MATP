@@ -21,10 +21,10 @@ use crate::search::given_clause::{
 };
 use crate::search::SearchError;
 use mapt_config::limits::{
-    kConjectureActiveCapacity, kConjectureIdOffsets, kConjecturePassiveCapacity,
-    kConjecturePoolWords, kConjectureRefuteInferences, kConjectureTreeEntries,
-    kConjectureTreeNodes, kFirstClauseId, kInvalidClauseId, kInvalidSubstitutionOffset,
-    kMaxClauseLiterals, kMaxDerivationParents,
+    kConjectureActiveCapacity, kConjectureIdOffsets, kConjectureMaxAxioms,
+    kConjecturePassiveCapacity, kConjecturePoolWords, kConjectureRefuteInferences,
+    kConjectureTreeEntries, kConjectureTreeNodes, kFirstClauseId, kInvalidClauseId,
+    kInvalidSubstitutionOffset, kMaxClauseLiterals, kMaxDerivationParents,
 };
 
 /// CEP:WHAT: The mini-space budgets of one refutation attempt: the six capacity bounds and the inference bound.
@@ -175,6 +175,48 @@ pub enum CandidateOutcome {
     Aborted,
 }
 
+// CEP:WHAT: True when the derivation rule marks a harvest-premise clause (an axiom of the problem: input, negated conjecture, or an induction scheme).
+// CEP:WHY: Spec 16 section 5's premise contract: the mini refutation's axiom set is the RULE-IDENTIFIED staged clauses, never an id range - the Task 26 sev-0 review showed that the first import's age consumption shifts any id-range reading onto proof-only clauses (the imported negation premise and, with drift, the empty clause itself), which both unsoundly widens later mini premise sets and eventually discards every candidate; the rule test is position-independent and cannot drift.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: enum comparisons.
+// CEP:EVIDENCE: unit/hot/conjecture_test.rs::two_harvests_stay_sound; property/conjecture_property_test.rs::only_proved_lemmas_added.
+// CEP:SECURITY: the soundness boundary of the premise set.
+fn is_axiom_rule(rule: InferenceRule) -> bool {
+    matches!(
+        rule,
+        InferenceRule::Input
+            | InferenceRule::NegatedConjecture
+            | InferenceRule::StructuralInduction
+            | InferenceRule::WellFoundedInduction
+    )
+}
+
+// CEP:WHAT: Collects the harvest-visible axiom ids ascending, below the proof watermark, into a fixed array; returns the fill level.
+// CEP:WHY: The premise set for every mini refutation: the ids are bounded by the import watermark (proof-only clauses excluded by construction), identified by rule (derived and lemma clauses excluded), and the array is capped at kConjectureMaxAxioms - a prefix truncation that is SOUND (a lemma proved from a subset of the axioms is proved from the full set) and deterministic (ascending prefix).
+// CEP:STATUS: complete
+// CEP:FAILURE: returns a fill level below the true axiom count on overflow (the prefix is used; the truncation is the documented bound, not an error).
+// CEP:ASSUMES: the store's id side table is consistent.
+// CEP:COST: O(ids below the watermark) rule reads per candidate.
+// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{two_harvests_stay_sound, proof_watermark_bounds_harvest_scans}; config/limits.rs (kConjectureMaxAxioms).
+// CEP:SECURITY: bounded buffer; the watermark bound.
+fn collect_axiom_ids(main: &SearchSpace<'_>, axioms: &mut [u64; kConjectureMaxAxioms]) -> usize {
+    let mut count: usize = 0;
+    let bound = main.proof_base();
+    let mut id = kFirstClauseId;
+    while id < bound && count < axioms.len() {
+        if let Ok(record) = main.store.clause_by_id(ClauseId(id)) {
+            if is_axiom_rule(record.derivation.rule) {
+                axioms[count] = id;
+                count += 1;
+            }
+        }
+        id += 1;
+    }
+    count
+}
+
 // CEP:WHAT: Runs one candidate's bounded mini refutation and imports the lemma on success.
 // CEP:WHY: The filter's driver (Spec 16 section 5): fresh mini space, input re-add in order (so mini input i maps to main id kFirstClauseId + i - the trivial translation the import relies on), assumption add, saturate under the named budget with harvesting disabled (no nested speculation), and on Theorem the ancestry check plus the import.
 // CEP:STATUS: complete
@@ -190,6 +232,12 @@ pub fn refute_and_maybe_import(
     candidate: Literal,
     budgets: &MiniCapacities,
 ) -> Result<CandidateOutcome, SearchError> {
+    // The templates emit positive unit-equation candidates by construction;
+    // a non-positive candidate would be "refuted" by its own copy, so the
+    // filter refuses it loudly as a discard (Task 26 sev-3(5) repair).
+    if !candidate.is_positive() {
+        return Ok(CandidateOutcome::Discarded);
+    }
     let mini_options = SearchOptions {
         strategy: main_options.strategy,
         ordering: main_options.ordering,
@@ -217,12 +265,17 @@ pub fn refute_and_maybe_import(
         precedence: main_context.precedence,
         ordering: main_context.ordering,
     };
-    // Re-add the input range in order: mini input i <-> main id kFirstClauseId + i.
-    let input_count = main.input_count() as u64;
+    // Re-add the harvest-visible axioms in ascending id order: mini input i
+    // <-> axiom_ids[i] (the positional mapping the import translates through).
+    // The set is rule-identified and watermark-bounded (Spec 16 section 5,
+    // Task 26 sev-0 repair): proof-only import clauses, derived clauses, and
+    // lemmas are excluded by construction, so the premise set cannot drift.
+    let mut axiom_ids: [u64; kConjectureMaxAxioms] = [kInvalidClauseId; kConjectureMaxAxioms];
+    let axiom_count = collect_axiom_ids(main, &mut axiom_ids);
     let mut staging: [Literal; kMaxClauseLiterals as usize] =
         [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
-    for index in 0..input_count {
-        let record = match main.store.clause_by_id(ClauseId(kFirstClauseId + index)) {
+    for axiom_id in axiom_ids[..axiom_count].iter() {
+        let record = match main.store.clause_by_id(ClauseId(*axiom_id)) {
             Ok(record) => record,
             Err(_) => return Ok(CandidateOutcome::Discarded),
         };
@@ -284,7 +337,7 @@ pub fn refute_and_maybe_import(
         &mini,
         empty_offset,
         negation_mini_id,
-        input_count,
+        &axiom_ids[..axiom_count],
         budgets.id_offsets,
     )? {
         Some(pair) => pair,
@@ -331,7 +384,7 @@ fn import_refutation(
     mini: &SearchSpace<'_>,
     empty_offset: u32,
     negation_mini_id: u64,
-    input_count: u64,
+    axiom_ids: &[u64],
     id_table_capacity: u32,
 ) -> Result<Option<(u64, u64)>, SearchError> {
     let mini_next = mini.store.next_clause_id().0;
@@ -406,9 +459,10 @@ fn import_refutation(
             continue;
         }
         let mini_id = kFirstClauseId + slot as u64;
-        if slot < input_count as usize {
-            // A re-added input: translate to the main original, no creation.
-            translation[slot] = kFirstClauseId + slot as u64;
+        if slot < axiom_ids.len() {
+            // A re-added axiom: translate to its main original (the positional
+            // mapping of the rule-identified premise set), no creation.
+            translation[slot] = axiom_ids[slot];
             continue;
         }
         let record = match mini.store.clause_by_id(ClauseId(mini_id)) {

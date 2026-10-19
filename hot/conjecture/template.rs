@@ -190,7 +190,9 @@ pub fn collect_recent_units(space: &SearchSpace<'_>, context: &InferenceContext<
         }; kConjectureTransitivityWindow as usize],
         count: 0,
     };
-    let next_id = space.store.next_clause_id().0;
+    // The watermark bound (Task 26 sev-0 repair): imported proof-only clauses
+    // are invisible to the window, so subproof units never seed candidates.
+    let next_id = space.proof_base();
     let mut id = next_id;
     while id > kFirstClauseId && window.count < kConjectureTransitivityWindow as usize {
         id -= 1;
@@ -420,12 +422,17 @@ pub fn enumerate_candidates(
         };
         if let (Ok(zero_term), Ok(step_term)) = (zero_term, step_term) {
             let substitution = Substitution::new(space.arena);
-            for index in 0..space.input_count() as u64 {
-                let id = kFirstClauseId + index;
+            // The T3 input sources are the harvest-visible clauses below the
+            // proof watermark (Task 26 sev-0 repair); the rule test keeps the
+            // set to axioms and genuinely staged units.
+            let bound = space.proof_base();
+            let mut id = kFirstClauseId;
+            while id < bound {
                 let record = match space.store.clause_by_id(crate::ir::clause::ClauseId(id)) {
                     Ok(record) => record,
                     Err(_) => break,
                 };
+                id += 1;
                 if record.literal_count != 1 || !is_instantiable_rule(record.derivation.rule) {
                     continue;
                 }
