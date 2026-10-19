@@ -106,9 +106,16 @@ jobs:
           components: rust-src
       - name: ThreadSanitizer on the lock-free suites and the portfolio (CEP-1008)
         run: |
+          # -Z build-std=core,std: the libtest harness ships its results over
+          # std's mpmc channel, and an uninstrumented precompiled std makes
+          # TSan blind to the channel's internal atomics - every harness
+          # exchange reports as a memcpy race (the 2026-10-19 run); rebuilding
+          # std with the sanitizer (the job's rust-src component exists for
+          # exactly this) instruments those atomics and removes the false
+          # positives, leaving only real races in the code under test.
           # -Cunsafe-allow-abi-mismatch=sanitizer: the pinned nightly flags a
           # sanitizer-setting mix on the leaf crates (mapt_target, mapt_config -
           # constant tables and cycle counters, no concurrency, no TSan-visible
           # instrumentation loss); the flag is rustc's documented remedy for
           # exactly this report, and the suites under test compile sanitized.
-          TSAN_OPTIONS="halt_on_error=1"           RUSTFLAGS="-Zsanitizer=thread -Cunsafe-allow-abi-mismatch=sanitizer"           cargo +nightly-2026-10-01 test --target x86_64-unknown-linux-gnu             --test chase_lev_test --test mpmc_pool_test --test clause_codec_test             --test concurrency_property_test --test portfolio_test
+          TSAN_OPTIONS="halt_on_error=1"           RUSTFLAGS="-Zsanitizer=thread -Cunsafe-allow-abi-mismatch=sanitizer"           cargo +nightly-2026-10-01 test -Z build-std=core,std --target x86_64-unknown-linux-gnu             --test chase_lev_test --test mpmc_pool_test --test clause_codec_test             --test concurrency_property_test --test portfolio_test
