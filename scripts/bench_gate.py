@@ -50,6 +50,19 @@ CEP_BASELINES = {
     "atp_passive_step": 5.39,
     "atp_selection_flags": 461.58,
     "atp_subsumption_filter": 9.04,
+    # CEP:NOTE: Phase 4 (revised build order) additions recorded 2026-10-20:
+    # induction_scheme_install (one scheme clause of a sixteen-clause
+    # installation: scan amortized, builder, staging, insert, passive push),
+    # induction_scan_node (the same installation amortized per scanned input
+    # node), conjecture_enumeration (one window scan plus the T1/T2 templates
+    # over a fourteen-unit window), conjecture_filter_discard (one bounded
+    # mini refutation on the discarded path - the per-candidate worst case,
+    # dominated by the 4096-inference budgeted saturate).
+    "induction_scheme_install": 1228.00,
+    "induction_scan_node": 614.00,
+    "induction_scheme_build": 217.84,
+    "conjecture_enumeration": 1217.18,
+    "conjecture_filter_discard": 201677.50,
     "atp_subsumption_verify": 136.35,
     "sat_preprocess_round": 1235076.13,
     "sat_drat_record": 1.19,

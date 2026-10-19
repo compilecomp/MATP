@@ -24,7 +24,9 @@
 
 pub mod avatar;
 pub mod concurrency;
+pub mod conjecture;
 pub mod index;
+pub mod induction;
 pub mod inference;
 pub mod ir;
 pub mod memory;

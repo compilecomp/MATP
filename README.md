@@ -1,8 +1,21 @@
 # MAPT
 
-MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-4: Foundations, Core Engines, Search Loops, and Integration** (design section 26), built to the letter of the **CEP&CC 0.1** coding standard (`standard.md`).
+MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-4 plus the revised-build-order Phase 4: Foundations, Core Engines, Search Loops, Integration, and Automated Induction / Conjecture Generation / Proof Recording**, built to the letter of the **CEP&CC 0.1** coding standard (`standard.md`).
 
-## Phase 4 contents (design section 26)
+## Revised-build-order Phase 4 contents (automated induction, conjecture generation, proof recording)
+
+| Component | Status | Location |
+|---|---|---|
+| Structural induction schemes (declaration-validated, E-induction.ax-compatible two-clause clausifications, attempts budget) | complete | `hot/induction/` |
+| Well-founded (strong) induction schemes over a declared well-order | complete | `hot/induction/scheme.rs` |
+| Conjecture harvest (T1 symmetry, T2 transitivity, T3 constructor instances; bounded deterministic enumeration) | complete | `hot/conjecture/template.rs` |
+| Bounded mini-refutation filter (fresh mini space, ConjectureNegation premise, injectable MiniCapacities) | complete | `hot/conjecture/filter.rs` |
+| Subproof import with the ConjectureLemma reductio rule (id-translation invariants, vacuous-refutation rejection) | complete | `hot/conjecture/filter.rs`, `hot/search/given_clause.rs` |
+| Proof-recording extension (schemes as named theory axioms; checker replay arms for superposition, equality resolution, equality factoring; the mechanical reductio check) | complete | `cold/proof_output/tstp.rs` |
+| Engine corrections delivered with the phase (term-bound error misclassification, parked-demodulant flag loss, missing checker arms) | complete | Spec 17 section 5 |
+| Formal specs 15-17 (induction, conjecture generation, proof recording) | complete | `docs/formal/` |
+
+## Phase 4 contents (design section 26 — integration)
 
 | Component | Status | Location |
 |---|---|---|

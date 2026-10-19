@@ -1029,6 +1029,166 @@ pub const kPortfolioMaxWorkers: u32 = 64;
 /// CEP:SECURITY: denial-of-service bound on export work.
 pub const kPortfolioExportPerSlice: u32 = 256;
 
+/// CEP:WHAT: Maximum induction scheme clauses added by one add_induction_schemes call.
+/// CEP:WHY: The user-pinned budget of the automated-induction feature (revised build order Phase 4): every predicate of a declared datatype shape receives at most two scheme clauses (Spec 15 section 4), so the total scheme mass is bounded by a named constant, never by the predicate count of the input signature (CEP&CC 22.10, 39.1: no unbounded resource); predicates beyond the bound are skipped and counted, never silently dropped.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: schemes stop at the bound; the stats report scanned predicates, added schemes, and skipped predicates (Law 4: bounded drops are counted).
+/// CEP:ASSUMES: 128 scheme clauses (64 predicates x 2 clauses) cover realistic inductive-problem signatures.
+/// CEP:COST: one counter check per scheme clause.
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::attempts_budget_enforced; security/induction_conjecture_bounds_test.rs::induction_attempts_enforced.
+/// CEP:SECURITY: denial-of-service bound on scheme mass.
+pub const kMaxInductionAttempts: u32 = 128;
+
+/// CEP:WHAT: Minimum scheme clauses one structural induction scheme contributes.
+/// CEP:WHY: The clausal form of the induction axiom for one predicate is exactly two clauses (Spec 15 section 3); the constant names the granularity so the attempts budget arithmetic (kMaxInductionAttempts >= 2) is explicit rather than a bare literal.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: Spec 15 section 3 fixes the two-clause shape.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::structural_scheme_clauses_match_clausification.
+/// CEP:SECURITY: none.
+pub const kInductionSchemeClauses: u32 = 2;
+
+/// CEP:WHAT: Given-clause iterations between two in-loop conjecture harvests.
+/// CEP:WHY: Harvesting derived unit equations (Spec 16) runs on a fixed schedule so the search stays deterministic (CEP&CC 38.10): every kConjectureHarvestInterval loop iterations, if the option is enabled and the harvest budget remains, the loop pauses generation for one bounded harvest pass.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; the schedule is advisory state, not a failure source.
+/// CEP:ASSUMES: 512 given-clause iterations between harvests keep the speculative share of the loop small.
+/// CEP:COST: one modulo per iteration (folded into the existing budget-check interval discipline).
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::harvest_schedule_fires.
+/// CEP:SECURITY: schedule bound for speculative work.
+pub const kConjectureHarvestInterval: u64 = 512;
+
+/// CEP:WHAT: Maximum in-loop conjecture harvests per saturate call.
+/// CEP:WHY: Bounds the total speculative share of one search: with kMaxConjectureCandidates candidates per harvest and kConjectureRefuteInferences per refutation run, the worst-case speculative inference count is (kMaxConjectureHarvests + 1) x kMaxConjectureCandidates x kConjectureRefuteInferences (the +1 covers the driver-invoked pre-search harvest), asserted below to stay within kMaxInferences (CEP&CC 23: the cost is measurable and named).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: harvests stop at the bound; the stats report harvests run, candidates tried, and lemmas imported (Law 4).
+/// CEP:ASSUMES: 8 in-loop harvests per search balance speculation against search progress.
+/// CEP:COST: one counter check per harvest.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::harvest_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on speculative work.
+pub const kMaxConjectureHarvests: u32 = 8;
+
+/// CEP:WHAT: Maximum conjecture candidates considered by one harvest pass.
+/// CEP:WHY: Each candidate costs one bounded mini-refutation (Spec 16 section 5), so the per-harvest candidate bound times the refutation budget is the per-harvest work bound; candidates are enumerated in clause-id order with templates in fixed order (T1 symmetry, T2 transitivity, T3 constructor instances), so the prefix cut at the bound is deterministic (CEP&CC 38.10).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: candidates beyond the bound are skipped and counted, never silently dropped.
+/// CEP:ASSUMES: 16 candidates per harvest cover the recent-derivation window in practice.
+/// CEP:COST: one counter check per candidate.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::candidate_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound.
+pub const kMaxConjectureCandidates: u32 = 16;
+
+/// CEP:WHAT: Most recent derived unit equations scanned by the transitivity template.
+/// CEP:WHY: T2 pairs a fresh unit equation with an older one whose left or right side matches by term identity (hash-consed pointer equality, Spec 01 section 3); scanning the most recent kConjectureTransitivityWindow units in descending id order bounds the pairing work to O(window) per fresh unit and keeps the enumeration deterministic.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: pairs beyond the window are not considered; the template is not a completeness argument (Spec 16 section 6).
+/// CEP:ASSUMES: 64 recent units cover the working set of an active derivation front.
+/// CEP:COST: O(window) term-identity checks per fresh unit.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::transitivity_pairs_recent_units.
+/// CEP:SECURITY: work bound per template.
+pub const kConjectureTransitivityWindow: u32 = 64;
+
+/// CEP:WHAT: Maximum distinct variables of a unit equation eligible for constructor instantiation (T3).
+/// CEP:WHY: The template instantiates every variable of the unit at the canonical base pattern (all zero) and the canonical step pattern (all successor of zero) of the declared datatype (Spec 16 section 4), so the candidate count per unit is exactly two regardless of variable count, but the instantiation cost grows with the variable count and is bounded by this named cutoff.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: units with more variables are skipped by T3 and counted; T1 and T2 still apply.
+/// CEP:ASSUMES: units relevant to induction base and step cases carry at most two variables.
+/// CEP:COST: one variable count per unit.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::constructor_instances_bounded.
+/// CEP:SECURITY: work bound per template.
+pub const kConjectureInstanceVariables: u32 = 2;
+
+/// CEP:WHAT: Passive-set capacity of one conjecture mini-refutation search space.
+/// CEP:WHY: The mini search space (Spec 16 section 5) is a full SearchSpace with injectable small capacities so one refutation attempt is memory-bounded by named constants (CEP&CC 39.1) instead of inheriting the production capacities.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the attempt is discarded (the candidate never becomes a lemma); the main search is unaffected.
+/// CEP:ASSUMES: 1024 passive slots exceed the refutation depth of realistic unit-equation lemmas.
+/// CEP:COST: passive slots live in the shared arena; 1024 slots are bounded by the arena budget.
+/// CEP:EVIDENCE: security/induction_conjecture_bounds_test.rs::mini_passive_capacity_discards.
+/// CEP:SECURITY: memory bound per refutation attempt.
+pub const kConjecturePassiveCapacity: u32 = 1024;
+
+/// CEP:WHAT: Active-set capacity of one conjecture mini-refutation search space.
+/// CEP:WHY: Companion of kConjecturePassiveCapacity (the active set of the mini space).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the mini run returns GaveUp(MemoryBudget); the candidate is discarded.
+/// CEP:ASSUMES: 512 active slots exceed the premise count of realistic unit-equation refutations.
+/// CEP:COST: active slots live in the shared arena.
+/// CEP:EVIDENCE: security/induction_conjecture_bounds_test.rs::mini_active_capacity_discards.
+/// CEP:SECURITY: memory bound per refutation attempt.
+pub const kConjectureActiveCapacity: u32 = 512;
+
+/// CEP:WHAT: Discrimination-tree node budget of one conjecture mini-refutation search space.
+/// CEP:WHY: Companion of kConjecturePassiveCapacity (the indexing trees of the mini space).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the mini run returns GaveUp(MemoryBudget); the candidate is discarded.
+/// CEP:ASSUMES: 4096 tree nodes cover the mini space's active-set indexing.
+/// CEP:COST: tree nodes live in the shared arena.
+/// CEP:EVIDENCE: security/induction_conjecture_bounds_test.rs::mini_tree_budget_discards.
+/// CEP:SECURITY: memory bound per refutation attempt.
+pub const kConjectureTreeNodes: u32 = 4096;
+
+/// CEP:WHAT: Discrimination-tree entry budget of one conjecture mini-refutation search space.
+/// CEP:WHY: Companion of kConjecturePassiveCapacity (the indexing entries of the mini space).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the mini run returns GaveUp(MemoryBudget); the candidate is discarded.
+/// CEP:ASSUMES: 4096 entries cover the mini space's active-set indexing.
+/// CEP:COST: entries live in the shared arena.
+/// CEP:EVIDENCE: security/induction_conjecture_bounds_test.rs::mini_tree_budget_discards.
+/// CEP:SECURITY: memory bound per refutation attempt.
+pub const kConjectureTreeEntries: u32 = 4096;
+
+/// CEP:WHAT: Feature-vector pool words of one conjecture mini-refutation search space.
+/// CEP:WHY: Companion of kConjecturePassiveCapacity (the subsumption filter pool of the mini space).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the mini run returns GaveUp(MemoryBudget); the candidate is discarded.
+/// CEP:ASSUMES: 32768 words cover the mini space's feature vectors.
+/// CEP:COST: pool words live in the shared arena.
+/// CEP:EVIDENCE: security/induction_conjecture_bounds_test.rs::mini_tree_budget_discards.
+/// CEP:SECURITY: memory bound per refutation attempt.
+pub const kConjecturePoolWords: u32 = 32_768;
+
+/// CEP:WHAT: Clause-id offset-table capacity of one conjecture mini-refutation search space.
+/// CEP:WHY: Companion of kConjecturePassiveCapacity (the id side table that proof walks need; the import path resolves mini ids through it).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the mini run returns GaveUp(MemoryBudget); the candidate is discarded.
+/// CEP:ASSUMES: 4096 entries cover the mini space's clause count plus the imported prefix.
+/// CEP:COST: table slots live in the shared arena.
+/// CEP:EVIDENCE: security/induction_conjecture_bounds_test.rs::mini_id_table_discards.
+/// CEP:SECURITY: memory bound per refutation attempt.
+pub const kConjectureIdOffsets: u32 = 4096;
+
+/// CEP:WHAT: Inference budget of one conjecture mini-refutation run.
+/// CEP:WHY: The speculative work per candidate is bounded by a named inference budget (CEP&CC 23: measurable cost; 22.10: bounded work): the mini saturate runs with this budget and any GaveUp outcome discards the candidate without touching the main search (Spec 16 section 5).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the mini run returns GaveUp(InferenceBudget); the candidate is discarded.
+/// CEP:ASSUMES: 4096 inferences refute the negation of realistic unit-equation lemmas or give up honestly.
+/// CEP:COST: bounded by the constant; the total speculative bound is asserted below.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refute_budget_discards_unprovable.
+/// CEP:SECURITY: denial-of-service bound per candidate.
+pub const kConjectureRefuteInferences: u64 = 4096;
+
+/// CEP:WHAT: Maximum term nodes visited by one induction input-signature scan.
+/// CEP:WHY: The induction module walks every input clause's atoms once to collect occurring predicate symbols and to prove the declaration's skolem constant absent (Spec 15 section 2); the walk is structurally bounded (clauses x literals x term weight), and this named budget is the loud defense-in-depth ceiling (CEP&CC 22.10) - exceeding it rejects the declaration instead of trusting the structural argument.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: InductionError::ScanBudgetExceeded; no schemes are added.
+/// CEP:ASSUMES: 4M nodes exceed every legal input (the arena bounds total term records far below this); the budget exists to fail loudly on structural-bounds erosion.
+/// CEP:COST: one counter per visited node.
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::scan_budget_rejects_runaway_input.
+/// CEP:SECURITY: denial-of-service bound on the validation walk.
+pub const kInductionScanNodeBudget: u32 = 4_194_304;
+
+/// CEP:WHAT: Maximum distinct occurring unary predicates collected by one induction scan.
+/// CEP:WHY: The scan's predicate list is a fixed array (no allocation in the no_std hot crate), so the collection bound is a named constant; predicates beyond the bound are skipped and counted exactly like attempts-budget skips (Law 4), and the array is sized so the attempts budget always binds first for structural-only declarations (asserted below).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: predicates beyond the bound are skipped and counted in stats.predicates_skipped.
+/// CEP:ASSUMES: 256 distinct unary predicates exceed every realistic inductive problem signature.
+/// CEP:COST: 1 KiB stack array (256 x 4 bytes).
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::attempts_budget_enforced.
+/// CEP:SECURITY: memory bound on the scan's collection.
+pub const kInductionMaxPredicates: usize = 256;
+
 // CEP:WHAT: Static invariant checks for limit constants.
 // CEP:WHY: CEP&CC Law 3 bans comment-only invariants; every cross-constant assumption above is enforced here at compile time.
 // CEP:STATUS: complete
@@ -1129,4 +1289,37 @@ const _: () = {
     assert!(kPortfolioMaxWorkers >= kPortfolioThreadCount);
     assert!(kPortfolioExportPerSlice >= 1);
     assert!(kAvatarMinComponentSize <= kMaxClauseLiterals / 2);
+    // Phase 4 (revised build order) invariants: automated induction, conjecture generation.
+    assert!(kMaxInductionAttempts >= kInductionSchemeClauses);
+    assert!(kInductionSchemeClauses == 2);
+    assert!(kConjectureHarvestInterval >= 1);
+    assert!(kMaxConjectureHarvests >= 1);
+    assert!(kMaxConjectureCandidates >= 1);
+    assert!(kConjectureTransitivityWindow >= 1);
+    assert!(kConjectureInstanceVariables >= 1);
+    assert!(kConjectureInstanceVariables <= kMaxVariablesPerClause);
+    assert!(kConjecturePassiveCapacity >= 1);
+    assert!(kConjectureActiveCapacity >= 1);
+    assert!(kConjectureTreeNodes >= 1);
+    assert!(kConjectureTreeEntries >= 1);
+    assert!(kConjecturePoolWords >= 1);
+    assert!(kConjectureIdOffsets >= 1);
+    assert!(kConjectureRefuteInferences >= 1);
+    assert!(kInductionScanNodeBudget >= 1);
+    assert!(
+        kInductionScanNodeBudget as u64
+            <= kMaxClauses * kMaxClauseLiterals as u64 * kMaxTermWeight as u64
+    );
+    assert!(
+        kInductionMaxPredicates * kInductionSchemeClauses as usize
+            >= kMaxInductionAttempts as usize
+    );
+    // The total speculative inference work (in-loop harvests plus the one
+    // driver-invoked pre-search harvest) never exceeds the main budget.
+    assert!(
+        (kMaxConjectureHarvests as u64 + 1)
+            * kMaxConjectureCandidates as u64
+            * kConjectureRefuteInferences
+            <= kMaxInferences
+    );
 };

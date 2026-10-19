@@ -7,7 +7,7 @@
 # CEP:FAILURE: Exits nonzero when an assembly input is missing or a requested section is not found.
 # CEP:ASSUMES: Run after `cargo rustc -p mapt-hot --release -- --emit asm` and `cargo rustc --bench <name> --release -- --emit asm` for each bench.
 # CEP:COST: offline tool; runtime cost irrelevant.
-# CEP:EVIDENCE: outputs benches/artifacts/disasm_{arena,term,clause,substitution,sat,unify,ordering,index,cdcl,atp,search,subsumption,sat_preprocess,avatar,concurrency}.txt cited by CEP:OPTPROOF and CEP:COST fields.
+# CEP:EVIDENCE: outputs benches/artifacts/disasm_{arena,term,clause,substitution,sat,unify,ordering,index,cdcl,atp,search,subsumption,sat_preprocess,avatar,concurrency,induction,conjecture}.txt cited by CEP:OPTPROOF and CEP:COST fields.
 # CEP:SECURITY: repository-trusted input only; no network.
 
 import glob
@@ -83,6 +83,16 @@ TARGETS = {
     ],
     "disasm_concurrency.txt": [
         ("build/release/deps/concurrency_bench-*.s", "concurrency_bench4main,"),
+    ],
+    # Phase 4 (revised): the induction and conjecture modules inline fully
+    # into their bench mains (small functions, single call sites), so the
+    # bench-main sections are the honest artifacts (the script's documented
+    # philosophy for inlined measurement loops).
+    "disasm_induction.txt": [
+        ("build/release/deps/induction_bench-*.s", "induction_bench4main,"),
+    ],
+    "disasm_conjecture.txt": [
+        ("build/release/deps/conjecture_bench-*.s", "conjecture_bench4main,"),
     ],
 }
 

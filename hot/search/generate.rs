@@ -404,7 +404,7 @@ impl GenerationCursor {
 // CEP:COST: O(path length) per step.
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs::{superposition_into_fires, superposition_from_fires}.
 // CEP:SECURITY: depth-bounded by kMaxPathLength.
-pub(crate) fn advance_path(
+pub fn advance_path(
     terms: &TermStore<'_>,
     atom: crate::ir::term::TermPtr,
     path: &mut [u16; kMaxPathLength],

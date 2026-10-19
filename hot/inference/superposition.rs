@@ -40,11 +40,7 @@ pub const kMaxPathLength: usize = mapt_config::limits::kMaxTermDepth as usize;
 // CEP:COST: as subterm_at.
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs::{superposition_into_fires, superposition_from_fires}.
 // CEP:SECURITY: bounds-checked.
-pub(crate) fn subterm_at_public(
-    terms: &TermStore<'_>,
-    term: TermPtr,
-    path: &[u16],
-) -> Option<TermPtr> {
+pub fn subterm_at_public(terms: &TermStore<'_>, term: TermPtr, path: &[u16]) -> Option<TermPtr> {
     subterm_at(terms, term, path)
 }
 

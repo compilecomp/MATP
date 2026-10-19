@@ -311,6 +311,10 @@ pub fn verify_clause(
             | InferenceRule::AvatarSplit
             | InferenceRule::SatLearn
             | InferenceRule::TheoryLemma
+            | InferenceRule::StructuralInduction
+            | InferenceRule::WellFoundedInduction
+            | InferenceRule::ConjectureNegation
+            | InferenceRule::ConjectureLemma
     );
     if !rule_valid {
         violations.push(VerificationError::ClauseBadDerivation(id));

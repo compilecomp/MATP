@@ -281,6 +281,30 @@ name = "avatar_controller_test"
 path = "tests/unit/hot/avatar_controller_test.rs"
 
 [[test]]
+name = "induction_test"
+path = "tests/unit/hot/induction_test.rs"
+
+[[test]]
+name = "conjecture_test"
+path = "tests/unit/hot/conjecture_test.rs"
+
+[[test]]
+name = "induction_property_test"
+path = "tests/property/induction_property_test.rs"
+
+[[test]]
+name = "conjecture_property_test"
+path = "tests/property/conjecture_property_test.rs"
+
+[[test]]
+name = "conjecture_fuzz_test"
+path = "tests/fuzz/conjecture_fuzz_test.rs"
+
+[[test]]
+name = "induction_conjecture_bounds_test"
+path = "tests/security/induction_conjecture_bounds_test.rs"
+
+[[test]]
 name = "chase_lev_test"
 path = "tests/unit/hot/chase_lev_test.rs"
 
@@ -328,6 +352,15 @@ harness = false
 [[bench]]
 name = "concurrency_bench"
 path = "benches/hot/concurrency_bench.rs"
+
+[[bench]]
+name = "induction_bench"
+path = "benches/hot/induction_bench.rs"
+harness = false
+
+[[bench]]
+name = "conjecture_bench"
+path = "benches/hot/conjecture_bench.rs"
 harness = false
 
 [[bench]]

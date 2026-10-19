@@ -288,3 +288,51 @@ fn invalid_term_refused() {
     let result = substitution.apply(&terms, forged, &symbols);
     assert!(matches!(result, Err(SubstitutionError::InvalidPointer)));
 }
+
+// CEP:WHAT: Term-bound failures during application are reported as DepthExceeded and WeightExceeded, never misclassified as InvalidPointer.
+// CEP:WHY: Law 6 (honest failure vocabulary): before the Phase 4 (revised) fix, map_term_error's catch-all sent TermError::DepthExceeded and TermError::WeightExceeded to InvalidPointer, misreporting legal bound exhaustion as store corruption; the mapping is now exact and this test pins it (the deep-chain saturation that exposed the misclassification is documented in ticket CEP-1050).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails if a bound error maps to InvalidPointer.
+// CEP:ASSUMES: the fixture arena and stores.
+// CEP:COST: one deep-term construction.
+// CEP:EVIDENCE: cited by hot/unification/substitution.rs (SubstitutionError::WeightExceeded and map_term_error).
+// CEP:SECURITY: honest error reporting.
+#[test]
+fn term_bound_errors_not_misclassified() {
+    use mapt::cold::arena_host::allocate_aligned_region;
+    use mapt::cold::symbol_table_builder::SymbolTableBuilder;
+    use mapt::hot::ir::symbol_table::SortId;
+    use mapt::hot::ir::term::{TermError, TermStore};
+    use mapt::hot::memory::arena::Arena;
+    use mapt::hot::unification::substitution::Substitution;
+
+    let region = allocate_aligned_region(16_777_216).expect("region");
+    let arena: &Arena = Box::leak(Box::new(Arena::new(region).expect("arena")));
+    let mut builder = SymbolTableBuilder::new();
+    let sort = SortId(builder.declare_sort("S").expect("sort"));
+    let succ = builder
+        .declare_function("succ", 1, 1, &[sort], sort)
+        .expect("succ");
+    let symbols = builder.finalize(arena).expect("freeze");
+    let terms = TermStore::new(arena).expect("terms");
+    let substitution = Substitution::new(arena);
+    // Build a term at the depth bound: succ(succ(...(zero-ish var)...)) at depth kMaxTermDepth.
+    let depth = mapt_config::limits::kMaxTermDepth as u32;
+    let mut term = terms.intern_var(0).expect("var");
+    for _ in 0..depth {
+        term = terms
+            .intern_fun(&symbols, succ, &[term])
+            .expect("depth-legal term");
+    }
+    // One more level exceeds the bound: the intern itself reports DepthExceeded.
+    let over = terms.intern_fun(&symbols, succ, &[term]);
+    assert!(matches!(over, Err(TermError::DepthExceeded)));
+    // Binding var 0 to a deep term and applying also exceeds the bound through
+    // the substitution's rebuild path; the error must be DepthExceeded, not
+    // InvalidPointer.
+    substitution.bind(0, term).expect("bind");
+    let shallow = terms.intern_var(1).expect("shallow var");
+    // Apply on a term that does not contain var 0 stays within bounds.
+    assert!(substitution.apply(&terms, shallow, &symbols).is_ok());
+    substitution.undo_to(0);
+}

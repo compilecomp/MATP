@@ -80,6 +80,16 @@ pub enum TstpError {
 // CEP:SECURITY: none.
 const kReplayLiterals: usize = mapt_config::limits::kMaxClauseLiterals as usize;
 
+// CEP:WHAT: The binary-premise parent count (resolution, superposition, and the two-parent reductio check).
+// CEP:WHY: The checker's premise-arity tests name their value (CEP&CC 11.3) instead of bare 2s; one constant serves every two-premise rule arm (the pre-existing Resolution arm and the Phase 4 revised arms).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution}; unit/hot/conjecture_test.rs::checker_accepts_conjecture_lemma.
+// CEP:SECURITY: none.
+const kBinaryPremises: usize = 2;
+
 // CEP:WHAT: Collects the reachable clause ids from the refutation, ascending.
 // CEP:WHY: Design 18.2 step 1-2: traverse from the empty clause to the axioms and prune everything unreachable (the Phase 4 compression); parents are strictly older than children (monotonic ids, Spec 14 section 2), so one descending pass marks the ancestry exactly (the same argument as the AVATAR ancestry scan, Spec 12 section 5) and a parent-above-child violation is a corrupted derivation (CycleDetected).
 // CEP:STATUS: complete
@@ -231,6 +241,10 @@ fn rule_name(rule: InferenceRule) -> &'static str {
         InferenceRule::AvatarSplit => "avatar_split",
         InferenceRule::SatLearn => "sat_learn",
         InferenceRule::TheoryLemma => "theory_lemma",
+        InferenceRule::StructuralInduction => "structural_induction",
+        InferenceRule::WellFoundedInduction => "well_founded_induction",
+        InferenceRule::ConjectureNegation => "conjecture_negation",
+        InferenceRule::ConjectureLemma => "conjecture_lemma",
         _ => "simplification",
     }
 }
@@ -269,6 +283,10 @@ pub fn write_tstp_proof(
         match record.derivation.rule {
             InferenceRule::Input => out.push_str(", axiom, "),
             InferenceRule::NegatedConjecture => out.push_str(", negated_conjecture, "),
+            InferenceRule::StructuralInduction | InferenceRule::WellFoundedInduction => {
+                out.push_str(", axiom, ")
+            }
+            InferenceRule::ConjectureLemma => out.push_str(", lemma, "),
             _ => out.push_str(", plain, "),
         }
         if literals.is_empty() {
@@ -417,7 +435,7 @@ fn check_step(
     match record.derivation.rule {
         InferenceRule::Input | InferenceRule::NegatedConjecture => Ok(()),
         InferenceRule::Resolution => {
-            if parent_count != 2 {
+            if parent_count != kBinaryPremises {
                 return Err(TstpError::InvalidStep(id));
             }
             let mut replay: Vec<Literal> =
@@ -447,6 +465,116 @@ fn check_step(
                 for second in (first + 1)..left.len() {
                     if let Ok(FactoringOutcome::Concluded(count)) =
                         factor(context, &left, first, second, &mut replay)
+                    {
+                        let piped = pipeline(context, &mut replay, count)
+                            .map_err(|_| TstpError::InvalidStep(id))?;
+                        if same_multiset(&replay[..piped], &conclusion) {
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+            Err(TstpError::InvalidStep(id))
+        }
+        InferenceRule::Superposition => {
+            // Spec 14 section 6: replay every (equation, target literal, subterm
+            // path) combination of both premise orders through the PRODUCTION
+            // superpose(); a step is accepted exactly when some legal application
+            // reproduces the recorded conclusion modulo the pipeline. The path
+            // enumeration mirrors the generator's advance_path discipline
+            // (non-root positions only).
+            if parent_count != kBinaryPremises {
+                return Err(TstpError::InvalidStep(id));
+            }
+            let mut replay: Vec<Literal> =
+                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
+            let orders: [(&Vec<Literal>, &Vec<Literal>); kBinaryPremises] =
+                [(&left, &right), (&right, &left)];
+            for (equations, targets) in orders.iter() {
+                for equation_index in 0..equations.len() {
+                    for target_index in 0..targets.len() {
+                        let atom = targets[target_index].atom();
+                        let mut path: [u16; mapt_hot::inference::superposition::kMaxPathLength] =
+                            [0; mapt_hot::inference::superposition::kMaxPathLength];
+                        let mut path_len: u32 = 0;
+                        while mapt_hot::search::generate::advance_path(
+                            context.terms,
+                            atom,
+                            &mut path,
+                            &mut path_len,
+                        ) {
+                            if let Ok(
+                                mapt_hot::inference::superposition::SuperpositionOutcome::Concluded(
+                                    count,
+                                ),
+                            ) = mapt_hot::inference::superposition::superpose(
+                                context,
+                                equations,
+                                equation_index,
+                                targets,
+                                target_index,
+                                &path[..path_len as usize],
+                                &mut replay,
+                            ) {
+                                let piped = pipeline(context, &mut replay, count)
+                                    .map_err(|_| TstpError::InvalidStep(id))?;
+                                if same_multiset(&replay[..piped], &conclusion) {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Err(TstpError::InvalidStep(id))
+        }
+        InferenceRule::EqualityResolution => {
+            // Spec 14 section 6: replay every literal of the single premise
+            // through the PRODUCTION equality_resolve().
+            if parent_count != 1 {
+                return Err(TstpError::InvalidStep(id));
+            }
+            let mut replay: Vec<Literal> =
+                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
+            for index in 0..left.len() {
+                if let Ok(mapt_hot::inference::superposition::SuperpositionOutcome::Concluded(
+                    count,
+                )) = mapt_hot::inference::superposition::equality_resolve(
+                    context,
+                    &left,
+                    index,
+                    &mut replay,
+                ) {
+                    let piped = pipeline(context, &mut replay, count)
+                        .map_err(|_| TstpError::InvalidStep(id))?;
+                    if same_multiset(&replay[..piped], &conclusion) {
+                        return Ok(());
+                    }
+                }
+            }
+            Err(TstpError::InvalidStep(id))
+        }
+        InferenceRule::EqualityFactoring => {
+            // Spec 14 section 6: replay every ordered distinct literal pair of
+            // the single premise through the PRODUCTION equality_factor().
+            if parent_count != 1 {
+                return Err(TstpError::InvalidStep(id));
+            }
+            let mut replay: Vec<Literal> =
+                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
+            for first in 0..left.len() {
+                for second in 0..left.len() {
+                    if first == second {
+                        continue;
+                    }
+                    if let Ok(FactoringOutcome::Concluded(count)) =
+                        mapt_hot::inference::factoring::equality_factor(
+                            context,
+                            &left,
+                            first,
+                            second,
+                            &mut replay,
+                        )
                     {
                         let piped = pipeline(context, &mut replay, count)
                             .map_err(|_| TstpError::InvalidStep(id))?;
@@ -492,8 +620,128 @@ fn check_step(
             }
             Ok(())
         }
+        InferenceRule::StructuralInduction | InferenceRule::WellFoundedInduction => {
+            // Theory axioms of the initial-algebra convention (Spec 15 sections 3-4):
+            // parentless introductions, existence-checked by the walk like Input; the
+            // scheme shape itself is fixed by the induction module and re-pinned by
+            // unit/hot/induction_test.rs against the hand clausification.
+            if parent_count != 0 {
+                return Err(TstpError::InvalidStep(id));
+            }
+            Ok(())
+        }
+        InferenceRule::ConjectureNegation => {
+            // Mini-refutation premise (Spec 16 section 5): parentless introduction,
+            // discharged by the ConjectureLemma reductio check below.
+            if parent_count != 0 {
+                return Err(TstpError::InvalidStep(id));
+            }
+            Ok(())
+        }
+        InferenceRule::ConjectureLemma => {
+            // Reductio rule (Spec 17 section 4): parent 0 is the negation premise
+            // (the literal-wise complement of the lemma), parent 1 is the empty
+            // clause of the same subproof, and the negation is an ancestor of the
+            // empty clause.
+            if parent_count != kBinaryPremises {
+                return Err(TstpError::InvalidStep(id));
+            }
+            let negation_id = record.derivation.parents[0];
+            let empty_id = record.derivation.parents[1];
+            if negation_id == mapt_config::limits::kInvalidClauseId
+                || empty_id == mapt_config::limits::kInvalidClauseId
+                || negation_id >= id
+                || empty_id >= id
+            {
+                return Err(TstpError::InvalidStep(id));
+            }
+            let negation = store
+                .clause_by_id(ClauseId(negation_id))
+                .map_err(|_| TstpError::UnreadableClause(negation_id))?;
+            if negation.derivation.rule != InferenceRule::ConjectureNegation
+                || negation.literal_count != record.literal_count
+            {
+                return Err(TstpError::InvalidStep(id));
+            }
+            // Complement shape: every lemma literal has its exact (atom, flipped
+            // polarity) counterpart in the negation premise (multiset match).
+            let mut used: Vec<bool> = vec![false; negation.literal_count as usize];
+            for literal in conclusion.iter() {
+                let mut found = false;
+                for (index, used_slot) in used.iter_mut().enumerate() {
+                    let other = store
+                        .literal(negation, index as u16)
+                        .map_err(|_| TstpError::UnreadableClause(negation_id))?;
+                    if !*used_slot
+                        && other.atom() == literal.atom()
+                        && other.is_positive() != literal.is_positive()
+                    {
+                        *used_slot = true;
+                        found = true;
+                        break;
+                    }
+                }
+                if !found {
+                    return Err(TstpError::InvalidStep(id));
+                }
+            }
+            let empty = store
+                .clause_by_id(ClauseId(empty_id))
+                .map_err(|_| TstpError::UnreadableClause(empty_id))?;
+            if empty.literal_count != 0 {
+                return Err(TstpError::InvalidStep(id));
+            }
+            if !ancestor_of(store, empty_id, negation_id)? {
+                return Err(TstpError::InvalidStep(id));
+            }
+            Ok(())
+        }
         _ => Err(TstpError::InvalidStep(id)),
     }
+}
+
+// CEP:WHAT: Walks the derivation DAG from one clause id looking for an ancestor id.
+// CEP:WHY: The ConjectureLemma reductio check (Spec 17 section 4) must verify that the negation premise is an ancestor of the subproof's empty clause; parents are strictly older than children (monotonic ids, Spec 14 section 2), so the walk terminates at parentless introductions; a visited bitmap indexed by (id - kFirstClauseId) keeps the walk linear in the id span (diamond-shaped ancestries are visited once per node).
+// CEP:STATUS: complete
+// CEP:FAILURE: UnreadableClause for unresolvable ids; Ok(false) when the target is not an ancestor.
+// CEP:ASSUMES: both ids are valid store ids; the store has an id side table.
+// CEP:COST: O(id span) bitmap plus O(visited ancestors) record reads.
+// CEP:EVIDENCE: unit/hot/conjecture_test.rs::checker_accepts_conjecture_lemma (the accept and detached-reject paths).
+// CEP:SECURITY: all reads bounds-checked.
+fn ancestor_of(store: &ClauseStore<'_>, from_id: u64, target_id: u64) -> Result<bool, TstpError> {
+    if from_id == target_id {
+        return Ok(true);
+    }
+    let first = mapt_config::limits::kFirstClauseId;
+    if from_id < first || target_id < first || target_id >= from_id {
+        return Ok(false);
+    }
+    let span = (from_id - first + 1) as usize;
+    let mut visited: Vec<u8> = vec![0; span];
+    let mut stack: Vec<u64> = vec![from_id];
+    while let Some(current) = stack.pop() {
+        if current < first || current > from_id {
+            continue;
+        }
+        let slot = (current - first) as usize;
+        if visited[slot] != 0 {
+            continue;
+        }
+        visited[slot] = 1;
+        if current == target_id {
+            return Ok(true);
+        }
+        let record = store
+            .clause_by_id(ClauseId(current))
+            .map_err(|_| TstpError::UnreadableClause(current))?;
+        for slot_index in 0..record.derivation.parent_count as usize {
+            let parent = record.derivation.parents[slot_index];
+            if parent != mapt_config::limits::kInvalidClauseId && parent >= first {
+                stack.push(parent);
+            }
+        }
+    }
+    Ok(false)
 }
 
 // CEP:WHAT: Verifies the whole proof: every reachable step replays or structurally checks; returns Ok(()) or the offending id.

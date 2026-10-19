@@ -73,6 +73,45 @@ fn limit_invariants() {
     assert!(opaque(kSatMaxConflicts) >= opaque(1));
 }
 
+// CEP:WHAT: Verifies the Phase 4 (revised build order) invariants at runtime: the induction and conjecture budgets and the total speculative-work bound.
+// CEP:WHY: Defense in depth for the static assertions in config/limits.rs (the same checks, executed).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any violated invariant.
+// CEP:ASSUMES: none.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by config/limits.rs (the Phase 4 revised block).
+// CEP:SECURITY: integer-safety enforcement.
+#[test]
+fn phase4_revised_invariants() {
+    use mapt::config::limits::*;
+    assert!(opaque(kMaxInductionAttempts) >= opaque(kInductionSchemeClauses));
+    assert!(opaque(kInductionSchemeClauses) == opaque(2));
+    assert!(opaque(kConjectureHarvestInterval) >= opaque(1));
+    assert!(opaque(kMaxConjectureHarvests) >= opaque(1));
+    assert!(opaque(kMaxConjectureCandidates) >= opaque(1));
+    assert!(opaque(kConjectureTransitivityWindow) >= opaque(1));
+    assert!(opaque(kConjectureInstanceVariables) >= opaque(1));
+    assert!(opaque(kConjectureInstanceVariables) <= opaque(kMaxVariablesPerClause));
+    assert!(opaque(kConjecturePassiveCapacity) >= opaque(1));
+    assert!(opaque(kConjectureActiveCapacity) >= opaque(1));
+    assert!(opaque(kConjectureTreeNodes) >= opaque(1));
+    assert!(opaque(kConjectureTreeEntries) >= opaque(1));
+    assert!(opaque(kConjecturePoolWords) >= opaque(1));
+    assert!(opaque(kConjectureIdOffsets) >= opaque(1));
+    assert!(opaque(kConjectureRefuteInferences) >= opaque(1));
+    assert!(opaque(kInductionScanNodeBudget) >= opaque(1));
+    assert!(
+        opaque(kInductionMaxPredicates * kInductionSchemeClauses as usize)
+            >= opaque(kMaxInductionAttempts as usize)
+    );
+    assert!(
+        (opaque(kMaxConjectureHarvests) as u64 + 1)
+            * opaque(kMaxConjectureCandidates) as u64
+            * opaque(kConjectureRefuteInferences)
+            <= opaque(kMaxInferences)
+    );
+}
+
 // CEP:WHAT: Verifies result codes are distinct.
 // CEP:WHY: The result vocabulary must be injective for FFI mapping.
 // CEP:STATUS: complete

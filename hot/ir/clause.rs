@@ -68,6 +68,42 @@ pub enum InferenceRule {
     SatLearn = 14,
     /// CEP:WHAT: Theory lemma (DPLL(T)).
     TheoryLemma = 15,
+    /// CEP:WHAT: Structural induction scheme clause over a declared datatype shape (Spec 15).
+    /// CEP:WHY: The clausified induction axiom instance for one unary predicate (revised build order Phase 4); parentless theory axiom of the initial-algebra convention.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the declaration was validated by the induction module.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/induction_test.rs::structural_scheme_clauses_match_clausification.
+    /// CEP:SECURITY: none.
+    StructuralInduction = 16,
+    /// CEP:WHAT: Well-founded (strong) induction scheme clause over a declared well-order (Spec 15).
+    /// CEP:WHY: The clausified strong-induction axiom instance for one unary predicate; parentless theory axiom justified by the declared well-order's well-foundedness (Spec 15 section 3.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the declaration was validated by the induction module.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/induction_test.rs::well_founded_scheme_clauses_match_clausification.
+    /// CEP:SECURITY: none.
+    WellFoundedInduction = 17,
+    /// CEP:WHAT: Negated conjecture candidate introduced as a mini-refutation premise (Spec 16).
+    /// CEP:WHY: The conjecture filter refutes the negation of a candidate lemma in a bounded side search; the negated premise is recorded with this rule so the reductio step of the imported lemma is mechanically checkable (Spec 17 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: introduced only by the conjecture module's mini space or import path.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
+    /// CEP:SECURITY: none.
+    ConjectureNegation = 18,
+    /// CEP:WHAT: Lemma proved by bounded refutation of its negation and imported into the main proof DAG (Spec 16/17).
+    /// CEP:WHY: The reductio rule: parents are the imported negation premise and the imported empty clause of the mini refutation; the checker verifies the complement shape and the ancestry (Spec 17 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: parent 0 is the ConjectureNegation clause, parent 1 the empty clause of the same subproof.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof (the lemma's parent records).
+    /// CEP:SECURITY: proof validation.
+    ConjectureLemma = 19,
 }
 
 /// CEP:WHAT: Error cases of the clause store.

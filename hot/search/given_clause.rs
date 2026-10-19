@@ -28,9 +28,9 @@ use crate::search::passive::{PassiveHeap, SelectionStrategy};
 use crate::search::SearchError;
 use crate::unification::substitution::Substitution;
 use mapt_config::limits::{
-    kBudgetCheckInterval, kDefaultSymbolWeight, kInvalidClauseId, kInvalidSubstitutionOffset,
-    kMaxClauseLiterals, kMaxDerivationParents, kMaxInferences, kMaxSimplifyRounds,
-    kSelectionVariableWeight,
+    kBudgetCheckInterval, kConjectureHarvestInterval, kDefaultSymbolWeight, kInvalidClauseId,
+    kInvalidSubstitutionOffset, kMaxClauseLiterals, kMaxConjectureHarvests, kMaxDerivationParents,
+    kMaxInferences, kMaxSimplifyRounds, kSelectionVariableWeight,
 };
 
 // CEP:WHAT: Parent counts of unary and binary inference rules (demodulation and factoring-style rules have one parent; resolution and superposition have two).
@@ -236,6 +236,33 @@ pub struct SearchStats {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_simplifies.
     /// CEP:SECURITY: none.
     pub demodulations: u32,
+    /// CEP:WHAT: Conjecture harvests run (revised build order Phase 4, Spec 16).
+    /// CEP:WHY: Speculative-work accounting (Law 4): every harvest increments, and the count never exceeds kMaxConjectureHarvests.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: only saturate increments when options.conjecture is set.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::harvest_schedule_fires.
+    /// CEP:SECURITY: none.
+    pub harvests: u32,
+    /// CEP:WHAT: Conjecture candidates tried across all harvests.
+    /// CEP:WHY: Speculative-work accounting: bounded by harvests x kMaxConjectureCandidates.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: only saturate increments when options.conjecture is set.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::candidate_budget_enforced.
+    /// CEP:SECURITY: none.
+    pub candidates: u32,
+    /// CEP:WHAT: Lemmas imported (candidates whose negation the mini refutation refuted).
+    /// CEP:WHY: The harvest's success accounting: every imported lemma carries a complete reductio subproof in the derivation DAG (Spec 17).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: only saturate increments when options.conjecture is set.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
+    /// CEP:SECURITY: none.
+    pub lemmas: u32,
 }
 
 /// CEP:WHAT: The search configuration: strategy, ordering, selection function, and budgets.
@@ -285,6 +312,15 @@ pub struct SearchOptions {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::inference_budget_fires.
     /// CEP:SECURITY: denial-of-service bound.
     pub inference_budget: u64,
+    /// CEP:WHAT: Whether the in-loop conjecture harvest is enabled (revised build order Phase 4, Spec 16).
+    /// CEP:WHY: Harvesting is speculative work with a fixed schedule (every kConjectureHarvestInterval iterations, at most kMaxConjectureHarvests harvests); the flag is OFF by default so the Phase 1-3 search behavior is byte-identical unless the driver opts in, which keeps the determinism discipline (CEP&CC 38.10) and the existing golden tests stable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; a configuration flag.
+    /// CEP:ASSUMES: harvest budgets are the named constants (not injectable through this record; the bounds tests exercise the harvest functions directly at small scales).
+    /// CEP:COST: 1 byte.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{harvest_schedule_fires, harvest_budget_enforced}.
+    /// CEP:SECURITY: the schedule and harvest count are the speculative-work bounds.
+    pub conjecture: bool,
 }
 
 impl SearchOptions {
@@ -302,6 +338,7 @@ impl SearchOptions {
             ordering: crate::inference::OrderingKind::Kbo,
             selection: SelectionFunction::None,
             inference_budget: kMaxInferences,
+            conjecture: false,
         }
     }
 }
@@ -460,6 +497,15 @@ pub struct SearchSpace<'a> {
     /// CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_age.
     /// CEP:SECURITY: none.
     input_age: core::cell::Cell<u32>,
+    /// CEP:WHAT: The arena the space was constructed over.
+    /// CEP:WHY: The conjecture harvest (Spec 16) builds bounded mini search spaces over the SAME arena inside the loop; the field is the sanctioned handle (the store, passive, and active sets already borrow the arena internally, so this adds one reference, no ownership).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the arena outlives the space and every mini space derived from it.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
+    /// CEP:SECURITY: none.
+    pub arena: &'a Arena,
 }
 
 impl<'a> SearchSpace<'a> {
@@ -523,6 +569,7 @@ impl<'a> SearchSpace<'a> {
             )?,
             substitution: Substitution::new(arena),
             input_age: core::cell::Cell::new(0),
+            arena,
         })
     }
 
@@ -540,6 +587,133 @@ impl<'a> SearchSpace<'a> {
         options: &SearchOptions,
         literals: &[Literal],
     ) -> Result<u32, SearchError> {
+        let derivation = DerivationStep {
+            rule: InferenceRule::Input,
+            parent_count: 0,
+            reserved: 0,
+            parents: [kInvalidClauseId; kMaxDerivationParents],
+            substitution: kInvalidSubstitutionOffset,
+        };
+        self.stage_and_push(context, options, literals, derivation)
+    }
+
+    // CEP:WHAT: Returns the number of input clauses added.
+    // CEP:WHY: Diagnostics.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: none.
+    // CEP:COST: 1 load.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::refutes_contradiction.
+    // CEP:SECURITY: none.
+    pub fn input_count(&self) -> u32 {
+        self.input_age.get()
+    }
+
+    // CEP:WHAT: Adds one parentless theory clause (induction scheme) with an explicit rule.
+    // CEP:WHY: Revised build order Phase 4 (Spec 15): structural and well-founded induction schemes enter the passive set like inputs but carry their scheme rule so the proof walk and the TSTP writer present them as named theory axioms; the age comes from the shared input counter (the sanctioned allocation point, next_input_age's discipline).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError (store bounds, flag computation, passive capacity).
+    // CEP:ASSUMES: literal atoms were interned by the caller's term store; the rule is one of the parentless theory rules (StructuralInduction, WellFoundedInduction).
+    // CEP:COST: as add_input_clause (one staging pass, one store insert, one heap push).
+    // CEP:EVIDENCE: unit/hot/induction_test.rs::{structural_scheme_clauses_match_clausification, schemes_enter_passive_set}.
+    // CEP:SECURITY: store bounds enforced.
+    pub fn add_theory_clause(
+        &self,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+        rule: InferenceRule,
+    ) -> Result<u32, SearchError> {
+        let derivation = DerivationStep {
+            rule,
+            parent_count: 0,
+            reserved: 0,
+            parents: [kInvalidClauseId; kMaxDerivationParents],
+            substitution: kInvalidSubstitutionOffset,
+        };
+        self.stage_and_push(context, options, literals, derivation)
+    }
+
+    // CEP:WHAT: Adds one assumption clause (a conjecture candidate's negation) to this space.
+    // CEP:WHY: Spec 16 section 5: the mini-refutation premise must be distinguishable from axioms in the imported proof DAG, so it carries the ConjectureNegation rule; the shape is add_input_clause's with a different derivation label.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError.
+    // CEP:ASSUMES: literal atoms were interned by the caller's term store; called on the MINI space by the conjecture filter (the main search never adds assumptions).
+    // CEP:COST: as add_input_clause.
+    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, unprovable_candidate_adds_nothing}.
+    // CEP:SECURITY: store bounds enforced.
+    pub fn add_assumption_clause(
+        &self,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+    ) -> Result<u32, SearchError> {
+        let derivation = DerivationStep {
+            rule: InferenceRule::ConjectureNegation,
+            parent_count: 0,
+            reserved: 0,
+            parents: [kInvalidClauseId; kMaxDerivationParents],
+            substitution: kInvalidSubstitutionOffset,
+        };
+        self.stage_and_push(context, options, literals, derivation)
+    }
+
+    // CEP:WHAT: Creates one proof-DAG clause without entering the passive set.
+    // CEP:WHY: Spec 17 section 3: the conjecture import replays a mini refutation into the main store clause by clause; the imported steps are proof-only (they never re-enter the search, or the main loop would saturate on its own lemmas' subproofs); the derivation is taken verbatim with the caller's translated parent ids, so the imported chain is exactly the mini chain.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError (store bounds, flag computation).
+    // CEP:ASSUMES: literal atoms were interned by the caller's term store; parent ids are valid main-store ids strictly older than the next id; the age is the mini clause's age.
+    // CEP:COST: one staging pass plus one store insert.
+    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
+    // CEP:SECURITY: store bounds enforced.
+    pub fn add_proof_clause(
+        &self,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+        age: u32,
+        derivation: DerivationStep,
+    ) -> Result<u32, SearchError> {
+        let (staged, count, _weight) = self.stage_clause(context, options, literals)?;
+        let ptr = self
+            .store
+            .new_clause(context.terms, &staged[..count], age, derivation)
+            .map_err(SearchError::Clause)?;
+        Ok(ptr.as_u32())
+    }
+
+    // CEP:WHAT: Adds one derived clause with an explicit derivation into the passive set.
+    // CEP:WHY: Spec 16 section 6: a lemma proved by bounded refutation enters the main search through the normal passive path with the ConjectureLemma derivation (parents: imported negation premise and imported empty clause); the shape is add_input_clause's with the caller's derivation.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError.
+    // CEP:ASSUMES: literal atoms were interned by the caller's term store.
+    // CEP:COST: as add_input_clause.
+    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, lemma_enters_passive_set}.
+    // CEP:SECURITY: store bounds enforced.
+    pub fn add_derived_clause(
+        &self,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+        derivation: DerivationStep,
+    ) -> Result<u32, SearchError> {
+        self.stage_and_push(context, options, literals, derivation)
+    }
+
+    // CEP:WHAT: Stages literals (bounds check, dedupe, selection flags, weight) for one clause creation.
+    // CEP:WHY: The shared body of the add paths (input, theory, assumption, derived); staging is the production discipline of add_input_clause, extracted once so every Phase 4 (revised) path funnels through the identical checks.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError (TooManyLiterals, flag computation).
+    // CEP:ASSUMES: as add_input_clause.
+    // CEP:COST: O(literals^2) flag comparisons plus the weight walk.
+    // CEP:EVIDENCE: unit/hot/induction_test.rs::schemes_enter_passive_set; unit/hot/conjecture_test.rs::lemma_enters_passive_set.
+    // CEP:SECURITY: bounds enforced.
+    fn stage_clause(
+        &self,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+    ) -> Result<([Literal; kMaxClauseLiterals as usize], usize, u32), SearchError> {
         let mut staged: [Literal; kMaxClauseLiterals as usize] =
             [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
         if literals.len() > staged.len() {
@@ -556,15 +730,41 @@ impl<'a> SearchSpace<'a> {
                 .map_err(SearchError::Inference)?;
         }
         let weight = SelectionWeight::of(context.terms, context.symbols, &staged[..deduped]);
-        let age = self.input_age.get();
-        self.input_age.set(age + 1);
-        let derivation = DerivationStep {
-            rule: InferenceRule::Input,
-            parent_count: 0,
-            reserved: 0,
-            parents: [kInvalidClauseId; kMaxDerivationParents],
-            substitution: kInvalidSubstitutionOffset,
-        };
+        Ok((staged, deduped, weight))
+    }
+
+    // CEP:WHAT: Runs the full staging pipeline and pushes the created clause into the passive set.
+    // CEP:WHY: The body shared by add_input_clause, add_theory_clause, add_assumption_clause, and add_derived_clause: stage, create with the derivation, push; the age comes from the shared input counter.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError.
+    // CEP:ASSUMES: as stage_clause.
+    // CEP:COST: stage_clause plus one store insert plus one heap push.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::refutes_contradiction; unit/hot/induction_test.rs::schemes_enter_passive_set.
+    // CEP:SECURITY: store bounds enforced.
+    fn stage_and_push(
+        &self,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+        derivation: DerivationStep,
+    ) -> Result<u32, SearchError> {
+        let mut staged: [Literal; kMaxClauseLiterals as usize] =
+            [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
+        if literals.len() > staged.len() {
+            return Err(SearchError::Clause(
+                crate::ir::clause::ClauseError::TooManyLiterals,
+            ));
+        }
+        for (index, literal) in literals.iter().enumerate() {
+            staged[index] = *literal;
+        }
+        let deduped = dedupe_literals(&mut staged[..literals.len()]);
+        if deduped > 0 {
+            compute_selection_flags(context, options.selection, &mut staged[..deduped])
+                .map_err(SearchError::Inference)?;
+        }
+        let weight = SelectionWeight::of(context.terms, context.symbols, &staged[..deduped]);
+        let age = self.next_input_age();
         let ptr = self
             .store
             .new_clause(context.terms, &staged[..deduped], age, derivation)
@@ -572,18 +772,6 @@ impl<'a> SearchSpace<'a> {
         let record = self.store.clause(ptr).map_err(SearchError::Clause)?;
         self.passive.push(record.id.0, ptr.as_u32(), age, weight)?;
         Ok(ptr.as_u32())
-    }
-
-    // CEP:WHAT: Returns the number of input clauses added.
-    // CEP:WHY: Diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::refutes_contradiction.
-    // CEP:SECURITY: none.
-    pub fn input_count(&self) -> u32 {
-        self.input_age.get()
     }
 
     // CEP:WHAT: Allocates the next input age (monotonic counter shared by input clauses and AVATAR component materializations).
@@ -633,6 +821,18 @@ pub fn saturate<F: Fn(u64) -> bool>(
         iterations += 1;
         if stats.inferences >= options.inference_budget {
             return Ok(SearchOutcome::GaveUp(GaveUpReason::InferenceBudget));
+        }
+        // Conjecture harvest (revised build order Phase 4, Spec 16): a fixed
+        // schedule (every kConjectureHarvestInterval iterations) with a fixed
+        // total (kMaxConjectureHarvests); the harvest is a pure function of the
+        // space state, so the loop stays deterministic (CEP&CC 38.10) and the
+        // passive set it appends to is only read at the next select, so the
+        // active-set consistency argument is untouched.
+        if options.conjecture
+            && stats.harvests < kMaxConjectureHarvests
+            && iterations.is_multiple_of(kConjectureHarvestInterval)
+        {
+            crate::conjecture::harvest(space, context, options, stats)?;
         }
         if let Some((_given_offset, given_id, ref mut cursor)) = in_progress {
             // Deferred generation continues for the same given clause.
@@ -724,6 +924,20 @@ pub fn saturate<F: Fn(u64) -> bool>(
             .map_err(SearchError::Inference)?;
             let deduped = dedupe_literals(&mut given[..given_len]);
             given_len = deduped;
+            // Recompute the selection and maximality flags after
+            // restandardize_clause rebuilt the literals: the rebuild constructs
+            // fresh Literal records whose cached flags are false, and storing
+            // them unflagged silently disables every ordering-eligible rule on
+            // the parked demodulant when it is popped again (equality
+            // resolution on a rewritten negative reflexive equation, ordered
+            // resolution on the rewritten maximal side) - the Phase 4 (revised)
+            // conjecture filter's symmetry proof exposed the loss; compute the
+            // flags here so the parked record carries the same flags every
+            // other stored clause has (Spec 08 section 3's staging contract).
+            if given_len > 0 {
+                compute_selection_flags(context, options.selection, &mut given[..given_len])
+                    .map_err(SearchError::Inference)?;
+            }
             let weight = SelectionWeight::of(context.terms, context.symbols, &given[..given_len]);
             let derivation = DerivationStep {
                 rule: InferenceRule::Demodulation,

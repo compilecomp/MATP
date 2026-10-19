@@ -4,7 +4,7 @@
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
-// CEP:FAILURE: Returns SubstitutionError::TooManyVariables when a binding exceeds the variable bound, TrailFull when the undo trail is exhausted, InvalidPointer for unreadable term references, ArenaFull when application results do not fit the arena. Never panics.
+// CEP:FAILURE: Returns SubstitutionError::TooManyVariables when a binding exceeds the variable bound, TrailFull when the undo trail is exhausted, DepthExceeded when application recursion passes kMaxUnificationDepth or a rebuilt term exceeds kMaxTermDepth, WeightExceeded when a rebuilt term exceeds kMaxTermWeight, InvalidPointer for unreadable term references, ArenaFull when application results do not fit the arena. Never panics.
 // CEP:ASSUMES: Variable IDs are dense per-clause indices below kMaxVariablesPerClause (design 5.5); term application allocates in the same arena as the term store and shares its hash-consing (applied results are interned terms); the trail discipline (bind records entries, undo pops them) is the caller's responsibility and is property-tested.
 // CEP:COST: lookup is 1.96 cycles median (bounds check + load); bind is 2 compares + 2 stores; apply is O(term size) with one intern per rebuilt node, measured 174.5 cycles median for a two-node rebuild on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, measured 2026-10-08, bench CEP-BENCH-0004, artifacts benches/artifacts/substitution_lookup.json and substitution_apply_small.json.
 // CEP:EVIDENCE: bench CEP-BENCH-0004; unit/hot/substitution_test.rs; disassembly artifact benches/artifacts/disasm_substitution.txt.
@@ -37,8 +37,17 @@ pub enum SubstitutionError {
     VariableOutOfRange,
     /// CEP:WHAT: The undo trail is full (kMaxSubstitutionTrailDepth entries).
     TrailFull,
-    /// CEP:WHAT: Application recursion exceeded kMaxUnificationDepth (cyclic or pathological bindings).
+    /// CEP:WHAT: Application recursion exceeded kMaxUnificationDepth (cyclic or pathological bindings), or a rebuilt term exceeded the term depth bound kMaxTermDepth during application.
     DepthExceeded,
+    /// CEP:WHAT: A rebuilt term exceeded the term weight bound kMaxTermWeight during application.
+    /// CEP:WHY: Term-bound failures are distinct from unreadable references (Law 6): a weight-bound rejection is a legal bounded outcome, not corruption; before the Phase 4 (revised) fix both bound failures were misclassified as InvalidPointer, which misreported legal depth/weight exhaustion as store corruption.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs::term_bound_errors_not_misclassified.
+    /// CEP:SECURITY: honest error reporting (CEP&CC Law 6).
+    WeightExceeded,
     /// CEP:WHAT: A referenced term is unreadable.
     InvalidPointer,
     /// CEP:WHAT: The arena is exhausted during application.
@@ -496,6 +505,8 @@ impl<'a> Substitution<'a> {
 fn map_term_error(error: TermError) -> SubstitutionError {
     match error {
         TermError::ArenaFull | TermError::TableFull => SubstitutionError::ArenaFull,
+        TermError::DepthExceeded => SubstitutionError::DepthExceeded,
+        TermError::WeightExceeded => SubstitutionError::WeightExceeded,
         _ => SubstitutionError::InvalidPointer,
     }
 }

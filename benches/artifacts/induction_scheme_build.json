@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0036",
+  "name": "induction_scheme_build",
+  "iterations": 200000,
+  "cycles_median": 217.83608,
+  "cycles_min": 216.39158,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1792432338
+}
