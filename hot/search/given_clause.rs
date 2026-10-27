@@ -1,5 +1,5 @@
 // CEP:FILE: hot/search/given_clause.rs
-// CEP:WHAT: The given-clause saturation loop (design 15.1) with the clause database (design 8.4), the selection weight function (design 15.3), simplification (demodulation, forward subsumption, tautology deletion - design 10.3 step 1), backward subsumption, bounded inference generation, and the design 20 budgets (CEP-1005).
+// CEP:WHAT: The given-clause saturation loop (design 15.1) with the clause database (design 8.4), the selection weight function (design 15.3), simplification (demodulation, forward subsumption, tautology deletion - design 10.3 step 1), backward subsumption, bounded inference generation, the design 20 budgets (CEP-1005), and - since CEP-1036 - the demodulation step chain: every rewrite records a restandardized, deduplicated snapshot with the demodulating rule clause's id, and the park point stores one clause record per step (parents [previous, rule]) so the certified kernel replays demodulation exactly per step (Spec 19).
 // CEP:WHY: Design 26 Phase 3 build order: the loop is the ATP search - select from the passive set, move to the active set, simplify against the active set, discard the redundant, generate all inferences between the given clause and the active set, add the conclusions to the passive set, and terminate with Theorem on the empty clause, Saturated on an empty passive set, or GaveUp on a budget; the loop step order is fixed (select, simplify, forward-subsume, backward-subsume, activate, generate) so the active array never mutates during one given clause's generation (the generator's slot scan stays consistent); fairness follows from the strategy's priority function (Spec 08 section 4); the time budget is an injected should_stop callback checked every kBudgetCheckInterval iterations, which keeps the hot crate clock-free (the CEP-1 driver supplies wall time; tests supply deterministic stop predicates - the mechanism is what CEP-1005 demands); CounterSatisfiable needs model building (design 17, Phase 5) and Saturated is the honest Phase 3 terminal for satisfiable inputs.
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
@@ -977,7 +977,7 @@ pub fn saturate<F: Fn(u64) -> bool>(
                 let age = space.next_input_age();
                 let derivation = DerivationStep {
                     rule: InferenceRule::Demodulation,
-                    parent_count: 2,
+                    parent_count: kBinaryRuleParents,
                     reserved: 0,
                     parents: [
                         previous_id,

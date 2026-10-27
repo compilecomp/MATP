@@ -1,5 +1,5 @@
 // CEP:FILE: hot/inference/builder.rs
-// CEP:WHAT: Term and clause construction helpers for the inference engine: variable renaming (standardize-apart), literal application under a substitution, variable counting, and clause renaming.
+// CEP:WHAT: Term and clause construction helpers for the inference engine: variable renaming (standardize-apart), literal application under a substitution (plain and trail-restoring - the CEP-1050 restore helpers restore_trail/apply_unwind/apply_literal_unwind, which unwind the pre-unification trail on failure so the generator's drop-and-resume policy stays trail-safe), variable counting, and clause renaming.
 // CEP:WHY: Spec 02 section 5 fixes the shared substitution namespace: variables are dense per-clause indices below kMaxVariablesPerClause, so two premises must be renamed apart into one namespace before unification (left keeps [0, vars(left)), right shifts by vars(left)) and conclusions must be re-standardized back to a dense [0, n) namespace before storage; renaming re-interns terms through the hash-consing store so structural sharing and pointer-equality fast paths survive (design 5.1); applying a literal under a substitution materializes the conclusion atoms once per rule call.
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0

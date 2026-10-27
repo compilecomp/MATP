@@ -114,8 +114,11 @@ fn run_random_harvest(seed: u64) -> (u32, u32, u32, u64) {
         let left = constants[rng.below(4) as usize];
         let right = constants[rng.below(4) as usize];
         let atom = terms.intern_eq(&symbols, left, right).expect("eq");
+        // Input-labeled derived unit: the kernel rejects parentless Demodulation
+        // derivations since the CEP-1036 chain (a rewrite record always cites its
+        // rule clause), so these fixture units must not claim that rule.
         let derivation = DerivationStep {
-            rule: InferenceRule::Demodulation,
+            rule: InferenceRule::Input,
             parent_count: 0,
             reserved: 0,
             parents: [kInvalidClauseId; kMaxDerivationParents],

@@ -1,5 +1,5 @@
 // CEP:FILE: hot/avatar/controller.rs
-// CEP:WHAT: The AVATAR controller (design 12): owns the abstraction SAT solver and the component table, splits input clauses, materializes components under the SAT model (model-guided selection), collects the component ancestry of first-order refutations, adds conflict clauses (conflict-driven backtracking), and drives saturate_with_avatar - the design 12.2 four-rule loop over the Phase 3 given-clause engine.
+// CEP:WHAT: The AVATAR controller (design 12): owns the abstraction SAT solver and the component table, splits input clauses, materializes components under the SAT model (model-guided selection), collects the component ancestry of first-order refutations, adds conflict clauses (conflict-driven backtracking), stages and transfers FOL clause-learning lemmas over the reserved assertion vocabulary (Spec 18, opt-in and off by default), and drives saturate_with_avatar - the design 12.2 four-rule loop over the Phase 3 given-clause engine.
 // CEP:WHY: Design 26 Phase 4 build order; Voronkov (CAV 2014): splitting replaces a clause C with variable-disjoint components C1..Cn guarded by assertion variables a1..an whose disjunction the abstraction solver maintains; the first-order search runs on model-true components only, a first-order refutation whose ancestry uses component set U yields the conflict clause not-a1 or ... or not-ak (sound because inputs + the components of U entail false), and an unsatisfiable abstraction proves the original problem unsatisfiable (every model of the original induces an abstraction model - Spec 12 Theorem 1); the Phase 4 protocol is MONOTONE-ACTIVATION (a materialized component never leaves the search: superset search is sound because every derived clause stays a consequence of the inputs, and complete because it subsumes the strict model-guided restriction - Spec 12 section 5), which avoids the generation-rollback machinery of design 22.2 (ticketed) while keeping every outcome sound: Theorem (direct refutation without components, or abstraction-unsat after conflicts), Saturated (passive empty with every component materialized, or every waiting component proven unassertable by assumption solves - Spec 12 section 6), GaveUp (named budgets).
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
@@ -18,9 +18,9 @@ use core::cell::Cell;
 use mapt_config::limits::{
     kAvatarComponentCapacity, kAvatarComponentWordCapacity, kAvatarMaxAssertionSymbols,
     kAvatarMaxConflictRounds, kAvatarMaxModelRotations, kClauseOffsetTableCapacity,
-    kInvalidClauseId, kInvalidClauseOffset, kLearningMaxFolLemmas, kLearningMaxLearntTransfers,
-    kLearningMaxTransferLbd, kLearningMaxTransferLiterals, kMaxClauseLiterals,
-    kMaxSatClauseLiterals, kSatMaxConflicts,
+    kInvalidClauseId, kInvalidClauseOffset, kInvalidSubstitutionOffset, kLearningMaxFolLemmas,
+    kLearningMaxLearntTransfers, kLearningMaxTransferLbd, kLearningMaxTransferLiterals,
+    kMaxClauseLiterals, kMaxDerivationParents, kMaxSatClauseLiterals, kSatMaxConflicts,
 };
 
 use crate::inference::{compute_selection_flags, InferenceContext};
@@ -1097,7 +1097,7 @@ impl<'a> AvatarController<'a> {
                 kInvalidClauseId,
                 kInvalidClauseId,
             ],
-            substitution: kInvalidClauseOffset,
+            substitution: kInvalidSubstitutionOffset,
         };
         let age = space.next_input_age();
         let ptr = space
@@ -1139,6 +1139,7 @@ impl<'a> AvatarController<'a> {
                 self.stats
                     .learning_skipped
                     .set(self.stats.learning_skipped.get() + 1);
+                self.transfer_cursor.set(cursor);
                 break;
             }
             let entry = match registry.entry(cursor) {
@@ -1148,11 +1149,13 @@ impl<'a> AvatarController<'a> {
                         .learning_skipped
                         .set(self.stats.learning_skipped.get() + 1);
                     cursor += 1;
+                    self.transfer_cursor.set(cursor);
                     continue;
                 }
             };
             if entry.tombstone.get() {
                 cursor += 1;
+                self.transfer_cursor.set(cursor);
                 continue;
             }
             let offset = entry.offset.get();
@@ -1163,6 +1166,7 @@ impl<'a> AvatarController<'a> {
                         .learning_skipped
                         .set(self.stats.learning_skipped.get() + 1);
                     cursor += 1;
+                    self.transfer_cursor.set(cursor);
                     continue;
                 }
             };
@@ -1175,6 +1179,7 @@ impl<'a> AvatarController<'a> {
                     .learning_skipped
                     .set(self.stats.learning_skipped.get() + 1);
                 cursor += 1;
+                self.transfer_cursor.set(cursor);
                 continue;
             }
             let mut literals: [Literal; kMaxClauseLiterals as usize] =
@@ -1207,14 +1212,19 @@ impl<'a> AvatarController<'a> {
                     .learning_skipped
                     .set(self.stats.learning_skipped.get() + 1);
                 cursor += 1;
+                self.transfer_cursor.set(cursor);
                 continue;
             }
+            // The entry is consumed from here on: the cursor is persisted
+            // BEFORE the store operations so a terminal Err (arena exhaustion
+            // aborts the saturation) never re-considers a consumed entry on a
+            // hypothetical retry.
             let derivation = DerivationStep {
                 rule: InferenceRule::SatLearn,
                 parent_count: 0,
                 reserved: 0,
-                parents: [kInvalidClauseId; 4],
-                substitution: kInvalidClauseOffset,
+                parents: [kInvalidClauseId; kMaxDerivationParents],
+                substitution: kInvalidSubstitutionOffset,
             };
             let age = space.next_input_age();
             let ptr = space
@@ -1231,8 +1241,8 @@ impl<'a> AvatarController<'a> {
                 .learning_transfers
                 .set(self.stats.learning_transfers.get() + 1);
             cursor += 1;
+            self.transfer_cursor.set(cursor);
         }
-        self.transfer_cursor.set(cursor);
         Ok(())
     }
 
@@ -1346,8 +1356,8 @@ pub fn saturate_with_avatar<F: Fn(u64) -> bool>(
                 // CEP:SECURITY: none.
                 controller.add_conflict_from_buffer(used)?;
                 // Spec 18 section 4: stage the FOL copy of the ban clause,
-                // anchored at this round's refuting clause (all-or-nothing;
-                // skips counted inside).
+                // anchored at this round's refuting clause, all or nothing
+                // with the skips counted inside.
                 let refutation_id = space
                     .store
                     .clause(crate::ir::clause::ClausePtr::from_u32(refutation))

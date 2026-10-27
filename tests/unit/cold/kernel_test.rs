@@ -15,6 +15,7 @@
 mod common;
 
 use common::{make_inference_fixture, symbol_id};
+use mapt::cold::kernel::verify_clause_step_with_options;
 use mapt::cold::kernel::{
     verify_clause_step, verify_refutation_with_budget, walk_proof_dag, KernelError,
     KernelRejection, KernelVerdict,
@@ -675,4 +676,70 @@ fn verify_clause_step_matches_walk() {
         }
     );
     let _ = kFirstClauseId;
+}
+
+// CEP:WHAT: A forged parentless SatLearn lemma over user-declared 0-ary predicates is rejected under the production (empty) vocabulary and accepted only within the configured assertion range (Spec 18 section 5's executable trust boundary).
+// CEP:WHY: The kernel is the corruption detector; the introduction side's reservation discipline (Spec 18 sections 2-3) must not be trusted at verification time. The fixture's r is a user-declared 0-ary input predicate: a parentless SatLearn record over r has no derivation justification, so the production whole-proof vocabulary (empty range) rejects it, while the same record over a genuinely reserved atom verifies under the matching KernelOptions.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the forged lemma is accepted or a genuine assertion lemma is rejected.
+// CEP:ASSUMES: hand-built records; the fixture has no reserved assertion block, so the forged range in the second half is constructed ad hoc (base = r's symbol id, count 1) to show the range check is the deciding factor.
+// CEP:COST: two step verifications.
+// CEP:EVIDENCE: cited by cold/kernel.rs's SatLearn arm and docs/formal/18_fol_clause_learning.md section 5.
+// CEP:SECURITY: proof validation.
+#[test]
+fn forged_sat_learn_rejected_outside_vocabulary() {
+    let fixture = make_proof_fixture(4096);
+    let context = context_of(&fixture);
+    // r is a user-declared 0-ary predicate of the problem signature.
+    let r_atom = fixture
+        .terms
+        .intern_pred(&fixture.symbols, symbol_id(&fixture.builder, "r"), &[])
+        .expect("r atom");
+    let forged = fixture
+        .space
+        .store
+        .new_clause(
+            &fixture.terms,
+            &[Literal::new(r_atom, false)],
+            0,
+            DerivationStep {
+                rule: InferenceRule::SatLearn,
+                parent_count: 0,
+                reserved: 0,
+                parents: [kInvalidClauseId; 4],
+                substitution: kInvalidSubstitutionOffset,
+            },
+        )
+        .expect("forged");
+    let forged_id = id_of(&fixture, forged);
+    // Production whole-proof vocabulary (empty range): rejected.
+    let verdict = verify_clause_step(
+        &context,
+        &fixture.space.store,
+        forged_id,
+        mapt_config::limits::kKernelReplayBudget,
+    )
+    .expect("finishes");
+    assert_eq!(
+        verdict,
+        KernelVerdict::Invalid {
+            clause_id: forged_id,
+            rejection: KernelRejection::BrokenSatLearn,
+        }
+    );
+    // Inside a range that covers r's symbol id: the same shape verifies, proving
+    // the range check (not the shape check alone) decides.
+    let r_symbol = symbol_id(&fixture.builder, "r");
+    let verdict = verify_clause_step_with_options(
+        &context,
+        &fixture.space.store,
+        forged_id,
+        mapt_config::limits::kKernelReplayBudget,
+        &mapt::cold::kernel::KernelOptions {
+            assertion_base: r_symbol,
+            assertion_count: 1,
+        },
+    )
+    .expect("finishes");
+    assert_eq!(verdict, KernelVerdict::Valid);
 }

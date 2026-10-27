@@ -15,7 +15,7 @@
 mod common;
 
 use common::{make_arena, symbol_id};
-use mapt::cold::kernel::{verify_clause_step, KernelVerdict};
+use mapt::cold::kernel::{verify_clause_step_with_options, KernelOptions, KernelVerdict};
 use mapt::hot::avatar::controller::{
     saturate_with_avatar, AvatarController, AvatarOptions, AvatarOutcome,
 };
@@ -293,11 +293,15 @@ fn conflict_lemma_staged_and_verifiable() {
             let slot = view.symbol() - fixture.assertion_base;
             assert!(slot < kLearningSymbolCount);
         }
-        let verdict = verify_clause_step(
+        let verdict = verify_clause_step_with_options(
             &context,
             &fixture.space.store,
             id,
             mapt_config::limits::kKernelReplayBudget,
+            &KernelOptions {
+                assertion_base: fixture.assertion_base,
+                assertion_count: kLearningSymbolCount,
+            },
         )
         .expect("verification finishes");
         assert_eq!(verdict, KernelVerdict::Valid, "the staged lemma verifies");

@@ -1,14 +1,3 @@
-// CEP:FILE: cold/kernel/mod.rs
-// CEP:WHAT: Certified proof kernel module (Formal Spec 19): the internal step-by-step verifier behind check_proof - the derivation-DAG walk, the bounded replay engine, and the per-rule verification arms (resolution and superposition with standardize-apart replay, factoring, equality resolution/factoring, exact per-step demodulation over the CEP-1036 chain, AVATAR split replay, SatLearn shape checks, conjecture reductio, parentless theory introductions; deletion-rule derivations are rejected).
-// CEP:WHY: Design 18.4: "an ATP that produces an invalid proof is worse than one that produces no proof" - the kernel is the single trusted verifier every proof passes through before MAPT claims Theorem or emits TSTP output; it replays the PRODUCTION rule functions between the recorded parents (not a parallel reimplementation), charges every replay attempt against a named budget (CEP&CC 23: measured cost, 22.10: DoS bound), and reports either Valid, a rejection naming the offending clause id and reason, or a loud budget error (CEP&CC 34.3: injectable budgets so tests exercise exhaustion on the production path).
-// CEP:CLASS: CEP-1
-// CEP:STATUS: complete
-// CEP:FAILURE: none; module wiring and the kernel vocabulary only.
-// CEP:ASSUMES: cold code runs after the hot search, never inside it; the caller's inference context shares the store that recorded the derivation.
-// CEP:COST: compile-time only; per-step costs are documented in kernel.rs.
-// CEP:EVIDENCE: unit/cold/kernel_test.rs; unit/cold/tstp_test.rs (the kernel-backed checker); property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
-// CEP:SECURITY: the kernel is the trust boundary of design 18.4: every rejection names its step, budget exhaustion is an error, and no arm ever trusts the derivation record's own claim without replaying it.
-
 // CEP:FILE: cold/kernel.rs
 // CEP:WHAT: The certified proof kernel (Formal Spec 19): the derivation-DAG walk, the bounded replay state, and the per-rule verification arms that re-run the PRODUCTION inference functions between the recorded parents of every reachable derivation step.
 // CEP:WHY: Design 18.4 and Spec 19: proof validation is the soundness certification of the search - a proof MAPT cannot internally re-verify is not a proof; the kernel walks the derivation DAG from the refuting empty clause (monotonic clause ids make one descending pass exact, Spec 14 section 2), then verifies every reachable step by replaying the production rule functions (resolve, superpose, factor, equality_factor, equality_resolve, demodulate, try_split_with) over the recorded parents and accepting a step exactly when some legal application reproduces the recorded conclusion modulo the loop's restandardize/dedupe pipeline; resolution and superposition replays standardize apart exactly like the generator (the CEP-1054 rename-apart repair: the renamed premise is replayed at its FULL literal count, not the variable count the rename returns), demodulation replays the CEP-1036 chain EXACTLY per step (a Demodulation derivation whose rule parent is unrecorded is rejected as UnrecordedRule), AVATAR splits replay the production split decision and compare each restandardized component multiset (the pre-Phase-5 pointer-equality check falsely rejected components restandardized into their own dense namespaces), SatLearn lemmas must have the assertion-atom shape (0-ary predicate atoms; conflict lemmas additionally all-negative over an empty anchor), and deletion-rule derivations are rejected outright (DeletedRuleDerivation - deletion removes clauses, it never derives records).
@@ -21,9 +10,27 @@
 // CEP:SECURITY: the kernel is the trust boundary of design 18.4: budgets bound the work, every rejection names its step, and budget exhaustion is loud.
 // CEP:UNSAFE: none; this file is safe Rust.
 
-use mapt_config::limits::{
-    kAvatarMinComponentSize, kFirstClauseId, kInvalidClauseId, kMaxClauseLiterals,
-};
+use mapt_config::limits::{kFirstClauseId, kInvalidClauseId, kMaxClauseLiterals};
+
+// CEP:WHAT: The parent count of the binary replay arms (resolution, superposition, the reductio check).
+// CEP:WHY: CEP&CC 11.3: the arm's parent-count tests name their value instead of a bare 2 (the same constant the pre-Phase-5 checker carried).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: cited by the binary arms below and unit/cold/kernel_test.rs.
+// CEP:SECURITY: none.
+const kBinaryPremises: usize = 2;
+
+// CEP:WHAT: The gate the kernel's AvatarSplit replay uses: the FINEST legal split gate.
+// CEP:WHY: The splitter's variable-connectivity partition is gate-independent (the gate only refuses a whole split, it never merges or splits cells), so replaying at gate 1 yields the finest legal partition and every production component - recorded under any injectable gate >= 1 - is exactly one cell of it; the replay is therefore gate-free (no false accept, no gate-mismatch false reject).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: AvatarOptions::min_component_size >= 1 (the documented minimum, Spec 12 section 7).
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: cited by the AvatarSplit arm and docs/formal/19_certified_kernel.md section 4.
+// CEP:SECURITY: none.
+const kKernelSplitReplayGate: u16 = 1;
 use mapt_hot::inference::demodulation::{demodulate, unit_equation_sides};
 use mapt_hot::inference::factoring::{equality_factor, factor};
 use mapt_hot::inference::resolution::{resolve, ResolutionOutcome};
@@ -33,6 +40,54 @@ use mapt_hot::ir::clause::{ClauseId, ClauseStore, InferenceRule};
 use mapt_hot::ir::literal::Literal;
 use mapt_hot::ir::term::TermPtr;
 use mapt_hot::search::generate::advance_path;
+
+/// CEP:WHAT: The verification options: the reserved assertion-atom vocabulary the SatLearn arm enforces.
+/// CEP:WHY: Spec 18 section 5's trust-boundary claim is executable only when the kernel knows the reserved range: a SatLearn atom must be a 0-ary predicate whose symbol id lies in [assertion_base, assertion_base + assertion_count); the production whole-proof path uses the empty range (count 0 - the refutation DAG cannot contain SatLearn steps under the current protocol because staged lemmas are children of the refutation), and the clause-learning diagnostics pass the controller's configured range.
+/// CEP:CLASS: CEP-1
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a data record.
+/// CEP:ASSUMES: assertion_count <= kAvatarMaxAssertionSymbols; base is the builder's reservation base.
+/// CEP:COST: 8 bytes.
+/// CEP:EVIDENCE: unit/cold/kernel_test.rs::{forged_sat_learn_rejected_outside_vocabulary, verify_clause_step_matches_walk}; unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
+/// CEP:SECURITY: the vocabulary check is the kernel-side half of the Spec 18 trust boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KernelOptions {
+    /// CEP:WHAT: The reserved assertion-symbol base id.
+    /// CEP:WHY: The lower bound of the SatLearn vocabulary.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
+    /// CEP:SECURITY: none.
+    pub assertion_base: u32,
+    /// CEP:WHAT: The reserved assertion-symbol count (0 disables SatLearn acceptance entirely).
+    /// CEP:WHY: The range width; zero models learning-disabled verification.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
+    /// CEP:SECURITY: none.
+    pub assertion_count: u32,
+}
+
+impl KernelOptions {
+    // CEP:WHAT: The production options: the empty assertion vocabulary.
+    // CEP:WHY: Whole-proof verification of a refutation never meets a SatLearn step under the current protocol (staged lemmas are children of the refutation, Spec 18 section 3), so the empty range is the safe default; any SatLearn step that does appear is rejected as BrokenSatLearn.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: none.
+    // CEP:COST: constant.
+    // CEP:EVIDENCE: unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
+    // CEP:SECURITY: none.
+    pub fn production() -> KernelOptions {
+        KernelOptions {
+            assertion_base: 0,
+            assertion_count: 0,
+        }
+    }
+}
 
 /// CEP:WHAT: Reasons the kernel rejects one derivation step.
 /// CEP:WHY: CEP&CC Law 6: every rejection names its reason; the vocabulary distinguishes "the replay found no legal application" (Broken*) from "the derivation record is structurally unusable" (NonMonotonicDerivation, UnreadableClause, UnrecordedRule, DeletedRuleDerivation, UnknownRule, BrokenIntroduction).
@@ -72,8 +127,8 @@ pub enum KernelRejection {
     /// CEP:EVIDENCE: unit/cold/kernel_test.rs::rejects_deletion_rule_derivation.
     /// CEP:SECURITY: corruption detection.
     DeletedRuleDerivation,
-    /// CEP:WHAT: A Demodulation derivation whose rule parent (derivation parent 1) is unrecorded.
-    /// CEP:WHY: The CEP-1036 chain records the demodulating rule clause id per step; without it the exact per-step replay is impossible, so the step is rejected (the pre-Phase-5 structural variant acceptance is gone).
+    /// CEP:WHAT: A Demodulation derivation whose rule parent (derivation parent 1) is unrecorded while the two-parent shape is claimed.
+    /// CEP:WHY: The CEP-1036 chain records the demodulating rule clause id per step; without it the exact per-step replay is impossible, so the step is rejected. (The pre-Phase-5 one-parent park shape fails the parent-count requirement and is rejected as BrokenDemodulation; this variant is the two-parent record with a missing rule id.)
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: none.
@@ -391,7 +446,7 @@ fn invalid(clause_id: u64, rejection: KernelRejection) -> KernelVerdict {
 // CEP:WHAT: Applies the loop's conclusion pipeline to a replayed conclusion: restandardize, dedupe.
 // CEP:WHY: The search stores conclusions after restandardize_clause + dedupe (Spec 08 section 6); the kernel must compare through the same pipeline or every replay would mismatch.
 // CEP:STATUS: complete
-// CEP:FAILURE: a restandardization failure is a Broken* rejection of the step under verification.
+// CEP:FAILURE: a restandardization failure is reported as the CALLING ARM's rejection (Law 6: the rejection names the step's rule, not a fixed reason).
 // CEP:ASSUMES: literals.len() <= kMaxClauseLiterals.
 // CEP:COST: O(n^2).
 // CEP:EVIDENCE: unit/cold/kernel_test.rs::accepts_loop_refutation.
@@ -400,13 +455,14 @@ fn pipeline(
     context: &InferenceContext<'_>,
     literals: &mut [Literal],
     count: usize,
+    rejection: KernelRejection,
 ) -> Result<usize, KernelRejection> {
     mapt_hot::inference::restandardize_clause(
         context.terms,
         context.symbols,
         &mut literals[..count],
     )
-    .map_err(|_| KernelRejection::BrokenResolution)?;
+    .map_err(|_| rejection)?;
     // Dedupe (the loop's dedupe_literals semantics: drop exact (atom, polarity) repeats).
     let mut write: usize = 0;
     for read in 0..count {
@@ -534,6 +590,7 @@ fn verify_step(
     store: &ClauseStore<'_>,
     id: u64,
     state: &mut ReplayState,
+    options: &KernelOptions,
 ) -> Result<Result<(), KernelRejection>, KernelError> {
     state.charge(1)?;
     let record = match store.clause_by_id(ClauseId(id)) {
@@ -599,7 +656,7 @@ fn verify_step(
             Ok(Err(KernelRejection::DeletedRuleDerivation))
         }
         InferenceRule::Resolution => {
-            if parent_count != 2 || left.is_empty() || right.is_empty() {
+            if parent_count != kBinaryPremises || left.is_empty() || right.is_empty() {
                 return Ok(Err(KernelRejection::BrokenResolution));
             }
             // Standardize-apart replay (CEP-1054): the active parent (derivation
@@ -623,7 +680,12 @@ fn verify_step(
                         &mut replay,
                     );
                     if let Ok(ResolutionOutcome::Concluded(count)) = outcome {
-                        let piped = match pipeline(context, &mut replay, count) {
+                        let piped = match pipeline(
+                            context,
+                            &mut replay,
+                            count,
+                            KernelRejection::BrokenResolution,
+                        ) {
                             Ok(value) => value,
                             Err(rejection) => return Ok(Err(rejection)),
                         };
@@ -648,7 +710,12 @@ fn verify_step(
                     if let Ok(mapt_hot::inference::factoring::FactoringOutcome::Concluded(count)) =
                         outcome
                     {
-                        let piped = match pipeline(context, &mut replay, count) {
+                        let piped = match pipeline(
+                            context,
+                            &mut replay,
+                            count,
+                            KernelRejection::BrokenFactoring,
+                        ) {
                             Ok(value) => value,
                             Err(rejection) => return Ok(Err(rejection)),
                         };
@@ -661,7 +728,7 @@ fn verify_step(
             Ok(Err(KernelRejection::BrokenFactoring))
         }
         InferenceRule::Superposition => {
-            if parent_count != 2 || left.is_empty() || right.is_empty() {
+            if parent_count != kBinaryPremises || left.is_empty() || right.is_empty() {
                 return Ok(Err(KernelRejection::BrokenSuperposition));
             }
             // Both premise orders replay with the active parent (parent 1)
@@ -695,7 +762,12 @@ fn verify_step(
                             &mut replay,
                         );
                         if let Ok(SuperpositionOutcome::Concluded(count)) = outcome {
-                            let piped = match pipeline(context, &mut replay, count) {
+                            let piped = match pipeline(
+                                context,
+                                &mut replay,
+                                count,
+                                KernelRejection::BrokenSuperposition,
+                            ) {
                                 Ok(value) => value,
                                 Err(rejection) => return Ok(Err(rejection)),
                             };
@@ -725,7 +797,12 @@ fn verify_step(
                             &mut replay,
                         );
                         if let Ok(SuperpositionOutcome::Concluded(count)) = outcome {
-                            let piped = match pipeline(context, &mut replay, count) {
+                            let piped = match pipeline(
+                                context,
+                                &mut replay,
+                                count,
+                                KernelRejection::BrokenSuperposition,
+                            ) {
                                 Ok(value) => value,
                                 Err(rejection) => return Ok(Err(rejection)),
                             };
@@ -748,7 +825,12 @@ fn verify_step(
                 state.charge(1)?;
                 let outcome = equality_resolve(context, &left, index, &mut replay);
                 if let Ok(SuperpositionOutcome::Concluded(count)) = outcome {
-                    let piped = match pipeline(context, &mut replay, count) {
+                    let piped = match pipeline(
+                        context,
+                        &mut replay,
+                        count,
+                        KernelRejection::BrokenEqualityResolution,
+                    ) {
                         Ok(value) => value,
                         Err(rejection) => return Ok(Err(rejection)),
                     };
@@ -775,7 +857,12 @@ fn verify_step(
                     if let Ok(mapt_hot::inference::factoring::FactoringOutcome::Concluded(count)) =
                         outcome
                     {
-                        let piped = match pipeline(context, &mut replay, count) {
+                        let piped = match pipeline(
+                            context,
+                            &mut replay,
+                            count,
+                            KernelRejection::BrokenEqualityFactoring,
+                        ) {
                             Ok(value) => value,
                             Err(rejection) => return Ok(Err(rejection)),
                         };
@@ -838,7 +925,12 @@ fn verify_step(
                         count,
                     )) = outcome
                     {
-                        let piped = match pipeline(context, &mut replay, count) {
+                        let piped = match pipeline(
+                            context,
+                            &mut replay,
+                            count,
+                            KernelRejection::BrokenDemodulation,
+                        ) {
                             Ok(value) => value,
                             Err(rejection) => return Ok(Err(rejection)),
                         };
@@ -862,7 +954,7 @@ fn verify_step(
             match mapt_hot::avatar::splitter::try_split_with(
                 context.terms,
                 &left,
-                kAvatarMinComponentSize,
+                kKernelSplitReplayGate,
             ) {
                 mapt_hot::avatar::splitter::SplitDecision::Unsplittable => {
                     Ok(Err(KernelRejection::BrokenAvatarSplit))
@@ -913,6 +1005,18 @@ fn verify_step(
                 if view.tag() != mapt_hot::ir::term::TermTag::Predicate || view.child_count() != 0 {
                     return Ok(Err(KernelRejection::BrokenSatLearn));
                 }
+                // The assertion vocabulary (Spec 18 section 5, executable): the
+                // atom's symbol must lie inside the reserved range; the empty
+                // range (learning-disabled verification) rejects every SatLearn
+                // step, so a forged lemma over user-declared 0-ary predicates
+                // cannot pass.
+                let symbol = view.symbol();
+                if options.assertion_count == 0
+                    || symbol < options.assertion_base
+                    || symbol >= options.assertion_base + options.assertion_count
+                {
+                    return Ok(Err(KernelRejection::BrokenSatLearn));
+                }
             }
             match parent_count {
                 0 => Ok(Ok(())),
@@ -941,7 +1045,7 @@ fn verify_step(
             // premise (the literal-wise complement of the lemma), parent 1 is
             // the empty clause of the same subproof, and the negation is an
             // ancestor of the empty clause.
-            if parent_count != 2 {
+            if parent_count != kBinaryPremises {
                 return Ok(Err(KernelRejection::BrokenReductio));
             }
             let negation_id = record.derivation.parents[0];
@@ -1016,6 +1120,30 @@ pub fn verify_refutation_with_budget(
     refutation: u32,
     budget: u64,
 ) -> Result<KernelVerdict, KernelError> {
+    verify_refutation_with_options(
+        context,
+        store,
+        refutation,
+        budget,
+        &KernelOptions::production(),
+    )
+}
+
+// CEP:WHAT: Verifies the whole proof reachable from the refutation under the given budget and verification options.
+// CEP:WHY: The options-aware generalization of verify_refutation_with_budget (Spec 19 section 3): the SatLearn vocabulary is the caller's reserved range; the production wrapper passes the empty range.
+// CEP:STATUS: complete
+// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted) when the budget runs out; Ok(Invalid { .. }) names the rejected step.
+// CEP:ASSUMES: the context's substitution is at baseline depth (every replay unwinds per attempt); budget >= 1.
+// CEP:COST: O(walk) + O(charged attempts) bounded by the budget.
+// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_budget_exhaustion}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
+// CEP:SECURITY: bounded verification work (CEP&CC 22.10).
+pub fn verify_refutation_with_options(
+    context: &InferenceContext<'_>,
+    store: &ClauseStore<'_>,
+    refutation: u32,
+    budget: u64,
+    options: &KernelOptions,
+) -> Result<KernelVerdict, KernelError> {
     let mut state = ReplayState { spent: 0, budget };
     // A walk-level failure (non-monotonic derivation, unreadable ancestor) is a
     // rejection verdict naming the offending id - not a budget error.
@@ -1025,7 +1153,7 @@ pub fn verify_refutation_with_budget(
     };
     for id in ids.iter() {
         state.charge(1)?;
-        match verify_step(context, store, *id, &mut state)? {
+        match verify_step(context, store, *id, &mut state, options)? {
             Ok(()) => {}
             Err(rejection) => return Ok(invalid(*id, rejection)),
         }
@@ -1047,11 +1175,29 @@ pub fn verify_clause_step(
     id: u64,
     budget: u64,
 ) -> Result<KernelVerdict, KernelError> {
+    verify_clause_step_with_options(context, store, id, budget, &KernelOptions::production())
+}
+
+// CEP:WHAT: Verifies ONE derivation step under the given budget and verification options.
+// CEP:WHY: The options-aware single-step verifier: the clause-learning diagnostics pass the controller's configured assertion range so a staged lemma verifies against the vocabulary it was staged in (Spec 18 section 5); the production wrapper passes the empty range.
+// CEP:STATUS: complete
+// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted); Ok(Invalid { .. }) names the rejection.
+// CEP:ASSUMES: id is a valid store id; the context's substitution is at baseline depth.
+// CEP:COST: one unit per replay attempt bounded by the budget.
+// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable; unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
+// CEP:SECURITY: bounded verification work.
+pub fn verify_clause_step_with_options(
+    context: &InferenceContext<'_>,
+    store: &ClauseStore<'_>,
+    id: u64,
+    budget: u64,
+    options: &KernelOptions,
+) -> Result<KernelVerdict, KernelError> {
     let mut state = ReplayState { spent: 0, budget };
     if store.clause_by_id(ClauseId(id)).is_err() {
         return Ok(invalid(id, KernelRejection::UnreadableClause));
     }
-    match verify_step(context, store, id, &mut state)? {
+    match verify_step(context, store, id, &mut state, options)? {
         Ok(()) => Ok(KernelVerdict::Valid),
         Err(rejection) => Ok(invalid(id, rejection)),
     }

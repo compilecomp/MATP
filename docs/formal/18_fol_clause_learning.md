@@ -56,11 +56,11 @@ The certified kernel (Formal Spec 19) verifies a `SatLearn` step as:
 
 | Shape | Acceptance condition |
 |---|---|
-| Conflict lemma (`parent_count == 1`) | every conclusion literal is a 0-ary predicate atom (the assertion-atom form), the conclusion is **all-negative**, and parent 0 is an **empty clause** (the empty anchor), strictly older than the lemma. |
-| Transfer lemma (`parent_count == 0`) | every conclusion literal is a 0-ary predicate atom. |
+| Conflict lemma (`parent_count == 1`) | every conclusion literal is a 0-ary predicate atom **whose symbol id lies inside the reserved range** `[base, base + count)` carried by the kernel's `KernelOptions`, the conclusion is **all-negative**, and parent 0 is an **empty clause** (the empty anchor), strictly older than the lemma. |
+| Transfer lemma (`parent_count == 0`) | every conclusion literal is a 0-ary predicate atom **inside the reserved range**. |
 | Anything else | rejected (`BrokenSatLearn`). |
 
-The name-prefix discipline (`mapt_assertion_`) is enforced on the introduction side by R3/R4 (the only production path that can declare 0-ary predicates with that prefix is the reservation), and the kernel's shape check keeps every recorded lemma inside that vocabulary. The trust boundary is therefore: *introduction* is bounded and named (R1–R4, S1–S4, T1–T6); *verification* is shape-complete (the kernel arm above).
+The vocabulary check is **executable on the verification side**, not just documented on the introduction side: `verify_refutation_with_options` / `verify_clause_step_with_options` carry `KernelOptions { assertion_base, assertion_count }`; the production whole-proof path (`check_proof`) uses the empty range (the refutation DAG cannot contain SatLearn steps under the current protocol — staged lemmas are children of the refutation, section 3), so any SatLearn step appearing there is rejected; the clause-learning diagnostics pass the controller's configured range. A forged parentless lemma over user-declared 0-ary input predicates is therefore rejected executably (`forged_sat_learn_rejected_outside_vocabulary`), and the name-prefix discipline (`mapt_assertion_`) remains enforced on the introduction side by R3/R4. The trust boundary is: *introduction* bounded and named (R1–R4, S1–S4, T1–T6); *verification* shape-complete AND vocabulary-complete (the kernel arm above).
 
 ## 6. Budgets and constants
 
@@ -89,4 +89,4 @@ Everything in this specification is a deterministic function of the search state
 | Transfer enters the passive set; record shape | `unit/hot/avatar_learning_test.rs::transfer_learnts_enter_passive` |
 | Disabled by default | `unit/hot/avatar_learning_test.rs::learning_disabled_by_default` |
 | Reservation bound, one-shot, density, collision refusal | `unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded` |
-| Kernel SatLearn arm (both shapes) | `cold/kernel/kernel.rs` SatLearn arm; `unit/cold/kernel_test.rs` |
+| Kernel SatLearn arm (both shapes) | `cold/kernel.rs` SatLearn arm; `unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary`; `unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable` |

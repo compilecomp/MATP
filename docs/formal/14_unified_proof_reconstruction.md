@@ -43,6 +43,9 @@ A Theorem-via-avatar proof presents: the input axioms; the split originals (axio
 
 ## 6. The replay checker (design 18.4)
 
+> **Phase 5 amendment (Spec 19).** The checker described in this section has moved into the certified proof kernel (`cold/kernel.rs`, Formal Spec 19) and the TSTP module delegates to it. Two checks of this section are superseded there: the AVATAR split check is the production `try_split_with` replay over restandardized component multisets at the finest replay gate (gate-free, Spec 19 section 4), and the demodulation structural-variant check is replaced by the exact per-step replay over the CEP-1036 chain (an unrecorded rule parent is rejected). The error vocabulary is unchanged: the kernel verdict maps onto `InvalidStep` / `BudgetExhausted`.
+
+
 **Contract.** For every reachable derived clause, the checker independently re-runs the recorded rule between the recorded parents through the production inference functions and accepts the step only when some legal application reproduces the recorded conclusion modulo the loop's conclusion pipeline (restandardize + dedupe, Spec 08 section 6):
 
 - **Resolution** (two parents): every pivot pair (i, j) is replayed; acceptance when some resolvent matches.

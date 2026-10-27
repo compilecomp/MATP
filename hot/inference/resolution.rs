@@ -52,7 +52,7 @@ pub enum ResolutionOutcome {
 // CEP:WHAT: Attempts binary resolution of left[left_index] against right[right_index] and writes the resolvent into out.
 // CEP:WHY: Spec 07 section 4: complementarity (opposite polarity), MGU of the atoms, eligibility (strictly-maximal-or-selected on the positive side, maximal-or-selected on the negative side), conclusion = the MGU-applied remainders.
 // CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) on any failed side condition (the MGU is unwound to entry depth first, Spec 02 section 4); Err propagates structural failures with the trail left at its current depth - safe because Err is terminal for the whole search (the generator's abort discipline: the trail is never read after an Err), never resumed.
+// CEP:FAILURE: Ok(None) on any failed side condition (the MGU is unwound to entry depth first, Spec 02 section 4); Err propagates structural failures with the trail restored to the entry depth (CEP-1050: every post-unify materialization unwinds through the restore helpers, and unify restores its own bindings on Err), so the generator's drop-and-resume policy can skip the candidate safely.
 // CEP:ASSUMES: premises renamed apart; flags computed per premise; out holds kMaxClauseLiterals slots.
 // CEP:COST: one unification plus O(premise lengths) applications.
 // CEP:EVIDENCE: unit/hot/inference_test.rs::{binary_resolution_ground, resolution_applies_mgu, resolution_side_conditions, resolution_rejects_ineligible}; property/inference_property_test.rs::resolution_is_sound; bench CEP-BENCH-0010.

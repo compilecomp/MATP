@@ -148,8 +148,11 @@ fn make_conjecture_property_fixture(rng: &mut DeterministicRng) -> ConjecturePro
         let atom = terms
             .intern_eq(&symbols, terms_for[hi], terms_for[lo])
             .expect("eq");
+        // Input-labeled derived unit: the kernel rejects parentless Demodulation
+        // derivations since the CEP-1036 chain (a rewrite record always cites its
+        // rule clause), so these fixture units must not claim that rule.
         let derivation = DerivationStep {
-            rule: InferenceRule::Demodulation,
+            rule: InferenceRule::Input,
             parent_count: 0,
             reserved: 0,
             parents: [kInvalidClauseId; kMaxDerivationParents],
