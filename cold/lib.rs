@@ -1,6 +1,6 @@
 // CEP:FILE: cold/lib.rs
-// CEP:WHAT: Root module of the mapt-cold crate: CEP-1 deterministic runtime code (arena host, symbol table builder, IR verifier, debug printer, proof output: DRAT writer, DRAT checker, and the unified TSTP reconstruction; portfolio manager (Phase 4)).
-// CEP:WHY: Design section 4.1: cold code may allocate and use std but must never be called from hot code; a separate std crate makes the direction of the dependency (cold -> hot) mechanical and auditable; Phase 3 adds the proof-output half of design 6.4 (DRAT text emission) and the internal checker of design 11.1 S43.
+// CEP:WHAT: Root module of the mapt-cold crate: CEP-1 deterministic runtime code (arena host, symbol table builder, IR verifier, debug printer, proof output: DRAT writer, DRAT checker, and the unified TSTP reconstruction; the certified proof kernel (Spec 19) behind the checker; portfolio manager (Phase 4)).
+// CEP:WHY: Design section 4.1: cold code may allocate and use std but must never be called from hot code; a separate std crate makes the direction of the dependency (cold -> hot) mechanical and auditable; Phase 3 adds the proof-output half of design 6.4 (DRAT text emission) and the internal checker of design 11.1 S43; Phase 5 moves the step-by-step verification into the certified kernel (Spec 19) and makes the TSTP writer delegate to it.
 // CEP:CLASS: CEP-1
 // CEP:STATUS: complete
 // CEP:FAILURE: none; module wiring only.
@@ -21,6 +21,7 @@
 
 pub mod arena_host;
 pub mod debug_printer;
+pub mod kernel;
 pub mod portfolio;
 pub mod proof_output;
 pub mod symbol_table_builder;

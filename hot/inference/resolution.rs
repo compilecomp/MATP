@@ -16,7 +16,7 @@
 use crate::ir::literal::Literal;
 use crate::unification::unify;
 
-use super::builder::apply_literal;
+use super::builder::apply_literal_unwind;
 use super::InferenceContext;
 
 /// CEP:WHAT: Result of one resolution attempt: no inference, or the conclusion's literal count with the literals written to the output buffer.
@@ -97,7 +97,9 @@ pub fn resolve(
     if !unified {
         return Ok(ResolutionOutcome::None);
     }
-    // Materialize the conclusion: apply the MGU to every surviving literal.
+    // Materialize the conclusion: apply the MGU to every surviving literal. The
+    // unwind variants (CEP-1050) restore the pre-unification trail on failure so
+    // the generator's drop-and-resume policy never sees a polluted substitution.
     let mut count: usize = 0;
     let mut overflow = false;
     for (index, literal) in left.iter().enumerate() {
@@ -108,11 +110,12 @@ pub fn resolve(
             overflow = true;
             break;
         }
-        out[count] = apply_literal(
+        out[count] = apply_literal_unwind(
             context.terms,
             context.symbols,
             context.substitution,
             *literal,
+            entry_depth,
         )?;
         count += 1;
     }
@@ -125,11 +128,12 @@ pub fn resolve(
                 overflow = true;
                 break;
             }
-            out[count] = apply_literal(
+            out[count] = apply_literal_unwind(
                 context.terms,
                 context.symbols,
                 context.substitution,
                 *literal,
+                entry_depth,
             )?;
             count += 1;
         }

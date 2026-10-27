@@ -969,6 +969,66 @@ pub const kAvatarMaxConflictRounds: u32 = 4_096;
 /// CEP:SECURITY: denial-of-service bound on the rotation sweep.
 pub const kAvatarMaxModelRotations: u32 = 4_096;
 
+/// CEP:WHAT: Default replay budget of the certified proof kernel (Spec 19): the total number of charged verification actions (walked derivation ids plus replayed rule attempts) one verification call may spend.
+/// CEP:WHY: The kernel replays production inference rules per derivation step (CEP&CC 23: measured, bounded cost for the trust decision); without a budget an adversarially large derivation DAG would make verification unbounded work, violating the DoS discipline (22.10); exhaustion is an ERROR (the verification could not finish), never a rejection (a rejection always names a failing step).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: verify_refutation_with_budget returns KernelError::ReplayBudgetExhausted past the budget.
+/// CEP:ASSUMES: 1_048_576 charged actions cover real refutations (the largest recorded proofs replay a few thousand rule attempts); CEP&CC 34.3 injectability lets tests exercise the exhaustion path at small scales on the production path.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_budget_exhaustion}.
+/// CEP:SECURITY: denial-of-service bound on proof verification.
+pub const kKernelReplayBudget: u64 = 1_048_576;
+
+/// CEP:WHAT: Maximum assertion symbols one symbol table reserves for AVATAR clause learning (Spec 18 section 3).
+/// CEP:WHY: The FOL copies of SAT-side clauses (conflict lemmas and learnt transfers) speak only through 0-ary assertion predicates mapt_assertion_<i>; the reservation is one-shot and bounded so a misconfigured learning budget cannot flood the symbol table (the denial-of-service discipline).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: reserve_assertion_symbols returns BuilderError::AssertionBudget past the bound; the controller refuses learning options whose symbol count exceeds it.
+/// CEP:ASSUMES: 4_096 assertion symbols cover the abstraction solver's component slots used by learning (learning is off by default).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded; unit/hot/avatar_learning_test.rs::learning_disabled_by_default.
+/// CEP:SECURITY: symbol-table flood bound.
+pub const kAvatarMaxAssertionSymbols: u32 = 4_096;
+
+/// CEP:WHAT: Maximum FOL conflict lemmas one controller stages per run (Spec 18 section 4).
+/// CEP:WHY: Each conflict round may stage one FOL copy of the SAT ban clause; the named bound caps the staging work and the store growth attributable to learning.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: add_conflict_lemma_from_buffer skips and counts (stats.learning_skipped) past the bound.
+/// CEP:ASSUMES: 1_024 lemmas cover the conflict-round budget kAvatarMaxConflictRounds at realistic learning rates.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_budget_enforced.
+/// CEP:SECURITY: staging-work bound.
+pub const kLearningMaxFolLemmas: u32 = 1_024;
+
+/// CEP:WHAT: Maximum SAT-learnt clauses one controller transfers into FOL clauses per run (Spec 18 section 4).
+/// CEP:WHY: The transfer maps registry entries beyond the monotone cursor onto FOL assertion-atom clauses; the named bound caps the transfer work and the store growth.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: transfer_learnts skips and counts (stats.learning_skipped) past the bound.
+/// CEP:ASSUMES: 256 transfers cover realistic runs (each transfer is one abstraction-solver learnt clause of bounded size).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::transfer_budget_enforced.
+/// CEP:SECURITY: transfer-work bound.
+pub const kLearningMaxLearntTransfers: u32 = 256;
+
+/// CEP:WHAT: Maximum literal count of one transferred learnt clause (Spec 18 section 4).
+/// CEP:WHY: The FOL clause record bound (kMaxClauseLiterals) is far larger than a useful transfer; the tighter named bound keeps transferred lemmas small (large SAT learnts are deletion candidates by LBD anyway) and bounds the clause-store footprint per transfer.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: transfer_learnts skips (stats.learning_skipped) longer registry clauses.
+/// CEP:ASSUMES: 16 literals cover the conflict-driven lemmas worth transferring (first-UIP lemmas are typically far shorter).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::transfer_policy_filters.
+/// CEP:SECURITY: store-footprint bound.
+pub const kLearningMaxTransferLiterals: u16 = 16;
+
+/// CEP:WHAT: Maximum LBD (literal block distance) of one transferred learnt clause (Spec 18 section 4).
+/// CEP:WHY: The deletion policy orders learnts by LBD (lower is better); the transfer keeps only high-quality lemmas so the FOL store does not accumulate the clauses the SAT engine itself would delete first.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: transfer_learnts skips (stats.learning_skipped) higher-LBD registry clauses.
+/// CEP:ASSUMES: LBD 8 is the standard quality threshold (the SAT engine's own glue-keeper boundary class).
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::transfer_policy_filters.
+/// CEP:SECURITY: store-quality bound.
+pub const kLearningMaxTransferLbd: u8 = 8;
+
 /// CEP:WHAT: Capacity of the clause-id-to-offset side table of the clause store.
 /// CEP:WHY: Proof reconstruction (design 18.2) and AVATAR ancestry collection (design 12.2 rule 4) walk the derivation DAG by parent clause id; the dense side array (index = id - kFirstClauseId) makes the id-to-record lookup O(1) without a per-record linked list; 4_194_304 slots x 4 bytes = 16 MiB, and the minimum 152-byte clause footprint means the 256 MiB arena can hold at most about 1.76M clauses, so the side table always outlives the arena (the bound is unreachable, documented in Spec 14 section 2).
 /// CEP:STATUS: complete
@@ -1326,6 +1386,14 @@ const _: () = {
         kInductionMaxPredicates * kInductionSchemeClauses as usize
             >= kMaxInductionAttempts as usize
     );
+    // Phase 5 (revised build order) invariants: certified kernel, clause learning.
+    assert!(kKernelReplayBudget >= 1);
+    assert!(kAvatarMaxAssertionSymbols >= 1);
+    assert!(kLearningMaxFolLemmas >= 1);
+    assert!(kLearningMaxLearntTransfers >= 1);
+    assert!(kLearningMaxTransferLiterals >= 1);
+    assert!(kLearningMaxTransferLiterals <= kMaxClauseLiterals);
+    assert!(kLearningMaxTransferLbd >= 1);
     // The total speculative inference work (in-loop harvests plus the one
     // driver-invoked pre-search harvest) never exceeds the main budget.
     assert!(

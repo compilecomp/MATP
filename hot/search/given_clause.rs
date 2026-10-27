@@ -841,6 +841,17 @@ pub fn saturate<F: Fn(u64) -> bool>(
         [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
     let mut given_len: usize = 0;
     let mut iterations: u64 = 0;
+    // CEP:WHAT: The demodulation step chain buffer (CEP-1036).
+    // CEP:WHY: Cleared per given clause; simplify_given records one snapshot per rewrite and the park point stores one clause record per step so the derivation DAG carries the full rewrite history for the kernel's exact replay (Spec 19).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: consumed in the same iteration it was filled (the park point runs before the next simplify).
+    // CEP:COST: kMaxSimplifyRounds step records of stack.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    // CEP:SECURITY: none.
+    let mut demod_steps = DemodulationSteps::new();
+    let mut chain_scratch: [Literal; kMaxClauseLiterals as usize] =
+        [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
     loop {
         // Budget checks (CEP-1005: every kBudgetCheckInterval iterations).
         if iterations > 0
@@ -907,7 +918,16 @@ pub fn saturate<F: Fn(u64) -> bool>(
             });
         }
         // Simplify: tautology deletion and bounded demodulation (design 10.3 step 1).
-        match simplify_given(space, context, options, &mut given, &mut given_len, stats)? {
+        demod_steps.count = 0;
+        match simplify_given(
+            space,
+            context,
+            options,
+            &mut given,
+            &mut given_len,
+            stats,
+            &mut demod_steps,
+        )? {
             SimplifyStatus::Discarded => {
                 stats.given_processed += 1;
                 continue;
@@ -934,11 +954,69 @@ pub fn saturate<F: Fn(u64) -> bool>(
         backward_subsume(space, context, &given[..given_len], stats)?;
         // Activate the given clause, or park a rewritten demodulant back to passive
         // (the stored record is immutable; a rewritten clause is a new record).
+        if demod_steps.count > 0 {
+            // CEP:WHAT: The CEP-1036 chain path: one stored clause record per rewrite step.
+            // CEP:WHY: Each record's derivation cites parents [previous, rule] (the rule clause's id), so the certified kernel replays demodulation EXACTLY per step over the chain (Spec 19); the last record is the demodulant that re-enters the passive set, the intermediates are inert derivation anchors like the AvatarSplit originals; the pre-Phase-5 single-record park below remains as the defensive fallback for a clause rewritten without a recorded chain (corruption: its derivation cannot cite the rule, and the kernel rejects it as UnrecordedRule).
+            // CEP:STATUS: complete
+            // CEP:FAILURE: propagates SearchError on store or passive failures.
+            // CEP:ASSUMES: the snapshots were restandardized + deduped at record time; the chain is contiguous from the given clause's id.
+            // CEP:COST: one new_clause + one flags computation + one weight per step.
+            // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+            // CEP:SECURITY: none.
+            let mut previous_id = given_id;
+            let mut last_ptr = crate::ir::clause::ClausePtr::from_u32(given_offset);
+            let mut last_age = 0u32;
+            for step_index in 0..demod_steps.count {
+                let step = &demod_steps.steps[step_index];
+                let count = step.count as usize;
+                for (target, source) in chain_scratch.iter_mut().zip(step.literals.iter()) {
+                    *target = *source;
+                }
+                compute_selection_flags(context, options.selection, &mut chain_scratch[..count])
+                    .map_err(SearchError::Inference)?;
+                let age = space.next_input_age();
+                let derivation = DerivationStep {
+                    rule: InferenceRule::Demodulation,
+                    parent_count: 2,
+                    reserved: 0,
+                    parents: [
+                        previous_id,
+                        step.rule_id,
+                        kInvalidClauseId,
+                        kInvalidClauseId,
+                    ],
+                    substitution: kInvalidSubstitutionOffset,
+                };
+                let ptr = space
+                    .store
+                    .new_clause(context.terms, &chain_scratch[..count], age, derivation)
+                    .map_err(SearchError::Clause)?;
+                previous_id = space.store.clause(ptr).map_err(SearchError::Clause)?.id.0;
+                last_ptr = ptr;
+                last_age = age;
+            }
+            let last_count = demod_steps.steps[demod_steps.count - 1].count as usize;
+            let weight =
+                SelectionWeight::of(context.terms, context.symbols, &chain_scratch[..last_count]);
+            let record = space.store.clause(last_ptr).map_err(SearchError::Clause)?;
+            space
+                .passive
+                .push(record.id.0, last_ptr.as_u32(), last_age, weight)
+                .map_err(SearchError::Passive)?;
+            stats.given_processed += 1;
+            continue;
+        }
         if given_is_stored(space, given_offset, &given[..given_len])? {
             space
                 .active
                 .insert(context.terms, given_offset, &given[..given_len])?;
         } else {
+            // Defensive fallback (unreachable in production since CEP-1036: every
+            // rewrite records a chain step, so a rewritten clause always takes the
+            // chain path above); kept so an unforeseen rewrite path still parks the
+            // clause instead of losing it. The single record cannot cite the
+            // demodulating rule, so the certified kernel rejects the derivation as
+            // UnrecordedRule (Spec 19) - the corruption is loud at proof time.
             let age = space.input_age.get();
             space.input_age.set(age + 1);
             // Restandardize the rewritten clause before storage: demodulation
@@ -995,6 +1073,147 @@ pub fn saturate<F: Fn(u64) -> bool>(
         // Establish the in-progress generation state; the generation runs on the
         // next iteration through the in-progress branch.
         in_progress = Some((given_offset, given_id, GenerationCursor::new()));
+    }
+}
+
+// CEP:WHAT: One recorded demodulation rewrite step (CEP-1036): the restandardized, deduplicated snapshot of the clause after one rewrite, with the demodulating rule clause's id.
+// CEP:WHY: The certified kernel (Spec 19) replays demodulation EXACTLY per step; that needs the rule's identity (the Phase 3/4 derivation recorded only the structural variant, ticket CEP-1036) and the exact intermediate clause. The snapshot is restandardized + deduped at record time so the stored chain record equals the snapshot bit for bit, and the in-loop buffer keeps its own namespace for the next rewrite (demodulation is renaming-invariant, so the replay over the restandardized chain is sound).
+// CEP:STATUS: complete
+// CEP:FAILURE: none; a data record.
+// CEP:ASSUMES: count <= kMaxClauseLiterals; rule_id != kInvalidClauseId.
+// CEP:COST: kMaxClauseLiterals x 8 bytes of stack per step.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+// CEP:SECURITY: none.
+#[derive(Clone, Copy)]
+pub(crate) struct DemodulationStep {
+    /// CEP:WHAT: The post-rewrite clause snapshot (restandardized, deduplicated).
+    /// CEP:WHY: The chain record's literals.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: slots beyond count are filler.
+    /// CEP:COST: kMaxClauseLiterals x 8 bytes.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    /// CEP:SECURITY: none.
+    pub literals: [Literal; kMaxClauseLiterals as usize],
+    /// CEP:WHAT: The snapshot's literal count.
+    /// CEP:WHY: Extent.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: <= kMaxClauseLiterals.
+    /// CEP:COST: 2 bytes.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    /// CEP:SECURITY: none.
+    pub count: u16,
+    /// CEP:WHAT: The demodulating rule clause's store id (derivation parent 1).
+    /// CEP:WHY: The kernel's exact per-step replay needs the rule; kInvalidClauseId would make the step unverifiable (UnrecordedRule).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the rule clause is live in the store.
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    /// CEP:SECURITY: none.
+    pub rule_id: u64,
+}
+
+// CEP:WHAT: The per-simplify-call demodulation step buffer (CEP-1036): one slot per simplify round.
+// CEP:WHY: simplify_given performs at most one rewrite per round (the first successful demodulate breaks the round), and the round count is kMaxSimplifyRounds, so the buffer capacity is exact and overflow is unreachable; saturate consumes the recorded chain right after the call by storing one clause record per step with parents [previous, rule], giving the derivation DAG the full rewrite history the kernel replays.
+// CEP:STATUS: complete
+// CEP:FAILURE: none; the fixed arrays keep the buffer stack-allocated (no allocation in the hot loop).
+// CEP:ASSUMES: one buffer per given clause iteration (cleared before each simplify_given call).
+// CEP:COST: kMaxSimplifyRounds x (kMaxClauseLiterals x 8 + 10) bytes of stack.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+// CEP:SECURITY: none.
+pub(crate) struct DemodulationSteps {
+    /// CEP:WHAT: The recorded steps in rewrite order.
+    /// CEP:WHY: The chain order is the replay order.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: slots beyond count are filler.
+    /// CEP:COST: kMaxSimplifyRounds step records.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    /// CEP:SECURITY: none.
+    pub steps: [DemodulationStep; kMaxSimplifyRounds as usize],
+    /// CEP:WHAT: The recorded step count.
+    /// CEP:WHY: Extent.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: <= steps.len().
+    /// CEP:COST: 8 bytes.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    /// CEP:SECURITY: none.
+    pub count: usize,
+}
+
+impl DemodulationSteps {
+    // CEP:WHAT: Constructs an empty step buffer.
+    // CEP:WHY: Explicit init with filler literals (the count governs reads).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: none.
+    // CEP:COST: constant.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    // CEP:SECURITY: none.
+    pub fn new() -> DemodulationSteps {
+        DemodulationSteps {
+            steps: [DemodulationStep {
+                literals: [Literal::new(crate::ir::term::TermPtr::invalid(), true);
+                    kMaxClauseLiterals as usize],
+                count: 0,
+                rule_id: kInvalidClauseId,
+            }; kMaxSimplifyRounds as usize],
+            count: 0,
+        }
+    }
+
+    // CEP:WHAT: Records one rewrite snapshot: restandardizes and dedupes a copy of the rewritten clause and stores it with the rule clause's id.
+    // CEP:WHY: CEP-1036: the stored chain record must equal the snapshot bit for bit (the kernel replays the production pipeline over it), so the restandardize + dedupe happens at record time, not at store time; the in-loop buffer keeps its own namespace because demodulation is renaming-invariant.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError on restandardization failure; a full buffer is structurally unreachable (one rewrite per round, kMaxSimplifyRounds rounds) and fails loudly rather than recording a partial chain.
+    // CEP:ASSUMES: literals.len() <= kMaxClauseLiterals; rule_id != kInvalidClauseId.
+    // CEP:COST: O(clause term nodes) restandardization plus O(n^2) dedupe.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    // CEP:SECURITY: none.
+    pub fn record(
+        &mut self,
+        context: &InferenceContext<'_>,
+        literals: &[Literal],
+        rule_id: u64,
+    ) -> Result<(), SearchError> {
+        if self.count >= self.steps.len() || rule_id == kInvalidClauseId {
+            // Unreachable by the one-rewrite-per-round invariant; a partial chain
+            // would be silently unverifiable, so the failure is loud instead.
+            return Err(SearchError::Clause(
+                crate::ir::clause::ClauseError::TooManyLiterals,
+            ));
+        }
+        let slot = self.count;
+        let step = &mut self.steps[slot];
+        for (target, source) in step.literals.iter_mut().zip(literals.iter()) {
+            *target = *source;
+        }
+        let count = literals.len();
+        crate::inference::restandardize_clause(
+            context.terms,
+            context.symbols,
+            &mut step.literals[..count],
+        )
+        .map_err(SearchError::Inference)?;
+        // Dedupe (the loop's dedupe_literals semantics: drop exact (atom, polarity) repeats).
+        let mut write: usize = 0;
+        for read in 0..count {
+            let duplicate = (0..write).any(|kept| {
+                step.literals[kept].atom() == step.literals[read].atom()
+                    && step.literals[kept].is_positive() == step.literals[read].is_positive()
+            });
+            if !duplicate {
+                step.literals[write] = step.literals[read];
+                write += 1;
+            }
+        }
+        step.count = write as u16;
+        step.rule_id = rule_id;
+        self.count += 1;
+        Ok(())
     }
 }
 
@@ -1146,6 +1365,7 @@ fn simplify_given(
     given: &mut [Literal; kMaxClauseLiterals as usize],
     literal_count: &mut usize,
     stats: &mut SearchStats,
+    steps: &mut DemodulationSteps,
 ) -> Result<SimplifyStatus, SearchError> {
     if is_tautology(&given[..*literal_count]) {
         stats.tautologies += 1;
@@ -1236,6 +1456,10 @@ fn simplify_given(
                         given[..count].copy_from_slice(&rewritten[..count]);
                         compute_selection_flags(context, options.selection, &mut given[..count])
                             .map_err(SearchError::Inference)?;
+                        // CEP-1036: record the rewrite snapshot (restandardized +
+                        // deduped, with the rule clause's id) so the park point can
+                        // store the exact per-step chain the kernel replays.
+                        steps.record(context, &given[..count], clause.id.0)?;
                         stats.demodulations += 1;
                         changed = true;
                         applied = true;

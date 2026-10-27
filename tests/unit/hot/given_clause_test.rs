@@ -1041,3 +1041,102 @@ fn generation_is_deterministic() {
     assert_eq!(first.1.inferences, second.1.inferences);
     assert_eq!(first.1.dropped, second.1.dropped);
 }
+
+// CEP:WHAT: Verifies the CEP-1036 demodulation chain: every rewrite step is stored as its own clause record whose derivation cites parents [previous, rule].
+// CEP:WHY: The certified kernel (Spec 19) replays demodulation EXACTLY per step; that requires the rule's identity in the derivation (the Phase 3/4 structural variant check was the documented weakness, ticket CEP-1036). The fixture drives three chained rewrites of p(f(f(f(a)))) under the unit rule f(x) = x and inspects the store: three Demodulation records, each with parent_count 2, chaining contiguously from the target and citing the rule clause, ending in the normal form p(a).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when a step record is missing, cites the wrong parent or rule, or the chain is not contiguous.
+// CEP:ASSUMES: input ids are dense from kFirstClauseId (the unit rule is id 1, the target id 2).
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/search/given_clause.rs::{DemodulationSteps, the saturate chain path}.
+// CEP:SECURITY: none.
+#[test]
+fn demodulation_chain_records_rule_ids() {
+    let (space, symbols, builder, terms, precedence) = make_space(64);
+    let context = context_of(&space, &symbols, &terms, &precedence);
+    let x = terms.intern_var(0).expect("x");
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let f_x = terms
+        .intern_fun(&symbols, symbol_id(&builder, "f"), &[x])
+        .expect("f(x)");
+    let eq_atom = terms.intern_eq(&symbols, f_x, x).expect("eq");
+    let options = SearchOptions::new();
+    // The unit equation is input first (age 0): it activates before the target.
+    space
+        .add_input_clause(&context, &options, &[Literal::new(eq_atom, true)])
+        .expect("unit rule");
+    // p(f(f(f(a)))): three successive rewrites f(t) -> t exhaust the rounds.
+    let mut deep = a;
+    for _ in 0..3 {
+        deep = terms
+            .intern_fun(&symbols, symbol_id(&builder, "f"), &[deep])
+            .expect("deep f");
+    }
+    space
+        .add_input_clause(
+            &context,
+            &options,
+            &[pred(&terms, &symbols, &builder, "p", &[deep], true)],
+        )
+        .expect("target");
+    let mut stats = SearchStats::default();
+    let outcome = saturate(&space, &context, &options, &never_stop, &mut stats).expect("s");
+    assert!(matches!(outcome, SearchOutcome::Saturated));
+    assert!(
+        stats.demodulations >= 3,
+        "three chained rewrites required: {:?}",
+        stats
+    );
+    // Walk the store: collect the Demodulation records in id order.
+    let rule_id = 1u64;
+    let target_id = 2u64;
+    let next = space.store.next_clause_id();
+    let mut chain: Vec<(u64, u64, u64)> = Vec::new();
+    for id in mapt_config::limits::kFirstClauseId..next.0 {
+        let record = space
+            .store
+            .clause_by_id(mapt::hot::ir::clause::ClauseId(id))
+            .expect("record");
+        if record.derivation.rule == mapt::hot::ir::clause::InferenceRule::Demodulation {
+            assert_eq!(
+                record.derivation.parent_count, 2,
+                "chain records cite both parents"
+            );
+            chain.push((
+                id,
+                record.derivation.parents[0],
+                record.derivation.parents[1],
+            ));
+        }
+    }
+    assert_eq!(chain.len(), 3, "one stored record per rewrite step");
+    let mut previous = target_id;
+    for (index, (id, parent0, parent1)) in chain.iter().enumerate() {
+        assert_eq!(
+            *parent0, previous,
+            "step {} chains onto its predecessor",
+            index
+        );
+        assert_eq!(
+            *parent1, rule_id,
+            "step {} cites the demodulating rule",
+            index
+        );
+        assert!(*parent0 < *id && *parent1 < *id, "monotonic parent ids");
+        previous = *id;
+    }
+    // The last record is the normal form p(a).
+    let last = space
+        .store
+        .clause_by_id(mapt::hot::ir::clause::ClauseId(previous))
+        .expect("last record");
+    assert_eq!(last.literal_count, 1);
+    let literal = space.store.literal(last, 0).expect("literal");
+    let p_a = terms
+        .intern_pred(&symbols, symbol_id(&builder, "p"), &[a])
+        .expect("p(a)");
+    assert!(literal.is_positive());
+    assert_eq!(literal.atom(), p_a);
+}

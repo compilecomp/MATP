@@ -98,6 +98,12 @@ fn make_fixture(max_conflict_rounds: u32, max_model_rotations: u32) -> Controlle
         conflict_budget: mapt_config::limits::kSatMaxConflicts,
         max_conflict_rounds,
         max_model_rotations,
+        // Learning is disabled in the controller fixture (Spec 18 section 3:
+        // the count is zero until the caller reserves the assertion block).
+        learning_symbol_base: 0,
+        learning_symbol_count: 0,
+        learning_max_lemmas: mapt_config::limits::kLearningMaxFolLemmas,
+        learning_max_transfers: mapt_config::limits::kLearningMaxLearntTransfers,
     };
     let controller = AvatarController::new_with(arena, &avatar_options).expect("controller");
     ControllerFixture {

@@ -210,6 +210,68 @@ pub fn apply_literal(
     Ok(Literal::new(atom, literal.is_positive()))
 }
 
+// CEP:WHAT: Restores the substitution trail to entry_depth when result is an error, then passes the result through (CEP-1050).
+// CEP:WHY: Post-unify materialization can fail (DepthExceeded, WeightExceeded, ArenaFull) while the MGU's bindings are still on the trail; the generator's bound-error drop policy (CEP-1050) resumes the search after dropping the candidate, so a polluted trail would corrupt every later attempt (a later unify would hit already-bound variables); one wrapper keeps the restore discipline at a single point instead of at every materialization call site.
+// CEP:STATUS: complete
+// CEP:FAILURE: Ok passes through untouched; Err unwinds to entry_depth first (the depth observed before the rule's unification), then propagates.
+// CEP:ASSUMES: entry_depth was observed via trail_depth() before the rule extended the substitution; no other bindings were made after the failing call.
+// CEP:COST: one trail_depth compare on success; one undo_to on failure.
+// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
+// CEP:SECURITY: the undo loop is internally clamped (Spec 02 section 4).
+pub fn restore_trail<T>(
+    substitution: &Substitution<'_>,
+    entry_depth: u32,
+    result: Result<T, InferenceError>,
+) -> Result<T, InferenceError> {
+    match result {
+        Ok(value) => Ok(value),
+        Err(error) => {
+            substitution.undo_to(entry_depth);
+            Err(error)
+        }
+    }
+}
+
+// CEP:WHAT: Applies the substitution to one term and unwinds the trail to entry_depth on failure (CEP-1050).
+// CEP:WHY: The applied-side reads inside the rules (demodulation's oriented sides, superposition's applied left/right and target) run after the matcher or MGU bound the trail; a failing application must not leak those bindings into the next attempt under the generator's drop-and-resume policy.
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates InferenceError with the trail restored to entry_depth.
+// CEP:ASSUMES: entry_depth observed before the rule's unification.
+// CEP:COST: one application plus the restore on failure.
+// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
+// CEP:SECURITY: depth-bounded application.
+pub fn apply_unwind(
+    terms: &TermStore<'_>,
+    symbols: &SymbolTable<'_>,
+    substitution: &Substitution<'_>,
+    term: TermPtr,
+    entry_depth: u32,
+) -> Result<TermPtr, InferenceError> {
+    let applied = substitution
+        .apply(terms, term, symbols)
+        .map_err(InferenceError::from);
+    restore_trail(substitution, entry_depth, applied)
+}
+
+// CEP:WHAT: Applies the substitution to one literal and unwinds the trail to entry_depth on failure (CEP-1050).
+// CEP:WHY: Conclusion materialization under the drop-and-resume policy: a failing apply_literal inside a rule must restore the pre-unification trail so the generator's next attempt starts clean.
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates InferenceError with the trail restored to entry_depth.
+// CEP:ASSUMES: entry_depth observed before the rule's unification.
+// CEP:COST: one application plus the restore on failure.
+// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
+// CEP:SECURITY: depth-bounded application.
+pub fn apply_literal_unwind(
+    terms: &TermStore<'_>,
+    symbols: &SymbolTable<'_>,
+    substitution: &Substitution<'_>,
+    literal: Literal,
+    entry_depth: u32,
+) -> Result<Literal, InferenceError> {
+    let applied = apply_literal(terms, symbols, substitution, literal);
+    restore_trail(substitution, entry_depth, applied)
+}
+
 // CEP:WHAT: Remaps one term's variable indices through a first-occurrence dense mapping and rebuilds it.
 // CEP:WHY: Conclusions of inter-clause rules live in the shared standardize-apart namespace [0, vars(left) + vars(right)), which can have gaps (premises rarely use every index); storing a gapped clause breaks the dense-namespace discipline that rename_clause_apart's offset arithmetic relies on (a later rename could collide variables), so every stored conclusion is restandardized to a dense [0, n) namespace first (Spec 07 section 2's storage half).
 // CEP:STATUS: complete

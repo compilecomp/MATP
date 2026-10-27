@@ -194,3 +194,60 @@ fn flags() {
     assert!(info.flags & mapt::hot::ir::symbol_table::kSymbolFlagBuiltin != 0);
     assert!(info.flags & mapt::hot::ir::symbol_table::kSymbolFlagTheory != 0);
 }
+
+// CEP:WHAT: The assertion-symbol reservation is bounded, one-shot, dense, and deterministic (Spec 18 section 3).
+// CEP:WHY: reserve_assertion_symbols declares the mapt_assertion_<i> block back-to-back so assertion atom for SAT slot i is base + i; a second reservation, a flood past kAvatarMaxAssertionSymbols, a zero count, or a reserved-name collision returns AssertionBudget; the declared symbols are 0-ary predicates with the reserved prefix.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the bound, one-shot discipline, density, or name determinism is violated.
+// CEP:ASSUMES: none.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by cold/symbol_table_builder.rs::reserve_assertion_symbols; unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
+// CEP:SECURITY: symbol-table flood guard.
+#[test]
+fn assertion_reservation_bounded() {
+    let mut builder = SymbolTableBuilder::new();
+    let sort = SortId(builder.declare_sort("S").expect("sort"));
+    let _ = builder
+        .declare_predicate("p", 1, 1, &[sort])
+        .expect("predicate");
+    // Zero and flood counts are refused.
+    assert_eq!(
+        builder.reserve_assertion_symbols(0),
+        Err(BuilderError::AssertionBudget)
+    );
+    assert_eq!(
+        builder.reserve_assertion_symbols(kMaxInputSymbolCount + 1),
+        Err(BuilderError::AssertionBudget)
+    );
+    // A bounded reservation succeeds and is one-shot.
+    let base = builder.reserve_assertion_symbols(4).expect("reserve");
+    assert_eq!(
+        builder.reserve_assertion_symbols(4),
+        Err(BuilderError::AssertionBudget)
+    );
+    // Density: the assertion atom for slot i is base + i, a 0-ary predicate
+    // with the deterministic reserved name (kind and arity pinned through
+    // finalization).
+    let arena = make_arena(common::kTestArenaBytes);
+    let symbols = builder.finalize(arena).expect("freeze");
+    for slot in 0..4u32 {
+        let id = base + slot;
+        let info = symbols.info(id).expect("info");
+        assert_eq!(info.kind, SymbolKind::Predicate);
+        assert_eq!(info.arity, 0);
+        assert_eq!(
+            builder.name_of(id),
+            Some(mapt::cold::symbol_table_builder::assertion_symbol_name(slot).as_str())
+        );
+    }
+    // A colliding user declaration of a reserved name is refused.
+    let mut colliding = SymbolTableBuilder::new();
+    let _ = colliding
+        .declare_predicate("mapt_assertion_0", 0, 1, &[])
+        .expect("user declaration");
+    assert_eq!(
+        colliding.reserve_assertion_symbols(2),
+        Err(BuilderError::AssertionBudget),
+        "a reserved-name collision must be refused to keep the density"
+    );
+}

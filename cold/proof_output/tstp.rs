@@ -1,21 +1,22 @@
 // CEP:FILE: cold/proof_output/tstp.rs
-// CEP:WHAT: Unified proof reconstruction (design 18.2-18.4): walks the derivation DAG from the refuting empty clause through the clause store's id side table, prunes to the reachable steps, formats the proof as TSTP cnf statements, and independently re-verifies every inference step (resolution, factoring, superposition by replaying the production inference rules; AVATAR splits by the structural subclause check of Spec 12 Lemma 1; demodulation by the structural variant check).
-// CEP:WHY: Design 26 Phase 4 ("Proof reconstruction (unified)" depends on proof recording and the TSTP writer); design 18.4: "an ATP that produces an invalid proof is worse than one that produces no proof" - the checker re-runs the recorded rules between the recorded parents and accepts a step only when some legal application reproduces the recorded conclusion modulo the loop's restandardize/dedupe pipeline; the walk prunes every clause not reachable from the refutation (design 18.2's redundant-step removal - reachability is the subsumption-based compression of Phase 4 scope; interpolation-based compression stays ticketed); the writer emits TSTP (TPTP Thousands of Problems for Theorem Provers, TSTP syntax for solutions) cnf lines with axiom/negated_conjecture/plain roles and inference sources, variables as X<n> (TPTP upper-case convention), equality infix, and the empty clause as $false; AVATAR component clauses cite their original through the MAPT-specific avatar_split rule whose soundness is the Spec 12 splitting lemma - external checkers must accept the rule as a black box (the same situation as published AVATAR proofs, documented in Spec 14 section 5).
+// CEP:WHAT: Unified proof reconstruction (design 18.2-18.4): walks the derivation DAG from the refuting empty clause through the clause store's id side table, prunes to the reachable steps, formats the proof as TSTP cnf statements, and independently re-verifies every inference step through the certified proof kernel (Spec 19): the walk and the per-rule replay arms (production rule functions, standardize-apart premise renaming, exact per-step demodulation over the CEP-1036 chain, production AVATAR split replay, SatLearn shape checks) live in cold/kernel and this module delegates to them.
+// CEP:WHY: Design 26 Phase 4 ("Proof reconstruction (unified)" depends on proof recording and the TSTP writer); design 18.4: "an ATP that produces an invalid proof is worse than one that produces no proof" - the certified kernel re-runs the recorded rules between the recorded parents and accepts a step only when some legal application reproduces the recorded conclusion modulo the loop's restandardize/dedupe pipeline (Spec 19); the walk prunes every clause not reachable from the refutation (design 18.2's redundant-step removal); the writer emits TSTP (TPTP Thousands of Problems for Theorem Provers, TSTP syntax for solutions) cnf lines with axiom/negated_conjecture/plain roles and inference sources, variables as X<n> (TPTP upper-case convention), equality infix, and the empty clause as $false; AVATAR component clauses cite their original through the MAPT-specific avatar_split rule whose soundness is the Spec 12 splitting lemma - external checkers must accept the rule as a black box (the same situation as published AVATAR proofs, documented in Spec 14 section 5).
 // CEP:CLASS: CEP-1
 // CEP:STATUS: complete
 // CEP:FAILURE: writer: UnreadableClause/UnreadableTerm on corrupt stores, CycleDetected on non-monotonic parent chains (a corrupted derivation); checker: InvalidStep with the offending clause id and reason (the proof is rejected and the caller returns Error per design 18.4); never panics.
 // CEP:ASSUMES: the refutation offset came from the search that owns the store; the store was constructed with an id side table (SearchSpace::new/new_with - a table-less store rejects proof walks loudly); the InferenceContext's stores match the search's.
 // CEP:COST: walk O(clauses); write O(proof size); check O(steps x premise pairs x rule cost).
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{formats_refutation_proof, proof_walk_resolves_parents, prunes_unreachable_steps, roles_and_sources, empty_clause_renders_false, checker_accepts_valid_proof, checker_rejects_broken_resolution, checker_rejects_broken_factoring, checker_rejects_broken_avatar_split, checker_accepts_demodulation_variant, cycle_detected}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
+// CEP:EVIDENCE: unit/cold/tstp_test.rs::{formats_refutation_proof, proof_walk_resolves_parents, prunes_unreachable_steps, roles_and_sources, empty_clause_renders_false, checker_accepts_valid_proof, checker_rejects_broken_resolution, checker_rejects_broken_factoring, checker_rejects_broken_avatar_split, checker_rejects_unrecorded_demodulation, cycle_detected}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
 // CEP:SECURITY: every store read is bounds-checked; the checker validates derivation records against the replayed rules - a tampered record is rejected, not trusted.
 // CEP:HPC-DETERMINISM: deterministic (ascending id order, fixed formats).
 // CEP:HPC-PASS-LEGALITY: Formal Spec 14 (14_unified_proof_reconstruction.md) fixes the walk, the pruning (reachability), the TSTP statement grammar subset, the replay-checker contract, and the demodulation weakening (ticket CEP-1036); the property tests verify executably that every refutation the loop produces passes the checker and that tampered steps are rejected.
 
 use std::string::String;
 
+use crate::kernel::{
+    verify_refutation_with_budget, walk_proof_dag, KernelError, KernelRejection, KernelVerdict,
+};
 use crate::symbol_table_builder::SymbolTableBuilder;
-use mapt_hot::inference::factoring::{factor, FactoringOutcome};
-use mapt_hot::inference::resolution::{resolve, ResolutionOutcome};
 use mapt_hot::inference::InferenceContext;
 use mapt_hot::ir::clause::{ClauseId, ClauseStore, InferenceRule};
 use mapt_hot::ir::literal::Literal;
@@ -68,80 +69,36 @@ pub enum TstpError {
     /// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_rejects_broken_resolution, checker_rejects_broken_factoring, checker_rejects_broken_avatar_split}.
     /// CEP:SECURITY: proof validation.
     InvalidStep(u64),
+    /// CEP:WHAT: The certified kernel's replay budget was exhausted before verification finished (Spec 19).
+    /// CEP:WHY: Budget exhaustion is an ERROR, never a rejection (CEP&CC 34.3): the proof is neither verified nor condemned; the caller returns Error per design 18.4.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; this variant IS a failure report.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::rejects_budget_exhaustion.
+    /// CEP:SECURITY: bounded verification work.
+    BudgetExhausted,
 }
 
-// CEP:WHAT: Maximum literals of one clause during checker replays (the structural bound).
-// CEP:WHY: The replay buffers are fixed-size stack arrays mirroring the loop's discipline (CEP&CC 22.10); the value is the store's bound.
+// CEP:WHAT: Collects the reachable clause ids from the refutation, ascending, through the certified kernel's DAG walk (Spec 19).
+// CEP:WHY: Design 18.2 step 1-2 and Spec 19 section 3: one walk owner - the kernel's descending pass marks the ancestry exactly (parents strictly older than children, monotonic ids, Spec 14 section 2), reports non-monotonic parents as CycleDetected and unresolvable records as UnreadableClause, and the writer and the checker share the same walk so the pruned, ascending-id order is a valid topological order.
 // CEP:STATUS: complete
-// CEP:FAILURE: replays longer than the bound fail loudly through the rule functions' own bounds.
-// CEP:ASSUMES: as the store's bound.
-// CEP:COST: 512 x 8 bytes per buffer.
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::checker_accepts_valid_proof.
-// CEP:SECURITY: none.
-const kReplayLiterals: usize = mapt_config::limits::kMaxClauseLiterals as usize;
-
-// CEP:WHAT: The binary-premise parent count (resolution, superposition, and the two-parent reductio check).
-// CEP:WHY: The checker's premise-arity tests name their value (CEP&CC 11.3) instead of bare 2s; one constant serves every two-premise rule arm (the pre-existing Resolution arm and the Phase 4 revised arms).
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: none.
-// CEP:COST: compile-time only.
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution}; unit/hot/conjecture_test.rs::checker_accepts_conjecture_lemma.
-// CEP:SECURITY: none.
-const kBinaryPremises: usize = 2;
-
-// CEP:WHAT: Collects the reachable clause ids from the refutation, ascending.
-// CEP:WHY: Design 18.2 step 1-2: traverse from the empty clause to the axioms and prune everything unreachable (the Phase 4 compression); parents are strictly older than children (monotonic ids, Spec 14 section 2), so one descending pass marks the ancestry exactly (the same argument as the AVATAR ancestry scan, Spec 12 section 5) and a parent-above-child violation is a corrupted derivation (CycleDetected).
-// CEP:STATUS: complete
-// CEP:FAILURE: UnreadableClause for unresolvable ids, CycleDetected for non-monotonic parents.
+// CEP:FAILURE: UnreadableClause for unresolvable ids, CycleDetected for non-monotonic parents (both mapped from the kernel's rejection verdict).
 // CEP:ASSUMES: refutation is a store-produced offset; the store has an id side table.
 // CEP:COST: O(max id) scan plus O(ancestry) reads.
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{proof_walk_resolves_parents, prunes_unreachable_steps, cycle_detected}.
+// CEP:EVIDENCE: unit/cold/tstp_test.rs::{proof_walk_resolves_parents, prunes_unreachable_steps, cycle_detected}; unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_non_monotonic_derivation}.
 // CEP:SECURITY: all reads bounds-checked.
 pub fn reachable_proof_ids(
     store: &ClauseStore<'_>,
     refutation: u32,
 ) -> Result<Vec<u64>, TstpError> {
-    let root = store
-        .clause(mapt_hot::ir::clause::ClausePtr::from_u32(refutation))
-        .map_err(|_| TstpError::UnreadableClause(0))?;
-    let max_id = root.id.0;
-    let first_id = mapt_config::limits::kFirstClauseId;
-    if max_id < first_id {
-        return Err(TstpError::UnreadableClause(max_id));
+    match walk_proof_dag(store, refutation) {
+        Ok(ids) => Ok(ids),
+        Err((clause_id, rejection)) => match rejection {
+            KernelRejection::NonMonotonicDerivation => Err(TstpError::CycleDetected(clause_id)),
+            _ => Err(TstpError::UnreadableClause(clause_id)),
+        },
     }
-    // Marked[id - first_id] bitmap over the id range.
-    let span = (max_id - first_id + 1) as usize;
-    let mut marked: Vec<bool> = vec![false; span];
-    marked[(max_id - first_id) as usize] = true;
-    let mut id = max_id;
-    loop {
-        if marked[(id - first_id) as usize] {
-            let record = store
-                .clause_by_id(ClauseId(id))
-                .map_err(|_| TstpError::UnreadableClause(id))?;
-            for parent in record.derivation.parents.iter() {
-                if *parent == mapt_config::limits::kInvalidClauseId {
-                    continue;
-                }
-                if *parent >= id || *parent < first_id {
-                    return Err(TstpError::CycleDetected(*parent));
-                }
-                marked[(*parent - first_id) as usize] = true;
-            }
-        }
-        if id == first_id {
-            break;
-        }
-        id -= 1;
-    }
-    let mut reachable: Vec<u64> = Vec::new();
-    for (index, flag) in marked.iter().enumerate() {
-        if *flag {
-            reachable.push(first_id + index as u64);
-        }
-    }
-    Ok(reachable)
 }
 
 // CEP:WHAT: Renders one term in TSTP syntax into out.
@@ -320,471 +277,40 @@ pub fn write_tstp_proof(
     Ok(ids.len())
 }
 
-// CEP:WHAT: Compares two literal multisets for equality (atom pointer and polarity).
-// CEP:WHY: The store's records are canonically sorted and hash-consing makes atom pointer equality atom equality (design 5.1), so multiset equality is canonical-order equality after both sides pass the same restandardize/dedupe pipeline.
+// CEP:WHAT: Verifies the whole proof through the certified kernel (Spec 19): every reachable step replays its production rule between its recorded parents under the kKernelReplayBudget.
+// CEP:WHY: Design 18.4: "the checker verifies every inference step independently - if the checker finds an invalid step, the proof is rejected and MAPT returns Error"; the kernel owns the arms (Spec 19 section 4), the walk order (ascending ids) replays parents before conclusions, and a rejection verdict maps onto InvalidStep with the offending clause id while budget exhaustion maps onto BudgetExhausted (an error, never a rejection).
 // CEP:STATUS: complete
-// CEP:FAILURE: none; returns the boolean.
-// CEP:ASSUMES: both slices passed the same pipeline.
-// CEP:COST: O(n^2) worst case (n <= 512, typical < 10).
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution}.
-// CEP:SECURITY: none.
-fn same_multiset(left: &[Literal], right: &[Literal]) -> bool {
-    if left.len() != right.len() {
-        return false;
-    }
-    let mut used: Vec<bool> = vec![false; right.len()];
-    for literal in left.iter() {
-        let mut found = false;
-        for (index, other) in right.iter().enumerate() {
-            if !used[index]
-                && other.atom() == literal.atom()
-                && other.is_positive() == literal.is_positive()
-            {
-                used[index] = true;
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            return false;
-        }
-    }
-    true
-}
-
-// CEP:WHAT: Applies the loop's conclusion pipeline to a replayed conclusion: restandardize, dedupe.
-// CEP:WHY: The search loop stores conclusions after restandardize_clause + dedupe (Spec 08 section 6); the checker must compare through the same pipeline or every replay would mismatch.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError from restandardize as InvalidStep.
-// CEP:ASSUMES: literals.len() <= kReplayLiterals.
-// CEP:COST: O(n^2).
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::checker_accepts_valid_proof.
-// CEP:SECURITY: none.
-fn pipeline(
-    context: &InferenceContext<'_>,
-    literals: &mut [Literal],
-    count: usize,
-) -> Result<usize, TstpError> {
-    mapt_hot::inference::restandardize_clause(
-        context.terms,
-        context.symbols,
-        &mut literals[..count],
-    )
-    .map_err(|_| TstpError::InvalidStep(0))?;
-    // Dedupe (the loop's dedupe_literals semantics: drop exact (atom, polarity) repeats).
-    let mut write: usize = 0;
-    for read in 0..count {
-        let duplicate = (0..write).any(|slot| {
-            literals[slot].atom() == literals[read].atom()
-                && literals[slot].is_positive() == literals[read].is_positive()
-        });
-        if !duplicate {
-            literals[write] = literals[read];
-            write += 1;
-        }
-    }
-    Ok(write)
-}
-
-// CEP:WHAT: Verifies one derived clause by replaying its rule between its parents.
-// CEP:WHY: Design 18.4 and Spec 14 section 6: resolution/factoring replay every pivot and (for superposition) every (equation, literal, path) combination through the PRODUCTION rule functions - a step is accepted exactly when some legal application reproduces the recorded conclusion modulo the pipeline; AvatarSplit checks the Spec 12 Lemma 1 subclause property (every conclusion literal appears in the parent with the same polarity); Demodulation checks the structural variant property (same literal count and polarity multiset - the Phase 4 weakening, ticket CEP-1036: the demodulating rule's identity is not recorded in the Phase 3 derivation, so a full replay is impossible until the derivation records it); Input/NegatedConjecture are axioms (existence-checked by the walk).
-// CEP:STATUS: complete
-// CEP:FAILURE: returns InvalidStep(id) when no application reproduces the conclusion.
-// CEP:ASSUMES: the parents resolve through the store; the conclusion record is readable.
-// CEP:COST: O(parent literals^2 x rule cost) per step.
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution, checker_rejects_broken_factoring, checker_rejects_broken_avatar_split, checker_accepts_demodulation_variant}.
-// CEP:SECURITY: a tampered derivation or conclusion is rejected.
-fn check_step(
-    context: &InferenceContext<'_>,
-    store: &ClauseStore<'_>,
-    id: u64,
-) -> Result<(), TstpError> {
-    let record = store
-        .clause_by_id(ClauseId(id))
-        .map_err(|_| TstpError::UnreadableClause(id))?;
-    let mut conclusion: Vec<Literal> = Vec::new();
-    for index in 0..record.literal_count {
-        conclusion.push(
-            store
-                .literal(record, index)
-                .map_err(|_| TstpError::UnreadableClause(id))?,
-        );
-    }
-    let mut left: Vec<Literal> = Vec::new();
-    let mut right: Vec<Literal> = Vec::new();
-    let parent_count = record.derivation.parent_count as usize;
-    for slot in 0..parent_count {
-        let parent_id = record.derivation.parents[slot];
-        if parent_id == mapt_config::limits::kInvalidClauseId {
-            continue;
-        }
-        let parent = store
-            .clause_by_id(ClauseId(parent_id))
-            .map_err(|_| TstpError::UnreadableClause(parent_id))?;
-        for index in 0..parent.literal_count {
-            let literal = store
-                .literal(parent, index)
-                .map_err(|_| TstpError::UnreadableClause(parent_id))?;
-            if slot == 0 {
-                left.push(literal);
-            } else {
-                right.push(literal);
-            }
-        }
-    }
-    match record.derivation.rule {
-        InferenceRule::Input | InferenceRule::NegatedConjecture => Ok(()),
-        InferenceRule::Resolution => {
-            if parent_count != kBinaryPremises {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let mut replay: Vec<Literal> =
-                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
-            for left_index in 0..left.len() {
-                for right_index in 0..right.len() {
-                    if let Ok(ResolutionOutcome::Concluded(count)) =
-                        resolve(context, &left, left_index, &right, right_index, &mut replay)
-                    {
-                        let piped = pipeline(context, &mut replay, count)
-                            .map_err(|_| TstpError::InvalidStep(id))?;
-                        if same_multiset(&replay[..piped], &conclusion) {
-                            return Ok(());
-                        }
-                    }
-                }
-            }
-            Err(TstpError::InvalidStep(id))
-        }
-        InferenceRule::Factoring => {
-            if parent_count != 1 {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let mut replay: Vec<Literal> =
-                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
-            for first in 0..left.len() {
-                for second in (first + 1)..left.len() {
-                    if let Ok(FactoringOutcome::Concluded(count)) =
-                        factor(context, &left, first, second, &mut replay)
-                    {
-                        let piped = pipeline(context, &mut replay, count)
-                            .map_err(|_| TstpError::InvalidStep(id))?;
-                        if same_multiset(&replay[..piped], &conclusion) {
-                            return Ok(());
-                        }
-                    }
-                }
-            }
-            Err(TstpError::InvalidStep(id))
-        }
-        InferenceRule::Superposition => {
-            // Spec 14 section 6: replay every (equation, target literal, subterm
-            // path) combination of both premise orders through the PRODUCTION
-            // superpose(); a step is accepted exactly when some legal application
-            // reproduces the recorded conclusion modulo the pipeline. The path
-            // enumeration mirrors the generator's advance_path discipline
-            // (non-root positions only).
-            if parent_count != kBinaryPremises {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let mut replay: Vec<Literal> =
-                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
-            // Standardize apart before replay (the Task 26 sev-2(2) repair):
-            // production renames the target premise into the namespace above
-            // the equation premise's variable count before every rule call,
-            // and a verbatim replay under overlapping dense namespaces can
-            // miss the production mgu (same-index variables identified), so
-            // the checker renames the same way; a rename failure (namespace
-            // bound) skips the order, matching the generator's drop.
-            let mut renamed: Vec<Literal> =
-                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
-            let orders: [(&Vec<Literal>, &Vec<Literal>); kBinaryPremises] =
-                [(&left, &right), (&right, &left)];
-            for (equations, targets) in orders.iter() {
-                let equation_variables =
-                    mapt_hot::inference::count_clause_variables(context.terms, equations)
-                        .unwrap_or(0);
-                let renamed_len = match mapt_hot::inference::rename_clause_apart(
-                    context.terms,
-                    context.symbols,
-                    targets,
-                    equation_variables as u32,
-                    &mut renamed,
-                ) {
-                    Ok(count) => count,
-                    Err(_) => continue,
-                };
-                let targets = &renamed[..renamed_len];
-                for equation_index in 0..equations.len() {
-                    for target_index in 0..targets.len() {
-                        let atom = targets[target_index].atom();
-                        let mut path: [u16; mapt_hot::inference::superposition::kMaxPathLength] =
-                            [0; mapt_hot::inference::superposition::kMaxPathLength];
-                        let mut path_len: u32 = 0;
-                        while mapt_hot::search::generate::advance_path(
-                            context.terms,
-                            atom,
-                            &mut path,
-                            &mut path_len,
-                        ) {
-                            if let Ok(
-                                mapt_hot::inference::superposition::SuperpositionOutcome::Concluded(
-                                    count,
-                                ),
-                            ) = mapt_hot::inference::superposition::superpose(
-                                context,
-                                equations,
-                                equation_index,
-                                targets,
-                                target_index,
-                                &path[..path_len as usize],
-                                &mut replay,
-                            ) {
-                                let piped = pipeline(context, &mut replay, count)
-                                    .map_err(|_| TstpError::InvalidStep(id))?;
-                                if same_multiset(&replay[..piped], &conclusion) {
-                                    return Ok(());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Err(TstpError::InvalidStep(id))
-        }
-        InferenceRule::EqualityResolution => {
-            // Spec 14 section 6: replay every literal of the single premise
-            // through the PRODUCTION equality_resolve().
-            if parent_count != 1 {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let mut replay: Vec<Literal> =
-                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
-            for index in 0..left.len() {
-                if let Ok(mapt_hot::inference::superposition::SuperpositionOutcome::Concluded(
-                    count,
-                )) = mapt_hot::inference::superposition::equality_resolve(
-                    context,
-                    &left,
-                    index,
-                    &mut replay,
-                ) {
-                    let piped = pipeline(context, &mut replay, count)
-                        .map_err(|_| TstpError::InvalidStep(id))?;
-                    if same_multiset(&replay[..piped], &conclusion) {
-                        return Ok(());
-                    }
-                }
-            }
-            Err(TstpError::InvalidStep(id))
-        }
-        InferenceRule::EqualityFactoring => {
-            // Spec 14 section 6: replay every ordered distinct literal pair of
-            // the single premise through the PRODUCTION equality_factor().
-            if parent_count != 1 {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let mut replay: Vec<Literal> =
-                vec![Literal::new(TermPtr::invalid(), true); kReplayLiterals];
-            for first in 0..left.len() {
-                for second in 0..left.len() {
-                    if first == second {
-                        continue;
-                    }
-                    if let Ok(FactoringOutcome::Concluded(count)) =
-                        mapt_hot::inference::factoring::equality_factor(
-                            context,
-                            &left,
-                            first,
-                            second,
-                            &mut replay,
-                        )
-                    {
-                        let piped = pipeline(context, &mut replay, count)
-                            .map_err(|_| TstpError::InvalidStep(id))?;
-                        if same_multiset(&replay[..piped], &conclusion) {
-                            return Ok(());
-                        }
-                    }
-                }
-            }
-            Err(TstpError::InvalidStep(id))
-        }
-        InferenceRule::Demodulation => {
-            // Structural variant check (the Phase 4 weakening, Spec 14 section 6):
-            // same literal count and the same polarity multiset; a full replay needs the
-            // demodulating rule recorded (ticket CEP-1036).
-            if parent_count != 1 || left.len() != conclusion.len() {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let mut polarity_left: Vec<bool> = left.iter().map(|l| l.is_positive()).collect();
-            let mut polarity_right: Vec<bool> =
-                conclusion.iter().map(|l| l.is_positive()).collect();
-            polarity_left.sort();
-            polarity_right.sort();
-            if polarity_left == polarity_right {
-                Ok(())
-            } else {
-                Err(TstpError::InvalidStep(id))
-            }
-        }
-        InferenceRule::AvatarSplit => {
-            // Spec 12 Lemma 1 (subclause property): every component literal appears in
-            // the parent with the same polarity.
-            if parent_count != 1 {
-                return Err(TstpError::InvalidStep(id));
-            }
-            for literal in conclusion.iter() {
-                let present = left.iter().any(|other| {
-                    other.atom() == literal.atom() && other.is_positive() == literal.is_positive()
-                });
-                if !present {
-                    return Err(TstpError::InvalidStep(id));
-                }
-            }
-            Ok(())
-        }
-        InferenceRule::StructuralInduction | InferenceRule::WellFoundedInduction => {
-            // Theory axioms of the initial-algebra convention (Spec 15 sections 3-4):
-            // parentless introductions, existence-checked by the walk like Input; the
-            // scheme shape itself is fixed by the induction module and re-pinned by
-            // unit/hot/induction_test.rs against the hand clausification.
-            if parent_count != 0 {
-                return Err(TstpError::InvalidStep(id));
-            }
-            Ok(())
-        }
-        InferenceRule::ConjectureNegation => {
-            // Mini-refutation premise (Spec 16 section 5): parentless introduction,
-            // discharged by the ConjectureLemma reductio check below.
-            if parent_count != 0 {
-                return Err(TstpError::InvalidStep(id));
-            }
-            Ok(())
-        }
-        InferenceRule::ConjectureLemma => {
-            // Reductio rule (Spec 17 section 4): parent 0 is the negation premise
-            // (the literal-wise complement of the lemma), parent 1 is the empty
-            // clause of the same subproof, and the negation is an ancestor of the
-            // empty clause.
-            if parent_count != kBinaryPremises {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let negation_id = record.derivation.parents[0];
-            let empty_id = record.derivation.parents[1];
-            if negation_id == mapt_config::limits::kInvalidClauseId
-                || empty_id == mapt_config::limits::kInvalidClauseId
-                || negation_id >= id
-                || empty_id >= id
-            {
-                return Err(TstpError::InvalidStep(id));
-            }
-            let negation = store
-                .clause_by_id(ClauseId(negation_id))
-                .map_err(|_| TstpError::UnreadableClause(negation_id))?;
-            if negation.derivation.rule != InferenceRule::ConjectureNegation
-                || negation.literal_count != record.literal_count
-            {
-                return Err(TstpError::InvalidStep(id));
-            }
-            // Complement shape: every lemma literal has its exact (atom, flipped
-            // polarity) counterpart in the negation premise (multiset match).
-            let mut used: Vec<bool> = vec![false; negation.literal_count as usize];
-            for literal in conclusion.iter() {
-                let mut found = false;
-                for (index, used_slot) in used.iter_mut().enumerate() {
-                    let other = store
-                        .literal(negation, index as u16)
-                        .map_err(|_| TstpError::UnreadableClause(negation_id))?;
-                    if !*used_slot
-                        && other.atom() == literal.atom()
-                        && other.is_positive() != literal.is_positive()
-                    {
-                        *used_slot = true;
-                        found = true;
-                        break;
-                    }
-                }
-                if !found {
-                    return Err(TstpError::InvalidStep(id));
-                }
-            }
-            let empty = store
-                .clause_by_id(ClauseId(empty_id))
-                .map_err(|_| TstpError::UnreadableClause(empty_id))?;
-            if empty.literal_count != 0 {
-                return Err(TstpError::InvalidStep(id));
-            }
-            if !ancestor_of(store, empty_id, negation_id)? {
-                return Err(TstpError::InvalidStep(id));
-            }
-            Ok(())
-        }
-        _ => Err(TstpError::InvalidStep(id)),
-    }
-}
-
-// CEP:WHAT: Walks the derivation DAG from one clause id looking for an ancestor id.
-// CEP:WHY: The ConjectureLemma reductio check (Spec 17 section 4) must verify that the negation premise is an ancestor of the subproof's empty clause; parents are strictly older than children (monotonic ids, Spec 14 section 2), so the walk terminates at parentless introductions; a visited bitmap indexed by (id - kFirstClauseId) keeps the walk linear in the id span (diamond-shaped ancestries are visited once per node).
-// CEP:STATUS: complete
-// CEP:FAILURE: UnreadableClause for unresolvable ids; Ok(false) when the target is not an ancestor.
-// CEP:ASSUMES: both ids are valid store ids; the store has an id side table.
-// CEP:COST: O(id span) bitmap plus O(visited ancestors) record reads.
-// CEP:EVIDENCE: unit/hot/conjecture_test.rs::checker_accepts_conjecture_lemma (the accept and detached-reject paths).
-// CEP:SECURITY: all reads bounds-checked.
-fn ancestor_of(store: &ClauseStore<'_>, from_id: u64, target_id: u64) -> Result<bool, TstpError> {
-    if from_id == target_id {
-        return Ok(true);
-    }
-    let first = mapt_config::limits::kFirstClauseId;
-    if from_id < first || target_id < first || target_id >= from_id {
-        return Ok(false);
-    }
-    let span = (from_id - first + 1) as usize;
-    let mut visited: Vec<u8> = vec![0; span];
-    let mut stack: Vec<u64> = vec![from_id];
-    while let Some(current) = stack.pop() {
-        if current < first || current > from_id {
-            continue;
-        }
-        let slot = (current - first) as usize;
-        if visited[slot] != 0 {
-            continue;
-        }
-        visited[slot] = 1;
-        if current == target_id {
-            return Ok(true);
-        }
-        let record = store
-            .clause_by_id(ClauseId(current))
-            .map_err(|_| TstpError::UnreadableClause(current))?;
-        for slot_index in 0..record.derivation.parent_count as usize {
-            let parent = record.derivation.parents[slot_index];
-            if parent != mapt_config::limits::kInvalidClauseId && parent >= first {
-                stack.push(parent);
-            }
-        }
-    }
-    Ok(false)
-}
-
-// CEP:WHAT: Verifies the whole proof: every reachable step replays or structurally checks; returns Ok(()) or the offending id.
-// CEP:WHY: Design 18.4: "the checker verifies every inference step independently - if the checker finds an invalid step, the proof is rejected and MAPT returns Error"; the walk order (ascending ids) replays parents before conclusions.
-// CEP:STATUS: complete
-// CEP:FAILURE: InvalidStep/UnreadableClause/CycleDetected propagate (the caller returns Error).
-// CEP:ASSUMES: as reachable_proof_ids; the context's substitution is at baseline depth (the replay unwinds per rule).
-// CEP:COST: O(steps x parent pairs x rule cost).
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
-// CEP:SECURITY: proof validation is the soundness certification of design 18.4.
+// CEP:FAILURE: InvalidStep/UnreadableClause/CycleDetected/BudgetExhausted propagate (the caller returns Error).
+// CEP:ASSUMES: as the kernel's verify_refutation_with_budget; the context's substitution is at baseline depth (every replay unwinds per attempt).
+// CEP:COST: bounded by kKernelReplayBudget charged actions.
+// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution, checker_rejects_unrecorded_demodulation}; unit/cold/kernel_test.rs (the whole file); property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
+// CEP:SECURITY: proof validation is the soundness certification of design 18.4, executed by the kernel.
 pub fn check_proof(
     context: &InferenceContext<'_>,
     store: &ClauseStore<'_>,
     refutation: u32,
 ) -> Result<(), TstpError> {
-    let ids = reachable_proof_ids(store, refutation)?;
-    for id in ids.iter() {
-        check_step(context, store, *id)?;
+    // CEP:WHAT: The kernel verdict mapping (check_proof_via_kernel).
+    // CEP:WHY: Spec 19 section 6: the TSTP layer never re-implements an arm; Valid passes, a rejection becomes InvalidStep (the TSTP error vocabulary keeps its payload contract), a budget error becomes BudgetExhausted.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: see check_proof.
+    // CEP:ASSUMES: none.
+    // CEP:COST: the kernel's bounded cost.
+    // CEP:EVIDENCE: unit/cold/kernel_test.rs::tstp_wrapper_maps_rejections.
+    // CEP:SECURITY: none.
+    match verify_refutation_with_budget(
+        context,
+        store,
+        refutation,
+        mapt_config::limits::kKernelReplayBudget,
+    ) {
+        Ok(KernelVerdict::Valid) => Ok(()),
+        Ok(KernelVerdict::Invalid {
+            clause_id,
+            rejection: _,
+        }) => Err(TstpError::InvalidStep(clause_id)),
+        Err(KernelError::ReplayBudgetExhausted) => Err(TstpError::BudgetExhausted),
     }
-    Ok(())
 }
 
 // CEP:WHAT: Convenience driver: formats and verifies in one call; returns (statement count, rendered proof).

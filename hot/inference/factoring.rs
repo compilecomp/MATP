@@ -17,7 +17,7 @@ use crate::ir::literal::Literal;
 use crate::ir::term::{TermStore, TermTag};
 use crate::unification::unify;
 
-use super::builder::apply_literal;
+use super::builder::{apply_literal_unwind, apply_unwind, restore_trail};
 use super::{InferenceContext, InferenceError};
 
 // CEP:WHAT: Result of one factoring attempt.
@@ -95,11 +95,12 @@ pub fn factor(
             overflow = true;
             break;
         }
-        out[count] = apply_literal(
+        out[count] = apply_literal_unwind(
             context.terms,
             context.symbols,
             context.substitution,
             *literal,
+            entry_depth,
         )?;
         count += 1;
     }
@@ -175,11 +176,12 @@ pub fn equality_factor(
             overflow = true;
             break;
         }
-        out[count] = apply_literal(
+        out[count] = apply_literal_unwind(
             context.terms,
             context.symbols,
             context.substitution,
             *literal,
+            entry_depth,
         )?;
         count += 1;
     }
@@ -188,11 +190,12 @@ pub fn equality_factor(
             overflow = true;
         } else {
             // Keep (s = t) under sigma.
-            out[count] = apply_literal(
+            out[count] = apply_literal_unwind(
                 context.terms,
                 context.symbols,
                 context.substitution,
                 *first_literal,
+                entry_depth,
             )?;
             count += 1;
         }
@@ -201,24 +204,35 @@ pub fn equality_factor(
         if count >= out.len() {
             overflow = true;
         } else {
-            // Add not (t sigma = t' sigma): apply sigma to both right sides, build the
-            // disequality atom, negate.
-            let applied_first_right =
+            // Add not (t sigma = t' sigma): apply sigma to both right sides, build
+            // the disequality atom, negate. Both applications unwind the trail on
+            // failure (CEP-1050), and so does the atom intern.
+            let applied_first_right = apply_unwind(
+                context.terms,
+                context.symbols,
+                context.substitution,
+                first_right,
+                entry_depth,
+            )?;
+            let applied_second_right = apply_unwind(
+                context.terms,
+                context.symbols,
+                context.substitution,
+                second_right,
+                entry_depth,
+            )?;
+            let atom = restore_trail(
+                context.substitution,
+                entry_depth,
                 context
-                    .substitution
-                    .apply(context.terms, first_right, context.symbols)?;
-            let applied_second_right =
-                context
-                    .substitution
-                    .apply(context.terms, second_right, context.symbols)?;
-            let atom = context
-                .terms
-                .intern_eq(context.symbols, applied_first_right, applied_second_right)
-                .map_err(|_| {
-                    InferenceError::Structural(
-                        crate::unification::substitution::SubstitutionError::InvalidPointer,
-                    )
-                })?;
+                    .terms
+                    .intern_eq(context.symbols, applied_first_right, applied_second_right)
+                    .map_err(|_| {
+                        InferenceError::Structural(
+                            crate::unification::substitution::SubstitutionError::InvalidPointer,
+                        )
+                    }),
+            )?;
             out[count] = Literal::new(atom, false);
             count += 1;
         }

@@ -99,6 +99,11 @@ fn make_property_fixture() -> PropertyFixture {
         conflict_budget: mapt_config::limits::kSatMaxConflicts,
         max_conflict_rounds: 64,
         max_model_rotations: 64,
+        // Learning is disabled in the property fixture (Spec 18 section 3).
+        learning_symbol_base: 0,
+        learning_symbol_count: 0,
+        learning_max_lemmas: mapt_config::limits::kLearningMaxFolLemmas,
+        learning_max_transfers: mapt_config::limits::kLearningMaxLearntTransfers,
     };
     let controller = AvatarController::new_with(arena, &avatar_options).expect("controller");
     PropertyFixture {

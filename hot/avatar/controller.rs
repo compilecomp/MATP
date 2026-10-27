@@ -13,11 +13,14 @@
 // CEP:HPC-DETERMINISM: deterministic per round: the abstraction solver, component interning, activation order (slot order), and the inner loop are all deterministic; the round sequence is a pure function of the input.
 // CEP:HPC-PASS-LEGALITY: Formal Spec 12 fixes the four rules (section 2), the splitting lemma (Lemma 1, section 3), the interning contract (section 4), the monotone-activation soundness and completeness arguments (Theorem 2 and section 5), the saturation theorem (Theorem 3, section 6), and the degradation policy (section 7); the property tests verify executably that avatar outcomes agree with plain saturation on propositional and small first-order problems.
 
+use crate::sat::clause::{kSatClauseFlagDeleted, kSatClauseFlagLearnt};
 use core::cell::Cell;
 use mapt_config::limits::{
-    kAvatarComponentCapacity, kAvatarComponentWordCapacity, kAvatarMaxConflictRounds,
-    kAvatarMaxModelRotations, kClauseOffsetTableCapacity, kInvalidClauseId, kInvalidClauseOffset,
-    kMaxClauseLiterals, kMaxSatClauseLiterals, kSatMaxConflicts,
+    kAvatarComponentCapacity, kAvatarComponentWordCapacity, kAvatarMaxAssertionSymbols,
+    kAvatarMaxConflictRounds, kAvatarMaxModelRotations, kClauseOffsetTableCapacity,
+    kInvalidClauseId, kInvalidClauseOffset, kLearningMaxFolLemmas, kLearningMaxLearntTransfers,
+    kLearningMaxTransferLbd, kLearningMaxTransferLiterals, kMaxClauseLiterals,
+    kMaxSatClauseLiterals, kSatMaxConflicts,
 };
 
 use crate::inference::{compute_selection_flags, InferenceContext};
@@ -165,6 +168,42 @@ pub struct AvatarOptions {
     /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::model_rotation_budget_enforced.
     /// CEP:SECURITY: denial-of-service bound.
     pub max_model_rotations: u32,
+    /// CEP:WHAT: Clause learning: the base symbol id of the reserved mapt_assertion_<i> block (Spec 18 section 3).
+    /// CEP:WHY: The FOL copies of SAT-side clauses speak through the 0-ary assertion predicates reserved by SymbolTableBuilder::reserve_assertion_symbols; the controller maps SAT component slot i onto assertion atom base + i.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (construction validates the count bound).
+    /// CEP:ASSUMES: the caller reserved the block and passed its base; learning is DISABLED while learning_symbol_count == 0.
+    /// CEP:COST: plain data.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{conflict_lemma_staged_and_verifiable, learning_disabled_by_default}.
+    /// CEP:SECURITY: none.
+    pub learning_symbol_base: u32,
+    /// CEP:WHAT: Clause learning: the reserved assertion-symbol count (Spec 18 section 3).
+    /// CEP:WHY: The count bounds the slot-to-atom mapping (slots at or above it are unnameable, so lemma staging and transfer skip-and-count); zero disables learning (the default).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: construction returns InvalidOptions when the count exceeds kAvatarMaxAssertionSymbols.
+    /// CEP:ASSUMES: <= kAvatarMaxAssertionSymbols; <= the abstraction solver's variable count.
+    /// CEP:COST: plain data.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::learning_disabled_by_default.
+    /// CEP:SECURITY: symbol-space bound.
+    pub learning_symbol_count: u32,
+    /// CEP:WHAT: Clause learning: maximum staged FOL conflict lemmas (Spec 18 section 4; production default kLearningMaxFolLemmas).
+    /// CEP:WHY: CEP&CC 34.3 injectable bound; the staging path skips and counts past it.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1 when learning is enabled.
+    /// CEP:COST: plain data.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_budget_enforced.
+    /// CEP:SECURITY: staging-work bound.
+    pub learning_max_lemmas: u32,
+    /// CEP:WHAT: Clause learning: maximum transferred SAT learnt clauses (Spec 18 section 4; production default kLearningMaxLearntTransfers).
+    /// CEP:WHY: CEP&CC 34.3 injectable bound; the transfer path skips and counts past it.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1 when learning is enabled.
+    /// CEP:COST: plain data.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::transfer_budget_enforced.
+    /// CEP:SECURITY: transfer-work bound.
+    pub learning_max_transfers: u32,
 }
 
 // CEP:WHAT: Production default options: full capacities, Luby restarts, the SAT conflict budget.
@@ -195,6 +234,14 @@ impl Default for AvatarOptions {
             conflict_budget: kSatMaxConflicts,
             max_conflict_rounds: kAvatarMaxConflictRounds,
             max_model_rotations: kAvatarMaxModelRotations,
+            // Learning is disabled by default (Spec 18 section 3): the symbol
+            // count is zero until the caller reserves the assertion block and
+            // opts in; the budgets carry their production constants so an opt-in
+            // options literal is bounded even when the caller forgets them.
+            learning_symbol_base: 0,
+            learning_symbol_count: 0,
+            learning_max_lemmas: kLearningMaxFolLemmas,
+            learning_max_transfers: kLearningMaxLearntTransfers,
         }
     }
 }
@@ -412,6 +459,33 @@ pub struct AvatarStats {
     /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::model_rotation_budget_enforced.
     /// CEP:SECURITY: none.
     pub rotations: Cell<u32>,
+    /// CEP:WHAT: FOL conflict lemmas staged (Spec 18 section 4).
+    /// CEP:WHY: Learning diagnostics; the staged lemma is a stored clause record, not a search clause.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: Cell load.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
+    /// CEP:SECURITY: none.
+    pub learning_lemmas: Cell<u32>,
+    /// CEP:WHAT: SAT learnt clauses transferred into FOL clauses (Spec 18 section 4).
+    /// CEP:WHY: Learning diagnostics; a transferred lemma enters the passive set.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: Cell load.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::transfer_learnts_enter_passive.
+    /// CEP:SECURITY: none.
+    pub learning_transfers: Cell<u32>,
+    /// CEP:WHAT: Learning attempts skipped (budgets exhausted, slots unnameable, policy filters).
+    /// CEP:WHY: CEP&CC Law 4: bounded skips are counted, never silent.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: Cell load.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{conflict_lemma_budget_enforced, transfer_policy_filters}.
+    /// CEP:SECURITY: none.
+    pub learning_skipped: Cell<u32>,
 }
 
 /// CEP:WHAT: The AVATAR controller: the abstraction solver, the component table, the ancestry bitset, and the protocol state.
@@ -496,6 +570,51 @@ pub struct AvatarController<'a> {
     /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{split_inputs_create_components, refutes_split_pigeonhole}.
     /// CEP:SECURITY: none.
     pub stats: AvatarStats,
+    /// CEP:WHAT: The learning assertion base (Spec 18 section 3; snapshot of AvatarOptions::learning_symbol_base).
+    /// CEP:WHY: SAT component slot i maps onto assertion atom base + i.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: meaningful only when learning_symbol_count > 0.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
+    /// CEP:SECURITY: none.
+    learning_symbol_base: u32,
+    /// CEP:WHAT: The learning assertion count (0 disables learning; Spec 18 section 3).
+    /// CEP:WHY: The slot-to-atom bound.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: <= kAvatarMaxAssertionSymbols.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::learning_disabled_by_default.
+    /// CEP:SECURITY: none.
+    learning_symbol_count: u32,
+    /// CEP:WHAT: The staged-lemma budget (Spec 18 section 4).
+    /// CEP:WHY: CEP&CC 34.3 injectable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1 when learning is enabled.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_budget_enforced.
+    /// CEP:SECURITY: none.
+    learning_max_lemmas: u32,
+    /// CEP:WHAT: The transfer budget (Spec 18 section 4).
+    /// CEP:WHY: CEP&CC 34.3 injectable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1 when learning is enabled.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::transfer_budget_enforced.
+    /// CEP:SECURITY: none.
+    learning_max_transfers: u32,
+    /// CEP:WHAT: The monotone transfer cursor: the registry entry index one past the last transferred entry.
+    /// CEP:WHY: Spec 18 section 4: transfers enumerate registry entries beyond the cursor after unconditional solves; the cursor advances monotonically so every entry is considered at most once (deterministic, no rescans).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: single-threaded.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::transfer_learnts_enter_passive.
+    /// CEP:SECURITY: none.
+    transfer_cursor: Cell<u32>,
 }
 
 impl<'a> AvatarController<'a> {
@@ -516,6 +635,15 @@ impl<'a> AvatarController<'a> {
             || options.ancestry_bits < 64
             || options.ancestry_bits > kClauseOffsetTableCapacity
             || !options.ancestry_bits.is_multiple_of(64)
+        {
+            return Err(ControllerError::InvalidOptions);
+        }
+        // Learning options (Spec 18 section 3): the reserved count must fit the
+        // named assertion-symbol bound, and an enabled configuration carries
+        // positive budgets.
+        if options.learning_symbol_count > kAvatarMaxAssertionSymbols
+            || (options.learning_symbol_count > 0
+                && (options.learning_max_lemmas == 0 || options.learning_max_transfers == 0))
         {
             return Err(ControllerError::InvalidOptions);
         }
@@ -550,6 +678,11 @@ impl<'a> AvatarController<'a> {
             max_conflict_rounds: options.max_conflict_rounds,
             max_model_rotations: options.max_model_rotations,
             stats: AvatarStats::default(),
+            learning_symbol_base: options.learning_symbol_base,
+            learning_symbol_count: options.learning_symbol_count,
+            learning_max_lemmas: options.learning_max_lemmas,
+            learning_max_transfers: options.learning_max_transfers,
+            transfer_cursor: Cell::new(0),
         })
     }
 
@@ -907,6 +1040,202 @@ impl<'a> AvatarController<'a> {
         Ok(())
     }
 
+    // CEP:WHAT: Stages the FOL copy of the conflict clause from the controller's conflict-slot buffer (Spec 18 section 4): one stored SatLearn clause over 0-ary assertion atoms, anchored at the round's refutation.
+    // CEP:WHY: The SAT ban clause (add_conflict_from_buffer) lives in the abstraction; the FOL copy records the same proposition in the derivation DAG as a SatLearn lemma (all-negative assertion atoms, one parent: the round's refuting empty clause), where the certified kernel verifies its shape (Spec 19); the lemma is STAGED (stored, never pushed to the passive set - the assertion atoms are foreign to the first-order search), the staging is all-or-nothing (a partial ban would be unsound), and every skip is counted (Law 4).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: Ok(None) on every skip path (learning disabled, budget exhausted, unnameable slot, count bound); Err propagates store failures; never panics.
+    // CEP:ASSUMES: the buffer was filled by plan_conflict; refutation_id is the refuting clause's store id; the caller reserved the assertion symbols and configured the controller with the block's base.
+    // CEP:COST: O(used) atom interns plus one new_clause.
+    // CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{conflict_lemma_staged_and_verifiable, conflict_lemma_budget_enforced, learning_disabled_by_default}.
+    // CEP:SECURITY: budgets bound the staging work.
+    pub fn add_conflict_lemma_from_buffer(
+        &self,
+        space: &SearchSpace<'_>,
+        context: &InferenceContext<'_>,
+        used: usize,
+        refutation_id: u64,
+    ) -> Result<Option<u64>, ControllerError> {
+        if self.learning_symbol_count == 0 {
+            return Ok(None);
+        }
+        if self.stats.learning_lemmas.get() >= self.learning_max_lemmas
+            || used == 0
+            || used > kMaxClauseLiterals as usize
+            || used > self.conflict_slots.len()
+        {
+            self.stats
+                .learning_skipped
+                .set(self.stats.learning_skipped.get() + 1);
+            return Ok(None);
+        }
+        let mut literals: [Literal; kMaxClauseLiterals as usize] =
+            [Literal::new(TermPtr::invalid(), true); kMaxClauseLiterals as usize];
+        for (index, literal_slot) in literals.iter_mut().enumerate().take(used) {
+            let slot = self.conflict_slots[index].get();
+            if slot >= self.learning_symbol_count {
+                // All-or-nothing: a partial ban clause would be unsound, so an
+                // unnameable slot skips the whole staging (counted).
+                self.stats
+                    .learning_skipped
+                    .set(self.stats.learning_skipped.get() + 1);
+                return Ok(None);
+            }
+            let atom = context
+                .terms
+                .intern_pred(context.symbols, self.learning_symbol_base + slot, &[])
+                .map_err(crate::inference::InferenceError::from)
+                .map_err(wrap_inference)?;
+            *literal_slot = Literal::new(atom, false);
+        }
+        let derivation = DerivationStep {
+            rule: InferenceRule::SatLearn,
+            parent_count: 1,
+            reserved: 0,
+            parents: [
+                refutation_id,
+                kInvalidClauseId,
+                kInvalidClauseId,
+                kInvalidClauseId,
+            ],
+            substitution: kInvalidClauseOffset,
+        };
+        let age = space.next_input_age();
+        let ptr = space
+            .store
+            .new_clause(context.terms, &literals[..used], age, derivation)
+            .map_err(wrap_clause)?;
+        let record = space.store.clause(ptr).map_err(wrap_clause)?;
+        self.stats
+            .learning_lemmas
+            .set(self.stats.learning_lemmas.get() + 1);
+        Ok(Some(record.id.0))
+    }
+
+    // CEP:WHAT: Transfers the abstraction solver's new learnt clauses (registry entries beyond the monotone cursor) into FOL SatLearn clauses over assertion atoms (Spec 18 section 4).
+    // CEP:WHY: Bidirectional learning (design 18 Feature A): the SAT engine's conflict-driven lemmas are consequences of the abstraction's problem clauses, so their FOL copies are sound recorded introductions; the transfer policy keeps only small, high-quality learnts (kLearningMaxTransferLiterals, kLearningMaxTransferLbd) whose variables are all nameable component slots, every transferred clause enters the passive set (the search may use the assertion atoms), the cursor advances monotonically so each registry entry is considered at most once, and every skip is counted (Law 4); the transferred clause's derivation is parentless SatLearn (the SAT engine's own DRAT discipline covers the SAT-side derivation).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: Ok on every skip path (counted in stats.learning_skipped); Err propagates store and passive failures; never panics.
+    // CEP:ASSUMES: called after an unconditional solve (Satisfiable); single-threaded; learning enabled by the caller's options.
+    // CEP:COST: O(new registry entries) header reads plus one new_clause + one passive push per transfer.
+    // CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{transfer_learnts_enter_passive, transfer_budget_enforced, transfer_policy_filters, learning_disabled_by_default}.
+    // CEP:SECURITY: budgets bound the transfer work.
+    pub fn transfer_learnts(
+        &self,
+        space: &SearchSpace<'_>,
+        context: &InferenceContext<'_>,
+    ) -> Result<(), ControllerError> {
+        if self.learning_symbol_count == 0 {
+            return Ok(());
+        }
+        let registry = self.solver.registry();
+        let storage = self.solver.core().clauses();
+        let mut cursor = self.transfer_cursor.get();
+        let end = registry.entry_count();
+        while cursor < end {
+            if self.stats.learning_transfers.get() >= self.learning_max_transfers {
+                // Budget exhausted: stop WITHOUT advancing the cursor past the
+                // unprocessed entries (the next unconditional solve retries);
+                // the deferred batch is counted as one bounded skip (Law 4).
+                self.stats
+                    .learning_skipped
+                    .set(self.stats.learning_skipped.get() + 1);
+                break;
+            }
+            let entry = match registry.entry(cursor) {
+                Ok(value) => value,
+                Err(_) => {
+                    self.stats
+                        .learning_skipped
+                        .set(self.stats.learning_skipped.get() + 1);
+                    cursor += 1;
+                    continue;
+                }
+            };
+            if entry.tombstone.get() {
+                cursor += 1;
+                continue;
+            }
+            let offset = entry.offset.get();
+            let header = match storage.header(offset) {
+                Ok(value) => value,
+                Err(_) => {
+                    self.stats
+                        .learning_skipped
+                        .set(self.stats.learning_skipped.get() + 1);
+                    cursor += 1;
+                    continue;
+                }
+            };
+            let learnt = header.flags & kSatClauseFlagLearnt != 0;
+            let deleted = header.flags & kSatClauseFlagDeleted != 0;
+            let policy = header.lbd <= kLearningMaxTransferLbd
+                && header.length as u64 <= kLearningMaxTransferLiterals as u64;
+            if !learnt || deleted || !policy {
+                self.stats
+                    .learning_skipped
+                    .set(self.stats.learning_skipped.get() + 1);
+                cursor += 1;
+                continue;
+            }
+            let mut literals: [Literal; kMaxClauseLiterals as usize] =
+                [Literal::new(TermPtr::invalid(), true); kMaxClauseLiterals as usize];
+            let mut count: usize = 0;
+            let mut nameable = true;
+            for position in 0..header.length {
+                let sat_literal = match storage.literal(offset, position) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        nameable = false;
+                        break;
+                    }
+                };
+                let slot = sat_literal.variable().0;
+                if slot >= self.learning_symbol_count || count >= literals.len() {
+                    nameable = false;
+                    break;
+                }
+                let atom = context
+                    .terms
+                    .intern_pred(context.symbols, self.learning_symbol_base + slot, &[])
+                    .map_err(crate::inference::InferenceError::from)
+                    .map_err(wrap_inference)?;
+                literals[count] = Literal::new(atom, sat_literal.is_positive());
+                count += 1;
+            }
+            if !nameable || count == 0 {
+                self.stats
+                    .learning_skipped
+                    .set(self.stats.learning_skipped.get() + 1);
+                cursor += 1;
+                continue;
+            }
+            let derivation = DerivationStep {
+                rule: InferenceRule::SatLearn,
+                parent_count: 0,
+                reserved: 0,
+                parents: [kInvalidClauseId; 4],
+                substitution: kInvalidClauseOffset,
+            };
+            let age = space.next_input_age();
+            let ptr = space
+                .store
+                .new_clause(context.terms, &literals[..count], age, derivation)
+                .map_err(wrap_clause)?;
+            let record = space.store.clause(ptr).map_err(wrap_clause)?;
+            let weight = SelectionWeight::of(context.terms, context.symbols, &literals[..count]);
+            space
+                .passive
+                .push(record.id.0, ptr.as_u32(), age, weight)
+                .map_err(wrap_passive)?;
+            self.stats
+                .learning_transfers
+                .set(self.stats.learning_transfers.get() + 1);
+            cursor += 1;
+        }
+        self.transfer_cursor.set(cursor);
+        Ok(())
+    }
+
     // CEP:WHAT: Returns the number of unmaterialized (waiting) components.
     // CEP:WHY: The saturation decision (Spec 12 Theorem 3) and the rotation sweep need the waiting count.
     // CEP:STATUS: complete
@@ -974,6 +1303,9 @@ pub fn saturate_with_avatar<F: Fn(u64) -> bool>(
     // rotation handling (the only continue paths), so no round-start re-solve is needed.
     match controller.solver.solve() {
         SolveResult::Satisfiable => {
+            // Spec 18 section 4: transfer the abstraction's new learnts into
+            // FOL lemmas after every unconditional solve, before activation.
+            controller.transfer_learnts(space, context)?;
             controller.activate_under_model(space, context, options)?;
         }
         SolveResult::Unsatisfiable => {
@@ -1013,6 +1345,16 @@ pub fn saturate_with_avatar<F: Fn(u64) -> bool>(
                 // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
                 // CEP:SECURITY: none.
                 controller.add_conflict_from_buffer(used)?;
+                // Spec 18 section 4: stage the FOL copy of the ban clause,
+                // anchored at this round's refuting clause (all-or-nothing;
+                // skips counted inside).
+                let refutation_id = space
+                    .store
+                    .clause(crate::ir::clause::ClausePtr::from_u32(refutation))
+                    .map_err(wrap_clause)?
+                    .id
+                    .0;
+                controller.add_conflict_lemma_from_buffer(space, context, used, refutation_id)?;
                 match controller.solver.solve() {
                     SolveResult::Unsatisfiable => {
                         return Ok(AvatarOutcome::Theorem {
@@ -1022,6 +1364,10 @@ pub fn saturate_with_avatar<F: Fn(u64) -> bool>(
                     }
                     SolveResult::Satisfiable => {
                         last_refutation = Some(refutation);
+                        // Spec 18 section 4: transfer after the unconditional
+                        // solve; the conflict lemma was staged below when the
+                        // ban was added.
+                        controller.transfer_learnts(space, context)?;
                         controller.activate_under_model(space, context, options)?;
                         continue;
                     }

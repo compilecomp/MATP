@@ -557,15 +557,15 @@ fn checker_rejects_broken_avatar_split() {
 }
 
 #[test]
-// CEP:WHAT: A demodulation-shaped step (same literal count and polarity multiset as the parent) passes the Phase 4 structural variant check.
-// CEP:WHY: The documented weakening (Spec 14 section 6, ticket CEP-1036): the demodulating rule's identity is not recorded, so the checker verifies the variant property.
+// CEP:WHAT: A Demodulation derivation whose rule parent is unrecorded (the pre-Phase-5 single-record park shape) is REJECTED by the certified kernel (Spec 19).
+// CEP:WHY: The Phase 4 structural variant check was the documented weakness (Spec 14 section 6, ticket CEP-1036); the CEP-1036 chain records the demodulating rule clause id per step, so the kernel replays demodulation EXACTLY per step and a derivation without the rule identity cannot be verified - the former acceptance test inverts into a rejection test.
 // CEP:STATUS: complete
-// CEP:FAILURE: panics if an honest demodulation variant is rejected.
+// CEP:FAILURE: panics if the unrecorded derivation is accepted.
 // CEP:ASSUMES: hand-built records.
 // CEP:COST: one check.
-// CEP:EVIDENCE: backs unit/cold/tstp_test.rs::checker_accepts_demodulation_variant.
-// CEP:SECURITY: none.
-fn checker_accepts_demodulation_variant() {
+// CEP:EVIDENCE: backs unit/cold/tstp_test.rs::checker_rejects_unrecorded_demodulation; cited by cold/kernel/kernel.rs's Demodulation arm (UnrecordedRule) and cold/search/given_clause.rs's documented park fallback.
+// CEP:SECURITY: proof validation.
+fn checker_rejects_unrecorded_demodulation() {
     let fixture = make_proof_fixture(4096);
     let context = context_of(&fixture);
     let a = constant(&fixture, "a");
@@ -642,8 +642,10 @@ fn checker_accepts_demodulation_variant() {
         )
         .expect("empty");
     let refutation = empty.as_u32();
-    check_proof(&context, &fixture.space.store, refutation)
-        .expect("the structural variant passes the Phase 4 demodulation check");
+    assert_eq!(
+        check_proof(&context, &fixture.space.store, refutation),
+        Err(TstpError::InvalidStep(variant_id))
+    );
 }
 
 #[test]

@@ -762,6 +762,19 @@ fn step_factoring(
         Err(crate::inference::InferenceError::VariableBudgetExceeded) => {
             cursor.dropped += 1;
         }
+        // CEP-1050: materialization bound errors are dropped, not fatal. The rules
+        // restore the pre-unification trail on every Err, so the search resumes
+        // with a clean substitution and the candidate is counted (Law 4).
+        Err(crate::inference::InferenceError::Structural(
+            crate::unification::substitution::SubstitutionError::DepthExceeded,
+        )) => {
+            cursor.dropped += 1;
+        }
+        Err(crate::inference::InferenceError::Structural(
+            crate::unification::substitution::SubstitutionError::WeightExceeded,
+        )) => {
+            cursor.dropped += 1;
+        }
         Err(error) => return Err(SearchError::Inference(error)),
     }
     Ok(true)
@@ -814,6 +827,18 @@ fn step_equality_rules(
             Err(crate::inference::InferenceError::VariableBudgetExceeded) => {
                 cursor.dropped += 1;
             }
+            // CEP-1050: materialization bound errors are dropped, not fatal (the
+            // rules restore the pre-unification trail on every Err).
+            Err(crate::inference::InferenceError::Structural(
+                crate::unification::substitution::SubstitutionError::DepthExceeded,
+            )) => {
+                cursor.dropped += 1;
+            }
+            Err(crate::inference::InferenceError::Structural(
+                crate::unification::substitution::SubstitutionError::WeightExceeded,
+            )) => {
+                cursor.dropped += 1;
+            }
             Err(error) => return Err(SearchError::Inference(error)),
         }
         return Ok(true);
@@ -847,6 +872,18 @@ fn step_equality_rules(
             cursor.dropped += 1;
         }
         Err(crate::inference::InferenceError::VariableBudgetExceeded) => {
+            cursor.dropped += 1;
+        }
+        // CEP-1050: materialization bound errors are dropped, not fatal (the
+        // rules restore the pre-unification trail on every Err).
+        Err(crate::inference::InferenceError::Structural(
+            crate::unification::substitution::SubstitutionError::DepthExceeded,
+        )) => {
+            cursor.dropped += 1;
+        }
+        Err(crate::inference::InferenceError::Structural(
+            crate::unification::substitution::SubstitutionError::WeightExceeded,
+        )) => {
             cursor.dropped += 1;
         }
         Err(error) => return Err(SearchError::Inference(error)),
@@ -1006,6 +1043,18 @@ fn step_resolution(
                         cursor.dropped += 1;
                     }
                     Err(crate::inference::InferenceError::VariableBudgetExceeded) => {
+                        cursor.dropped += 1;
+                    }
+                    // CEP-1050: materialization bound errors are dropped, not fatal
+                    // (the rules restore the pre-unification trail on every Err).
+                    Err(crate::inference::InferenceError::Structural(
+                        crate::unification::substitution::SubstitutionError::DepthExceeded,
+                    )) => {
+                        cursor.dropped += 1;
+                    }
+                    Err(crate::inference::InferenceError::Structural(
+                        crate::unification::substitution::SubstitutionError::WeightExceeded,
+                    )) => {
                         cursor.dropped += 1;
                     }
                     Err(error) => return Err(SearchError::Inference(error)),
@@ -1204,6 +1253,19 @@ fn step_superposition_into(
                         Err(crate::inference::InferenceError::VariableBudgetExceeded) => {
                             cursor.dropped += 1;
                         }
+                        // CEP-1050: materialization bound errors are dropped, not
+                        // fatal (the rules restore the pre-unification trail on
+                        // every Err).
+                        Err(crate::inference::InferenceError::Structural(
+                            crate::unification::substitution::SubstitutionError::DepthExceeded,
+                        )) => {
+                            cursor.dropped += 1;
+                        }
+                        Err(crate::inference::InferenceError::Structural(
+                            crate::unification::substitution::SubstitutionError::WeightExceeded,
+                        )) => {
+                            cursor.dropped += 1;
+                        }
                         Err(error) => return Err(SearchError::Inference(error)),
                     }
                     cursor.partner_literal += 1;
@@ -1392,6 +1454,19 @@ fn step_superposition_from(
                             cursor.dropped += 1;
                         }
                         Err(crate::inference::InferenceError::VariableBudgetExceeded) => {
+                            cursor.dropped += 1;
+                        }
+                        // CEP-1050: materialization bound errors are dropped, not
+                        // fatal (the rules restore the pre-unification trail on
+                        // every Err).
+                        Err(crate::inference::InferenceError::Structural(
+                            crate::unification::substitution::SubstitutionError::DepthExceeded,
+                        )) => {
+                            cursor.dropped += 1;
+                        }
+                        Err(crate::inference::InferenceError::Structural(
+                            crate::unification::substitution::SubstitutionError::WeightExceeded,
+                        )) => {
                             cursor.dropped += 1;
                         }
                         Err(error) => return Err(SearchError::Inference(error)),

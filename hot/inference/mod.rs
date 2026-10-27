@@ -20,8 +20,8 @@ pub mod subsumption;
 pub mod superposition;
 
 pub use builder::{
-    apply_literal, count_clause_variables, remap_variables, rename_apart, rename_clause_apart,
-    restandardize_clause,
+    apply_literal, apply_literal_unwind, apply_unwind, count_clause_variables, remap_variables,
+    rename_apart, rename_clause_apart, restandardize_clause, restore_trail,
 };
 pub use selection::{
     compute_selection_flags, eligible_negative, eligible_positive, SelectionFunction,

@@ -778,13 +778,13 @@ fn typed_harvest_enumerates_constructor_instances() {
     assert!(stats.lemmas >= 1, "typed harvest should prove instances");
 }
 
-// CEP:WHAT: The checker's ConjectureLemma reductio arm accepts a well-formed lemma step and rejects a detached one.
-// CEP:WHY: Spec 17 section 4: the arm checks the complement shape (the negation premise's literal is the lemma literal flipped), the empty second parent, and the ancestry containment; a hand-built minimal proof exercises the arm deterministically (the filter's end-to-end path asserts the record shape separately).
+// CEP:WHAT: The certified kernel's ConjectureLemma reductio arm accepts a well-formed lemma step and rejects a detached one (Spec 19).
+// CEP:WHY: Spec 17 section 4: the arm checks the complement shape (the negation premise's literal is the lemma literal flipped), the empty second parent, and the ancestry containment; a hand-built minimal proof exercises the arm deterministically (the filter's end-to-end path asserts the record shape separately); the final conclusion is a replayable Resolution step (the lemma against the negation premise) because the pre-Phase-5 parentless Demodulation label is an UnrecordedRule rejection since the CEP-1036 chain and the kernel landed.
 // CEP:STATUS: complete
 // CEP:FAILURE: test fails if a well-formed lemma is rejected or a tampered one is accepted.
-// CEP:ASSUMES: the hand-built store: input axiom p(a), negation premise ~p(a) (ConjectureNegation), empty clause (Resolution over both), lemma p(a) (ConjectureLemma), and a final conclusion citing the lemma.
+// CEP:ASSUMES: the hand-built store: input axiom p(a), negation premise ~p(a) (ConjectureNegation), empty clause (Resolution over both), lemma p(a) (ConjectureLemma), and a final empty clause resolved between the lemma and the negation.
 // CEP:COST: constant.
-// CEP:EVIDENCE: cited by cold/proof_output/tstp.rs::{check_step (ConjectureLemma arm), ancestor_of}.
+// CEP:EVIDENCE: cited by cold/kernel/kernel.rs's ConjectureLemma arm and ancestor_of.
 // CEP:SECURITY: proof validation.
 #[test]
 fn checker_accepts_conjecture_lemma() {
@@ -880,24 +880,23 @@ fn checker_accepts_conjecture_lemma() {
         .expect("rec")
         .id
         .0;
-    // A final conclusion citing the lemma so the walk reaches it.
+    // A final conclusion citing the lemma so the walk reaches it: the empty
+    // clause resolved between the lemma (p(a)) and the negation premise (~p(a));
+    // the kernel replays the production resolve() for the step (the pre-Phase-5
+    // parentless Demodulation label is an UnrecordedRule rejection under the
+    // CEP-1036 chain discipline, so the fixture uses a replayable rule).
     let final_clause = fixture
         .space
         .add_proof_clause(
             &context,
             &fixture.options,
-            &[Literal::new(p_a, true)],
+            &[],
             4,
             DerivationStep {
-                rule: InferenceRule::Demodulation,
-                parent_count: 1,
+                rule: InferenceRule::Resolution,
+                parent_count: 2,
                 reserved: 0,
-                parents: [
-                    lemma_id,
-                    kInvalidClauseId,
-                    kInvalidClauseId,
-                    kInvalidClauseId,
-                ],
+                parents: [lemma_id, negation_id, kInvalidClauseId, kInvalidClauseId],
                 substitution: kInvalidSubstitutionOffset,
             },
         )

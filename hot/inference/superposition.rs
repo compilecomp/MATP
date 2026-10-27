@@ -18,7 +18,7 @@ use crate::ir::term::{TermPtr, TermStore, TermTag};
 use crate::unification::unify;
 use mapt_config::limits::kMaxSymbolArity;
 
-use super::builder::apply_literal;
+use super::builder::{apply_literal_unwind, apply_unwind, restore_trail};
 use super::factoring::equality_sides;
 use super::{InferenceContext, InferenceError};
 
@@ -252,14 +252,22 @@ pub fn superpose(
     if !unified {
         return Ok(SuperpositionOutcome::None);
     }
-    // Orientation (design 10.2): s sigma strictly greater than t sigma.
-    let applied_left = context
-        .substitution
-        .apply(context.terms, equation_left, context.symbols)?;
-    let applied_right =
-        context
-            .substitution
-            .apply(context.terms, equation_right, context.symbols)?;
+    // Orientation (design 10.2): s sigma strictly greater than t sigma. The
+    // applications unwind the trail on failure (CEP-1050).
+    let applied_left = apply_unwind(
+        context.terms,
+        context.symbols,
+        context.substitution,
+        equation_left,
+        entry_depth,
+    )?;
+    let applied_right = apply_unwind(
+        context.terms,
+        context.symbols,
+        context.substitution,
+        equation_right,
+        entry_depth,
+    )?;
     let oriented = match context.compare(applied_left, applied_right) {
         Ok(crate::ordering::OrderingComparison::Greater) => true,
         Ok(_) => false,
@@ -274,17 +282,26 @@ pub fn superpose(
     }
     // The target under sigma must still be a non-variable (sigma could instantiate
     // around it; the standard restriction is on w sigma, Spec 07 section 6).
-    let applied_target = context
-        .substitution
-        .apply(context.terms, target, context.symbols)?;
+    let applied_target = apply_unwind(
+        context.terms,
+        context.symbols,
+        context.substitution,
+        target,
+        entry_depth,
+    )?;
     if let Ok(view) = context.terms.term(applied_target) {
         if view.tag() == TermTag::Variable {
             context.substitution.undo_to(entry_depth);
             return Ok(SuperpositionOutcome::None);
         }
     }
-    // Conclusion: applied remainders plus the rewritten into literal.
-    let rewritten_atom = replace_at(context, into_literal.atom(), path, applied_right, 0)?;
+    // Conclusion: applied remainders plus the rewritten into literal. The rebuild
+    // and the materialization unwind the trail on failure (CEP-1050).
+    let rewritten_atom = restore_trail(
+        context.substitution,
+        entry_depth,
+        replace_at(context, into_literal.atom(), path, applied_right, 0),
+    )?;
     let rewritten = Literal::new(rewritten_atom, into_literal.is_positive());
     let mut count: usize = 0;
     let mut overflow = false;
@@ -296,11 +313,12 @@ pub fn superpose(
             overflow = true;
             break;
         }
-        out[count] = apply_literal(
+        out[count] = apply_literal_unwind(
             context.terms,
             context.symbols,
             context.substitution,
             *literal,
+            entry_depth,
         )?;
         count += 1;
     }
@@ -313,11 +331,12 @@ pub fn superpose(
                 overflow = true;
                 break;
             }
-            out[count] = apply_literal(
+            out[count] = apply_literal_unwind(
                 context.terms,
                 context.symbols,
                 context.substitution,
                 *literal,
+                entry_depth,
             )?;
             count += 1;
         }
@@ -326,11 +345,12 @@ pub fn superpose(
         if count >= out.len() {
             overflow = true;
         } else {
-            out[count] = apply_literal(
+            out[count] = apply_literal_unwind(
                 context.terms,
                 context.symbols,
                 context.substitution,
                 rewritten,
+                entry_depth,
             )?;
             count += 1;
         }
@@ -382,7 +402,13 @@ pub fn equality_resolve(
             overflow = true;
             break;
         }
-        out[count] = apply_literal(context.terms, context.symbols, context.substitution, *other)?;
+        out[count] = apply_literal_unwind(
+            context.terms,
+            context.symbols,
+            context.substitution,
+            *other,
+            entry_depth,
+        )?;
         count += 1;
     }
     context.substitution.undo_to(entry_depth);

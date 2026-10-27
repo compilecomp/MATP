@@ -17,6 +17,7 @@ use crate::ir::literal::Literal;
 use crate::ir::term::{TermPtr, TermTag};
 use crate::unification::match_terms;
 
+use super::builder::{apply_unwind, restore_trail};
 use super::factoring::equality_sides;
 use super::superposition::{replace_at, subterm_at};
 use super::{InferenceContext, InferenceError};
@@ -92,13 +93,22 @@ pub fn demodulate(
     }
     // Orientation under the matcher: the applied left side strictly greater than the
     // applied right side (design 10.2 "Orientation: s > t"; applied because the
-    // matcher may instantiate the rule's variables).
-    let applied_left = context
-        .substitution
-        .apply(context.terms, rule_left, context.symbols)?;
-    let applied_right = context
-        .substitution
-        .apply(context.terms, rule_right, context.symbols)?;
+    // matcher may instantiate the rule's variables). Both applications unwind the
+    // trail on failure (CEP-1050).
+    let applied_left = apply_unwind(
+        context.terms,
+        context.symbols,
+        context.substitution,
+        rule_left,
+        entry_depth,
+    )?;
+    let applied_right = apply_unwind(
+        context.terms,
+        context.symbols,
+        context.substitution,
+        rule_right,
+        entry_depth,
+    )?;
     let oriented = match context.compare(applied_left, applied_right) {
         Ok(crate::ordering::OrderingComparison::Greater) => true,
         Ok(_) => false,
@@ -109,7 +119,12 @@ pub fn demodulate(
         return Ok(DemodulationOutcome::None);
     }
     // Termination condition: the rewritten atom strictly smaller than the original.
-    let rewritten_atom = replace_at(context, literal.atom(), path, applied_right, 0)?;
+    // The rebuild unwinds the trail on failure (CEP-1050).
+    let rewritten_atom = restore_trail(
+        context.substitution,
+        entry_depth,
+        replace_at(context, literal.atom(), path, applied_right, 0),
+    )?;
     let decreased = match context.compare(literal.atom(), rewritten_atom) {
         Ok(crate::ordering::OrderingComparison::Greater) => true,
         Ok(_) => false,

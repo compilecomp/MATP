@@ -281,6 +281,10 @@ name = "avatar_controller_test"
 path = "tests/unit/hot/avatar_controller_test.rs"
 
 [[test]]
+name = "avatar_learning_test"
+path = "tests/unit/hot/avatar_learning_test.rs"
+
+[[test]]
 name = "induction_test"
 path = "tests/unit/hot/induction_test.rs"
 
@@ -319,6 +323,10 @@ path = "tests/unit/hot/clause_codec_test.rs"
 [[test]]
 name = "tstp_test"
 path = "tests/unit/cold/tstp_test.rs"
+
+[[test]]
+name = "kernel_test"
+path = "tests/unit/cold/kernel_test.rs"
 
 [[test]]
 name = "portfolio_test"

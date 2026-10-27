@@ -1157,3 +1157,77 @@ fn resolution_candidates_retrieved() {
     assert_eq!(literal_index, 0);
     assert!(!unit);
 }
+
+// CEP:WHAT: Verifies that a failing post-unify materialization unwinds the substitution trail (CEP-1050).
+// CEP:WHY: The generator's bound-error drop policy (CEP-1050) resumes the scan after dropping a candidate; a polluted trail (MGU bindings left behind by a failed application) would make every later attempt hit already-bound variables, so the rules restore the pre-unification depth on every Err. The regression drives the term-level and literal-level helpers into DepthExceeded with a binding whose rebuilt term overflows kMaxTermDepth (a direct bind accepts any interned term, including one no production unify could produce as a partner) and requires the trail back at the entry depth, the variable rebindable, and a subsequent resolution attempt unaffected.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when any helper leaks trail entries or maps the error wrongly.
+// CEP:ASSUMES: kMaxTermDepth = 128; f^127(a) is the deepest legal term (depth 128).
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/inference/builder.rs::{restore_trail, apply_unwind, apply_literal_unwind} and the generator's CEP-1050 drop arms.
+// CEP:SECURITY: none.
+#[test]
+fn materialization_failure_unwinds_trail() {
+    let (_arena, symbols, builder, terms, precedence, substitution) = make_inference_fixture();
+    let context = kbo_context(&terms, &symbols, &precedence, &substitution);
+    let a = constant(&terms, &symbols, &builder, "a");
+    let f_id = symbol_id(&builder, "f");
+    // The deepest legal chain: f^127(a), depth 128 = kMaxTermDepth.
+    let mut chain = a;
+    for _ in 0..127 {
+        chain = terms
+            .intern_fun(&symbols, f_id, &[chain])
+            .expect("chain node");
+    }
+    // The query atom f^64(x0): applying the binding x0 |-> chain rebuilds a term
+    // of depth 128 + 64 = 192 > kMaxTermDepth, so the application must fail.
+    let x0 = terms.intern_var(0).expect("x0");
+    let mut deep_atom = x0;
+    for _ in 0..64 {
+        deep_atom = terms
+            .intern_fun(&symbols, f_id, &[deep_atom])
+            .expect("atom node");
+    }
+    let entry = substitution.trail_depth();
+    substitution.bind(0, chain).expect("bind");
+    assert_eq!(substitution.trail_depth(), entry + 1);
+    let applied =
+        mapt::hot::inference::apply_unwind(&terms, &symbols, &substitution, deep_atom, entry);
+    assert!(matches!(
+        applied,
+        Err(InferenceError::Structural(
+            mapt::hot::unification::substitution::SubstitutionError::DepthExceeded
+        ))
+    ));
+    // The failed application restored the trail: no leaked bindings, and the
+    // variable is immediately rebindable (the drop-and-resume contract).
+    assert_eq!(substitution.trail_depth(), entry);
+    substitution.bind(0, a).expect("rebind after unwind");
+    substitution.undo_to(entry);
+    assert_eq!(substitution.trail_depth(), entry);
+    // The literal-level helper behaves identically.
+    substitution.bind(0, chain).expect("bind");
+    let literal = Literal::new(deep_atom, true);
+    let applied_literal =
+        mapt::hot::inference::apply_literal_unwind(&terms, &symbols, &substitution, literal, entry);
+    assert!(matches!(
+        applied_literal,
+        Err(InferenceError::Structural(
+            mapt::hot::unification::substitution::SubstitutionError::DepthExceeded
+        ))
+    ));
+    assert_eq!(substitution.trail_depth(), entry);
+    // A subsequent rule attempt on the same substitution starts clean: this
+    // resolution succeeds and concludes, unaffected by the failed attempts.
+    let mut left = [pred(&terms, &symbols, &builder, "p", &[a], true)];
+    let mut right = [pred(&terms, &symbols, &builder, "p", &[a], false)];
+    flags(&context, &mut left);
+    flags(&context, &mut right);
+    let mut out: [Literal; 8] = [Literal::new(TermPtr::invalid(), true); 8];
+    let outcome = resolve(&context, &left, 0, &right, 0, &mut out).expect("resolve after unwind");
+    assert!(matches!(
+        outcome,
+        mapt::hot::inference::resolution::ResolutionOutcome::Concluded(0)
+    ));
+    assert_eq!(substitution.trail_depth(), entry);
+}
