@@ -1140,3 +1140,178 @@ fn demodulation_chain_records_rule_ids() {
     assert!(literal.is_positive());
     assert_eq!(literal.atom(), p_a);
 }
+
+// CEP:WHAT: Headroom bytes above the term hash table for the arena-exhaustion fixture.
+// CEP:WHY: The exhaustion test sizes the shared arena so the term table (kTermHashTableCapacity x 4 bytes) fits with a bounded record region for the space structures, the substitution, and a few hundred term and clause records; named instead of a magic number (CEP&CC 11.3), mirroring unit/hot/clause_test.rs kArenaFullHeadroomBytes.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: the region is large enough for the fixture construction (symbol freeze, precedence, substitution, space structures) but small enough that the recursion family exhausts it within a bounded number of inferences.
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: used by arena_exhaustion_gives_up_memory_budget.
+// CEP:SECURITY: the memory bound under test.
+const kExhaustionHeadroomBytes: u32 = 262_144;
+
+// CEP:WHAT: Verifies arena exhaustion during rule materialization ends the search as GaveUp(MemoryBudget), never as Err.
+// CEP:WHY: CEP-1056 and design 20.2: the GaveUpReason::MemoryBudget documentation names "arena exhausted" as a loop terminal; before the fix, exhaustion inside the rules surfaced as Err - mislabeled InvalidPointer before the honest-kind fix (the Peano recursion self-superposition crash), honestly-labeled ArenaFull but still fatal after it - so long saturations crashed instead of stopping (tests/bug_first_negative_selection.rs is the long-running end-to-end regression; this is the fast pinned variant on a tiny arena).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any Err from saturate or on any outcome other than GaveUp(MemoryBudget).
+// CEP:ASSUMES: the recursion equation alone drives self-superposition growth until the bounded record region exhausts (the same crasher clause as the CEP-1056 report).
+// CEP:COST: bounded by the headroom region (a few hundred inferences).
+// CEP:EVIDENCE: cited by hot/search/given_clause.rs::{saturate, is_memory_bound} and hot/inference/mod.rs (From<TermError>).
+// CEP:SECURITY: the memory bound under test (CEP&CC 22.10).
+#[test]
+fn arena_exhaustion_gives_up_memory_budget() {
+    use common::{make_arena, standard_symbols};
+    use mapt::hot::ir::term::TermStore;
+    use mapt::hot::ordering::precedence::PrecedenceTable;
+    use mapt::hot::unification::substitution::Substitution as _Substitution;
+    let arena =
+        make_arena(mapt_config::limits::kTermHashTableCapacity * 4 + kExhaustionHeadroomBytes);
+    let builder = standard_symbols();
+    let symbols = builder.finalize(arena).expect("freeze failed");
+    let terms = TermStore::new(arena).expect("term store failed");
+    let precedence =
+        PrecedenceTable::from_id_order(arena, builder.symbol_count()).expect("precedence failed");
+    let _ = _Substitution::new(arena);
+    let options = SearchOptions::new();
+    let space =
+        SearchSpace::new_with(arena, &options, 256, 64, 1024, 1024, 4096, 256).expect("space");
+    let context = context_of(&space, &symbols, &terms, &precedence);
+    // The Peano recursion equation h(f(X), Y) = f(h(X, Y)): the CEP-1056 crasher.
+    let x = terms.intern_var(0).expect("x");
+    let y = terms.intern_var(1).expect("y");
+    let f_x = terms
+        .intern_fun(&symbols, symbol_id(&builder, "f"), &[x])
+        .expect("f(x)");
+    let h_x_y = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[x, y])
+        .expect("h(x, y)");
+    let h_f_x_y = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[f_x, y])
+        .expect("h(f(x), y)");
+    let f_h_x_y = terms
+        .intern_fun(&symbols, symbol_id(&builder, "f"), &[h_x_y])
+        .expect("f(h(x, y))");
+    let recursion = terms
+        .intern_eq(&symbols, h_f_x_y, f_h_x_y)
+        .expect("recursion");
+    space
+        .add_input_clause(&context, &options, &[Literal::new(recursion, true)])
+        .expect("recursion input");
+    let mut stats = SearchStats::default();
+    let outcome = saturate(&space, &context, &options, &never_stop, &mut stats);
+    let outcome = outcome.expect("CEP-1056: exhaustion must not crash the search");
+    assert!(
+        matches!(outcome, SearchOutcome::GaveUp(GaveUpReason::MemoryBudget)),
+        "expected GaveUp(MemoryBudget), got {:?} (stats {:?})",
+        outcome,
+        stats
+    );
+    assert!(
+        stats.inferences > 0,
+        "the search must do inference work before the bound (stats {:?})",
+        stats
+    );
+}
+
+// CEP:WHAT: Verifies the superposition-from scan's buffer-full deferral never re-emits a stored conclusion.
+// CEP:WHY: CEP-1056 secondary defect: the pre-fix from-scan deferred with the position cursor AT the just-appended position (the resumed-scan contract, Spec 08 section 6, requires advance-after-completion like every other phase), so the resumed call re-derived and re-appended the boundary conclusion - a duplicate emission and a double budget count; the fixture gives the given equation f(X) = a seventy superposable positions in one active literal (not p(f^70(a))), more than kInferenceBufferClauses, forcing a deferral exactly at the buffer boundary.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when any conclusion atom appears twice or when the emission count is not exactly the position count.
+// CEP:ASSUMES: age-order pop returns the negative clause first (added first) and the equation second; every f-position rewrite yields a distinct single-literal conclusion not p(f^k(a)) for k in 0..=69.
+// CEP:COST: one generation to completion (bounded by the 70 positions).
+// CEP:EVIDENCE: cited by hot/search/generate.rs::step_superposition_from.
+// CEP:SECURITY: none.
+#[test]
+fn from_scan_deferral_emits_each_conclusion_once() {
+    let (space, symbols, builder, terms, precedence) = make_space(512);
+    let context = context_of(&space, &symbols, &terms, &precedence);
+    let options = SearchOptions::new();
+    // The active clause: not p(f^70(a)) - seventy f-headed subterm positions.
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let f_id = symbol_id(&builder, "f");
+    let mut deep = a;
+    for _ in 0..70 {
+        deep = terms.intern_fun(&symbols, f_id, &[deep]).expect("wrap f");
+    }
+    space
+        .add_input_clause(
+            &context,
+            &options,
+            &[pred(&terms, &symbols, &builder, "p", &[deep], false)],
+        )
+        .expect("active negative");
+    // The given equation: f(X) = a (orients f(X) > a under KBO).
+    let x = terms.intern_var(0).expect("x");
+    let f_x = terms.intern_fun(&symbols, f_id, &[x]).expect("f(x)");
+    let equation = terms.intern_eq(&symbols, f_x, a).expect("equation");
+    space
+        .add_input_clause(&context, &options, &[Literal::new(equation, true)])
+        .expect("given equation");
+    // Activate the negative clause, then drive the equation's generation.
+    let entry = space.passive.pop().expect("pop active");
+    let clause = space
+        .store
+        .clause(mapt::hot::ir::clause::ClausePtr::from_u32(entry.offset))
+        .expect("clause");
+    let mut staged: [Literal; 512] = [Literal::new(TermPtr::invalid(), true); 512];
+    for index in 0..clause.literal_count {
+        staged[index as usize] = space.store.literal(clause, index).expect("lit");
+    }
+    space
+        .active
+        .insert(
+            &terms,
+            entry.offset,
+            &staged[..clause.literal_count as usize],
+        )
+        .expect("insert");
+    let given_entry = space.passive.pop().expect("pop given");
+    let given_clause = space
+        .store
+        .clause(mapt::hot::ir::clause::ClausePtr::from_u32(
+            given_entry.offset,
+        ))
+        .expect("given clause");
+    let mut given_staged: [Literal; 512] = [Literal::new(TermPtr::invalid(), true); 512];
+    for index in 0..given_clause.literal_count {
+        given_staged[index as usize] = space.store.literal(given_clause, index).expect("lit");
+    }
+    let mut cursor = mapt::hot::search::GenerationCursor::new();
+    let mut buffer = mapt::hot::search::InferenceBuffer::new();
+    let mut atoms: Vec<u32> = Vec::new();
+    for _ in 0..16 {
+        let status = mapt::hot::search::generate::generate_step(
+            &context,
+            &space.store,
+            &space.active,
+            &given_staged[..given_clause.literal_count as usize],
+            given_entry.clause_id,
+            &mut cursor,
+            &mut buffer,
+        )
+        .expect("generate");
+        for slot in 0..buffer.count {
+            atoms.push(buffer.clauses[slot].literals[0].atom().as_u32());
+        }
+        if let mapt::hot::search::GenerationStatus::Complete = status {
+            break;
+        }
+    }
+    assert_eq!(
+        atoms.len(),
+        70,
+        "exactly one conclusion per f-position must be emitted (got {:?})",
+        atoms
+    );
+    let mut sorted = atoms.clone();
+    sorted.sort_unstable();
+    sorted.dedup();
+    assert_eq!(
+        sorted.len(),
+        atoms.len(),
+        "no conclusion may be emitted twice (the pre-fix deferral re-emitted the boundary conclusion)"
+    );
+}

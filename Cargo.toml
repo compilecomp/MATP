@@ -352,6 +352,10 @@ path = "tests/security/phase4_bounds_test.rs"
 name = "avatar_fuzz_test"
 path = "tests/fuzz/avatar_fuzz_test.rs"
 
+[[test]]
+name = "bug_first_negative_selection"
+path = "tests/bug_first_negative_selection.rs"
+
 [[bench]]
 name = "avatar_bench"
 path = "benches/hot/avatar_bench.rs"

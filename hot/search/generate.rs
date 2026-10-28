@@ -4,10 +4,10 @@
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
-// CEP:FAILURE: Returns SearchError on structural failures; Ok(GenerationStatus::MoreRemaining) defers (buffer full, budget not yet exhausted); Ok(GenerationStatus::Complete) ends the given clause; dropped candidates and over-long conclusions are counted, never silent (CEP&CC Law 6). Since CEP-1050 the rules restore the pre-unification trail on EVERY Err (including the structural ones), so the generator's drop-and-resume policy (ConclusionTooLong, VariableBudgetExceeded, and the materialization bounds DepthExceeded/WeightExceeded) keeps the search consistent after a dropped candidate; the remaining structural errors still abort the search loudly.
-// CEP:ASSUMES: The given clause's literals are the stored ones (flags computed); the active set's trees and slots are consistent; the substitution trail is at the search's baseline depth between calls - the ABORT DISCIPLINE: a rule's Err (for example ArenaFull during conclusion materialization after a successful unification) propagates out of generate_step and ends the whole search, so the partially-bound trail a rule may leak on an Err path is never read again; rules unwind only on their Ok(None) paths.
+// CEP:FAILURE: Returns SearchError on structural failures; Ok(GenerationStatus::MoreRemaining) defers (buffer full, budget not yet exhausted); Ok(GenerationStatus::Complete) ends the given clause; dropped candidates and over-long conclusions are counted, never silent (CEP&CC Law 6). Since CEP-1050 the rules restore the pre-unification trail on EVERY Err (including the structural ones), so the generator's drop-and-resume policy (ConclusionTooLong, VariableBudgetExceeded, and the materialization bounds DepthExceeded/WeightExceeded) keeps the search consistent after a dropped candidate; the remaining structural errors still abort the search loudly, with one carve-out since CEP-1056: ArenaFull (the term arena or hash table exhausted mid-materialization, honestly kinded by the From<TermError> translation) propagates for the loop's saturate wrapper to convert into GaveUp(MemoryBudget) per design 20.2, and the from-scan's buffer-full deferral advances the position cursor after a stored conclusion (the advance-after-completion contract, Spec 08 section 6) so a resumed call never re-emits it.
+// CEP:ASSUMES: The given clause's literals are the stored ones (flags computed); the active set's trees and slots are consistent; the substitution trail is at the search's baseline depth between calls - the ABORT DISCIPLINE: a rule's Err (for example ArenaFull during conclusion materialization after a successful unification) propagates out of generate_step and ends the run (as Err, or as the loop wrapper's GaveUp(MemoryBudget) for the capacity family since CEP-1056), so the partially-bound trail a rule may leak on an Err path is never read again; rules unwind only on their Ok(None) paths.
 // CEP:COST: per call: O(active) scan steps with one constant head-symbol prefilter per pair, bounded by the per-clause budget overall (the residual unindexed scans are the Phase 3 state, tickets CEP-1027 for indexed retrieval); measured in bench CEP-BENCH-0010, artifact benches/artifacts/atp_resolution_step.json.
-// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{inference_deferral_resumes, per_clause_bound_enforced, retrieval_overflow_counts_drops, generation_is_deterministic}; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force}.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{inference_deferral_resumes, per_clause_bound_enforced, retrieval_overflow_counts_drops, generation_is_deterministic, from_scan_deferral_emits_each_conclusion_once}; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force}.
 // CEP:SECURITY: every loop is bounded by a named constant (CEP&CC 22.10).
 // CEP:UNSAFE: none; this file is safe Rust.
 // CEP:HPC-DETERMINISM: deterministic; phases, literals, candidates, slots, and paths advance in index order, and rule outcomes are pure functions of the premises.
@@ -1444,8 +1444,11 @@ fn step_superposition_from(
                                 [given_id, partner_clause.id.0],
                                 cursor,
                             ) {
-                                // Advance-after-completion: the path cursor stays AT
-                                // this position for the resumed call.
+                                // Buffer full with NOTHING stored: the path cursor
+                                // stays AT this position so the resumed call
+                                // re-attempts exactly this candidate (the
+                                // nothing-stored retry half of the contract; the
+                                // stored half advances below before deferring).
                                 return Ok(true);
                             }
                         }
@@ -1471,12 +1474,19 @@ fn step_superposition_from(
                         }
                         Err(error) => return Err(SearchError::Inference(error)),
                     }
-                    if buffer.count >= buffer.clauses.len() {
-                        return Ok(true);
-                    }
+                    // Advance-after-completion (the step_factoring / step_resolution
+                    // / into-scan contract, Spec 08 section 6): the position cursor
+                    // advances BEFORE the buffer-full deferral so the resumed call
+                    // never re-emits the just-stored conclusion; the pre-fix order
+                    // deferred with the cursor at the appended position, so every
+                    // resumed call re-derived and re-appended it (duplicate
+                    // emission and a double budget count, CEP-1056).
                     if !advance_path(context.terms, atom, &mut cursor.path, &mut cursor.path_len) {
                         cursor.path_len = 0;
                         break;
+                    }
+                    if buffer.count >= buffer.clauses.len() {
+                        return Ok(true);
                     }
                 }
                 cursor.partner_literal += 1;

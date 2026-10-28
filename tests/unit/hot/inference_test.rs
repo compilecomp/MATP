@@ -1,5 +1,5 @@
 // CEP:FILE: tests/unit/hot/inference_test.rs
-// CEP:WHAT: Unit tests for the inference rules: renaming and namespace discipline, resolution (ground, MGU application, side conditions), factoring (plain and equality), superposition left and right (orientation, variable restriction, side conditions), equality resolution, demodulation (rewrites, orientation, decrease), subsumption (ground, instantiation, reuse, rejection), tautology detection, and the structural bounds.
+// CEP:WHAT: Unit tests for the inference rules: renaming and namespace discipline, resolution (ground, MGU application, side conditions), factoring (plain and equality), superposition left and right (orientation, variable restriction, side conditions), equality resolution, demodulation (rewrites, orientation, decrease), subsumption (ground, instantiation, reuse, rejection), tautology detection, the structural bounds, and the error-translation honesty of the term-engine boundary (CEP-1056).
 // CEP:WHY: Design 10.1/10.2 and Spec 07: every rule's soundness is unconditional, but its side conditions and namespace discipline are what make the search complete and the substitution engine sound; each test hand-computes the expected conclusion so a wrong rule cannot pass.
 // CEP:CLASS: CEP-2
 // CEP:STATUS: complete
@@ -1230,4 +1230,44 @@ fn materialization_failure_unwinds_trail() {
         mapt::hot::inference::resolution::ResolutionOutcome::Concluded(0)
     ));
     assert_eq!(substitution.trail_depth(), entry);
+}
+
+// CEP:WHAT: Verifies the TermError-to-InferenceError translation keeps every legal bound failure's kind.
+// CEP:WHY: CEP-1056 and Law 6: the pre-fix translation collapsed every TermError into InvalidPointer, so a conclusion whose materialization exceeded kMaxTermDepth (the Peano recursion self-superposition blowup) or a capacity bound aborted the whole search mislabeled as store corruption; the exact-kind mapping lets the generator's drop-and-resume policy (CEP-1050) and the loop's memory-budget conversion (design 20.2) act on the kind; this test pins every arm of the translation (mirroring term_bound_errors_not_misclassified, which pinned substitution.rs map_term_error after the CEP-1050 fix).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when any arm loses its kind.
+// CEP:ASSUMES: none; the translation is a pure function.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/inference/mod.rs (From<TermError>), hot/inference/builder.rs (term_error), hot/inference/superposition.rs (replace_at); tests/bug_first_negative_selection.rs (CEP-1056 regression).
+// CEP:SECURITY: honest error reporting (CEP&CC Law 6).
+#[test]
+fn term_bound_errors_map_honestly() {
+    use mapt::hot::ir::term::TermError;
+    use mapt::hot::unification::substitution::SubstitutionError;
+    let cases = [
+        (TermError::DepthExceeded, SubstitutionError::DepthExceeded),
+        (TermError::WeightExceeded, SubstitutionError::WeightExceeded),
+        (TermError::TableFull, SubstitutionError::ArenaFull),
+        (TermError::ArenaFull, SubstitutionError::ArenaFull),
+        (
+            TermError::VariableOutOfRange,
+            SubstitutionError::VariableOutOfRange,
+        ),
+        (TermError::InvalidPointer, SubstitutionError::InvalidPointer),
+        (TermError::UnknownSymbol, SubstitutionError::InvalidPointer),
+        (
+            TermError::SymbolKindMismatch,
+            SubstitutionError::InvalidPointer,
+        ),
+        (TermError::ArityMismatch, SubstitutionError::InvalidPointer),
+    ];
+    for (term_error, expected) in cases {
+        assert_eq!(
+            InferenceError::from(term_error),
+            InferenceError::Structural(expected),
+            "TermError::{:?} must keep its kind (expected SubstitutionError::{:?})",
+            term_error,
+            expected
+        );
+    }
 }

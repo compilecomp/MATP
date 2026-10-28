@@ -96,10 +96,10 @@ pub(crate) fn subterm_at(terms: &TermStore<'_>, term: TermPtr, path: &[u16]) -> 
 // CEP:WHAT: Rebuilds a term with the subterm at the position path replaced by the replacement.
 // CEP:WHY: Conclusion construction for superposition and demodulation; the rebuild is depth-bounded and hash-consed so the rewritten atom shares structure with the original.
 // CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError on intern failure or depth exhaustion.
+// CEP:FAILURE: propagates InferenceError on intern failure or depth exhaustion; intern failures keep their exact kinds through the From translation (CEP-1056: the pre-fix blind InvalidPointer closures misreported a rebuilt atom exceeding kMaxTermDepth - the Peano recursion self-superposition blowup - as store corruption, aborting the search instead of letting the generator drop the candidate per CEP-1050).
 // CEP:ASSUMES: the path addresses a subterm of the term (the caller checked via subterm_at).
 // CEP:COST: O(term nodes above and at the path).
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{superposition_into_negative, superposition_into_positive}; unit/hot/inference_test.rs::demodulation_rewrites_terms.
+// CEP:EVIDENCE: unit/hot/inference_test.rs::{superposition_into_negative, superposition_into_positive, term_bound_errors_map_honestly}; unit/hot/inference_test.rs::demodulation_rewrites_terms; tests/bug_first_negative_selection.rs (CEP-1056 end-to-end regression).
 // CEP:SECURITY: depth-bounded recursion.
 pub(crate) fn replace_at(
     context: &InferenceContext<'_>,
@@ -149,20 +149,12 @@ pub(crate) fn replace_at(
                 context
                     .terms
                     .intern_fun(context.symbols, view.symbol(), &children[..count as usize])
-                    .map_err(|_| {
-                        InferenceError::Structural(
-                            crate::unification::substitution::SubstitutionError::InvalidPointer,
-                        )
-                    })
+                    .map_err(InferenceError::from)
             } else {
                 context
                     .terms
                     .intern_pred(context.symbols, view.symbol(), &children[..count as usize])
-                    .map_err(|_| {
-                        InferenceError::Structural(
-                            crate::unification::substitution::SubstitutionError::InvalidPointer,
-                        )
-                    })
+                    .map_err(InferenceError::from)
             }
         }
         TermTag::Equality => {
@@ -182,11 +174,7 @@ pub(crate) fn replace_at(
             context
                 .terms
                 .intern_eq(context.symbols, new_left, new_right)
-                .map_err(|_| {
-                    InferenceError::Structural(
-                        crate::unification::substitution::SubstitutionError::InvalidPointer,
-                    )
-                })
+                .map_err(InferenceError::from)
         }
         TermTag::Variable | TermTag::Application | TermTag::Lambda | TermTag::Sort => {
             Err(InferenceError::Structural(

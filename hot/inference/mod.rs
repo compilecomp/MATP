@@ -73,16 +73,26 @@ pub enum InferenceError {
 }
 
 impl From<crate::ir::term::TermError> for InferenceError {
-    // CEP:WHAT: Converts term-engine errors into the inference vocabulary.
-    // CEP:WHY: CEP&CC 33.18: one translation point for term reads and interns inside the rules and builders.
+    // CEP:WHAT: Converts term-engine errors into the inference vocabulary with an exact kind mapping.
+    // CEP:WHY: CEP&CC 33.18 and Law 6: one translation point for term reads and interns inside the rules and builders; the mapping keeps every legal bound failure honest - the capacity pair (ArenaFull, TableFull) maps to ArenaFull, the term-bound pair (DepthExceeded, WeightExceeded) keeps its kind, and VariableOutOfRange keeps its kind - so the generator's drop-and-resume policy (CEP-1050) and the loop's memory-budget conversion (design 20.2) can act on the kind; the catch-all InvalidPointer is reserved for unreadable references and structural symbol failures. Before CEP-1056 every TermError collapsed to InvalidPointer here, so a conclusion whose materialization exceeded kMaxTermDepth aborted the whole search mislabeled as store corruption (the Peano recursion self-superposition crash, tests/bug_first_negative_selection.rs).
     // CEP:STATUS: complete
     // CEP:FAILURE: none.
     // CEP:ASSUMES: none.
     // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/inference_test.rs::{rename_preserves_structure, rename_shifts_variables}.
-    // CEP:SECURITY: none.
-    fn from(_error: crate::ir::term::TermError) -> InferenceError {
-        InferenceError::Structural(SubstitutionError::InvalidPointer)
+    // CEP:EVIDENCE: unit/hot/inference_test.rs::term_bound_errors_map_honestly; tests/bug_first_negative_selection.rs (CEP-1056 regression).
+    // CEP:SECURITY: honest error reporting (CEP&CC Law 6).
+    fn from(error: crate::ir::term::TermError) -> InferenceError {
+        use crate::ir::term::TermError;
+        InferenceError::Structural(match error {
+            TermError::ArenaFull | TermError::TableFull => SubstitutionError::ArenaFull,
+            TermError::DepthExceeded => SubstitutionError::DepthExceeded,
+            TermError::WeightExceeded => SubstitutionError::WeightExceeded,
+            TermError::VariableOutOfRange => SubstitutionError::VariableOutOfRange,
+            TermError::UnknownSymbol
+            | TermError::SymbolKindMismatch
+            | TermError::ArityMismatch
+            | TermError::InvalidPointer => SubstitutionError::InvalidPointer,
+        })
     }
 }
 

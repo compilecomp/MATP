@@ -4,7 +4,7 @@
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
-// CEP:FAILURE: Returns Result<SearchOutcome, SearchError>: capacity and structural failures surface loudly; GaveUp carries the budget reason; never panics.
+// CEP:FAILURE: Returns Result<SearchOutcome, SearchError>: structural failures surface loudly; the capacity family (arena or term-table exhaustion from the rules, clause-store and active-set capacity) is converted by the saturate wrapper into GaveUp(MemoryBudget) per design 20.2 and the GaveUpReason::MemoryBudget documentation (CEP-1056) - a bound firing is a legal bounded outcome, never an Err; never panics.
 // CEP:ASSUMES: One search space per arena; input clauses are added through add_input_clause (which computes flags and weights); the injected stop callback is pure w.r.t. its iteration counter (no hidden state).
 // CEP:COST: per iteration: one passive pop O(log n), simplification (bounded demodulation rounds, FV-filtered subsumption), one active insertion, and generation steps (measured in bench CEP-BENCH-0010/0011); the loop is allocation-free after construction.
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force, loop_refutes_pigeonhole}; fuzz/given_clause_fuzz_test.rs.
@@ -13,11 +13,13 @@
 // CEP:HPC-DETERMINISM: deterministic for a fixed stop callback: selection, simplification, and generation are pure functions of the state; unit/hot/given_clause_test.rs::generation_is_deterministic and property/given_clause_property_test.rs::selection_is_deterministic verify the two-run discipline (identical conclusions and identical selection sequences on fresh double runs).
 // CEP:HPC-PASS-LEGALITY: Formal Spec 08 section 7 fixes the loop contract: the empty clause is derived only by sound inferences (Theorem is trustworthy), Saturated means every selected clause had all its budgeted inferences computed (fairness per the strategy's priority argument), and every GaveUp reason names its budget; the property tests verify the loop against the SAT solver and brute force on propositional problems.
 
+use crate::index::feature_vector::FeatureError;
+use crate::index::IndexError;
 use crate::inference::demodulation::{demodulate, unit_equation_sides};
 use crate::inference::selection::compute_selection_flags;
 use crate::inference::subsumption::{is_tautology, subsumes};
-use crate::inference::{InferenceContext, SelectionFunction};
-use crate::ir::clause::{ClauseStore, DerivationStep, InferenceRule};
+use crate::inference::{InferenceContext, InferenceError, SelectionFunction};
+use crate::ir::clause::{ClauseError, ClauseStore, DerivationStep, InferenceRule};
 use crate::ir::literal::Literal;
 use crate::ir::symbol_table::SymbolTable;
 use crate::ir::term::TermStore;
@@ -26,7 +28,7 @@ use crate::search::active::{ActiveError, ActiveSet};
 use crate::search::generate::{generate_step, GenerationCursor, InferenceBuffer};
 use crate::search::passive::{PassiveHeap, SelectionStrategy};
 use crate::search::SearchError;
-use crate::unification::substitution::Substitution;
+use crate::unification::substitution::{Substitution, SubstitutionError};
 use mapt_config::limits::{
     kBudgetCheckInterval, kConjectureHarvestInterval, kDefaultSymbolWeight, kInvalidClauseId,
     kInvalidSubstitutionOffset, kMaxClauseLiterals, kMaxConjectureHarvests, kMaxDerivationParents,
@@ -820,15 +822,69 @@ impl<'a> SearchSpace<'a> {
     }
 }
 
-// CEP:WHAT: Runs the given-clause loop to a terminal outcome.
+// CEP:WHAT: Runs the given-clause loop to a terminal outcome, converting capacity-family errors to GaveUp(MemoryBudget).
+// CEP:WHY: Design 20.2 and the GaveUpReason::MemoryBudget documentation fix the loop's contract: a capacity or storage budget (passive full, active full, arena exhausted, clause budget) ENDS the search as GaveUp with the reason named, never as Err - a bound firing is a legal bounded outcome (CEP&CC Law 6), not a structural failure; before CEP-1056 the loop propagated those errors (arena exhaustion during rule materialization surfaced as Err after the honest-kind fix, clause-store and active-set capacity as Err since Phase 3), so long-running saturations crashed instead of stopping (tests/bug_first_negative_selection.rs); the wrapper keeps the conversion in one place so every current and future `?` inside the loop is covered and saturate_with_avatar inherits the behavior through its inner saturate call.
+// CEP:STATUS: complete
+// CEP:FAILURE: Ok(GaveUp(MemoryBudget)) when the inner loop returns a capacity-family SearchError; every other Err propagates; never panics.
+// CEP:ASSUMES: the inner loop's non-capacity errors are structural (corruption, caller bugs) and stay loud.
+// CEP:COST: one match per terminal error path; zero on Ok.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::arena_exhaustion_gives_up_memory_budget; tests/bug_first_negative_selection.rs (CEP-1056 regression).
+// CEP:SECURITY: the memory bound stays the denial-of-service boundary (CEP&CC 22.10).
+pub fn saturate<F: Fn(u64) -> bool>(
+    space: &SearchSpace<'_>,
+    context: &InferenceContext<'_>,
+    options: &SearchOptions,
+    should_stop: &F,
+    stats: &mut SearchStats,
+) -> Result<SearchOutcome, SearchError> {
+    match saturate_inner(space, context, options, should_stop, stats) {
+        Ok(outcome) => Ok(outcome),
+        Err(error) if is_memory_bound(&error) => {
+            Ok(SearchOutcome::GaveUp(GaveUpReason::MemoryBudget))
+        }
+        Err(error) => Err(error),
+    }
+}
+
+// CEP:WHAT: The capacity-family membership test over SearchError.
+// CEP:WHY: The documented MemoryBudget members (design 20.2): arena or table exhaustion during rule materialization (Inference over ArenaFull, honest kinds since CEP-1056), clause-store capacity (arena, clause-id budget, id-offset side table), active-set capacity (slots, discrimination-tree nodes or entries, feature-vector pool), and the nested clause-store capacity inside active-set operations; structural variants (unreadable references, arity and parent bounds, out-of-range slots) stay Err - they are caller bugs or corruption, not capacity facts.
+// CEP:STATUS: complete
+// CEP:FAILURE: none; a pure classifier.
+// CEP:ASSUMES: PassiveError capacity is handled inside drain_buffer (DrainStatus::PassiveFull) and never reaches this classifier.
+// CEP:COST: constant.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::arena_exhaustion_gives_up_memory_budget.
+// CEP:SECURITY: none.
+fn is_memory_bound(error: &SearchError) -> bool {
+    matches!(
+        error,
+        SearchError::Inference(InferenceError::Structural(SubstitutionError::ArenaFull))
+            | SearchError::Clause(
+                ClauseError::ArenaFull
+                    | ClauseError::ClauseBudgetExceeded
+                    | ClauseError::OffsetTableFull,
+            )
+            | SearchError::Active(ActiveError::SlotsFull)
+            | SearchError::Active(ActiveError::Features(FeatureError::PoolFull))
+            | SearchError::Active(ActiveError::Tree(
+                IndexError::TreeFull | IndexError::EntryBudgetExceeded | IndexError::ArenaFull,
+            ))
+            | SearchError::Active(ActiveError::Store(
+                ClauseError::ArenaFull
+                    | ClauseError::ClauseBudgetExceeded
+                    | ClauseError::OffsetTableFull,
+            ))
+    )
+}
+
+// CEP:WHAT: The given-clause loop body behind the capacity-converting saturate wrapper.
 // CEP:WHY: Design 15.1 with the Phase 3 bounds: the injected stop callback (checked every kBudgetCheckInterval iterations) is the CEP-1005 time-budget mechanism and stays generic (no dyn, CEP-0 discipline) with the counter as its only input so tests inject deterministic predicates and the CEP-1 driver supplies wall time; the loop's step order (select, simplify, forward-subsume, backward-subsume, activate, generate) keeps the active array stable during one given clause's generation; deferred generation resumes across iterations through the in-progress state; the given clause's literals live in one fixed stack buffer for the whole loop (no allocation, no_std discipline).
 // CEP:STATUS: complete
-// CEP:FAILURE: propagates SearchError on structural failures; GaveUp on budget exhaustion; never panics.
+// CEP:FAILURE: propagates SearchError on structural failures; GaveUp on budget exhaustion; never panics; capacity-family errors are the wrapper's to convert.
 // CEP:ASSUMES: the context's stores match the space's; the stop callback is deterministic for a fixed counter.
 // CEP:COST: see file header; benches CEP-BENCH-0010/0011.
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force, loop_refutes_pigeonhole}; fuzz/given_clause_fuzz_test.rs; bench CEP-BENCH-0010, CEP-BENCH-0011.
 // CEP:SECURITY: all budgets enforced.
-pub fn saturate<F: Fn(u64) -> bool>(
+fn saturate_inner<F: Fn(u64) -> bool>(
     space: &SearchSpace<'_>,
     context: &InferenceContext<'_>,
     options: &SearchOptions,

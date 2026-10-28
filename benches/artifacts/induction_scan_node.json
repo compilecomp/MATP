@@ -2,11 +2,11 @@
   "bench": "CEP-BENCH-0036",
   "name": "induction_scan_node",
   "iterations": 1,
-  "cycles_median": 614,
-  "cycles_min": 609.8125,
+  "cycles_median": 621.5625,
+  "cycles_min": 613.25,
   "rustc": "1.99.0",
   "profile": "release",
   "target": "x86-64",
   "cycle_counter": "serialized-rdtsc",
-  "date_unix": 1792432338
+  "date_unix": 1793212972
 }

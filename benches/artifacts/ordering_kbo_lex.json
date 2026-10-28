@@ -2,11 +2,11 @@
   "bench": "CEP-BENCH-0007",
   "name": "ordering_kbo_lex",
   "iterations": 1000000,
-  "cycles_median": 239.140266,
-  "cycles_min": 238.44932,
+  "cycles_median": 242.07985,
+  "cycles_min": 239.475538,
   "rustc": "1.99.0",
   "profile": "release",
   "target": "x86-64",
   "cycle_counter": "serialized-rdtsc",
-  "date_unix": 1792092821
+  "date_unix": 1793212974
 }

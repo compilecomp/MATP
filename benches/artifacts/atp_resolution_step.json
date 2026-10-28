@@ -2,11 +2,11 @@
   "bench": "CEP-BENCH-0010",
   "name": "atp_resolution_step",
   "iterations": 100000,
-  "cycles_median": 105.74762,
-  "cycles_min": 104.89248,
+  "cycles_median": 107.30444,
+  "cycles_min": 105.41176,
   "rustc": "1.99.0",
   "profile": "release",
   "target": "x86-64",
   "cycle_counter": "serialized-rdtsc",
-  "date_unix": 1792092816
+  "date_unix": 1793212970
 }

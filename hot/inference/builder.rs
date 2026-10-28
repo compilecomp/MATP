@@ -22,15 +22,15 @@ use mapt_config::limits::{kMaxInferenceVariables, kMaxSymbolArity, kMaxVariables
 use super::InferenceError;
 
 // CEP:WHAT: Converts term-engine errors into the inference vocabulary.
-// CEP:WHY: CEP&CC 33.18: one translation point for intern failures inside the builders; every term error maps onto the structural carrier (the specific kind is recoverable from the call site).
+// CEP:WHY: CEP&CC 33.18 and Law 6: one translation point for term reads and interns inside the builders; delegates to the exact-kind From implementation so capacity failures keep the ArenaFull kind and term-bound failures keep their kinds (CEP-1056: the pre-fix blind InvalidPointer mapping misreported legal bound exhaustion during renaming as store corruption).
 // CEP:STATUS: complete
 // CEP:FAILURE: none.
 // CEP:ASSUMES: none.
 // CEP:COST: constant.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{rename_preserves_structure, rename_shifts_variables}.
-// CEP:SECURITY: none.
-fn term_error(_error: TermError) -> InferenceError {
-    InferenceError::Structural(crate::unification::substitution::SubstitutionError::InvalidPointer)
+// CEP:EVIDENCE: unit/hot/inference_test.rs::{rename_preserves_structure, rename_shifts_variables, term_bound_errors_map_honestly}.
+// CEP:SECURITY: honest error reporting (CEP&CC Law 6).
+fn term_error(error: TermError) -> InferenceError {
+    InferenceError::from(error)
 }
 
 // CEP:WHAT: Rebuilds one term with every variable index shifted by offset (standardize-apart).
