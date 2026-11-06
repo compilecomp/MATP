@@ -12,12 +12,7 @@ Status: **Draft standard**
 
 ## Revision history
 
-**0.3 (2026-11-05).** Enforcement-completeness revision; no existing rule's detection semantics changed.
-
-- Chapter 50's DOC-SYNC contract is now mechanical in BOTH coverage directions: a rule documented in the chapter but absent from the configuration is a lint failure, and the document's `Version:` line must equal the configuration's `standard.version`. The previous any-line version pattern was satisfiable by stale cross-references elsewhere in this document and had silently drifted (the configuration enforced `CEP&CC 0.1` while this document was already 0.2).
-- `CEP-LINT-MACRO-PREFIX` is configured and enforced; it was documented in 50.3 but shipped unconfigured. In Rust sources, `macro_rules!` definitions are the object-like macro analog of `#define` and obey the same name and guard patterns.
-- The `--self-test` manifest (`tools/cep_lint/tests/manifest.json`, 50.6 item 3) and the `--version` tool-and-standard banner (50.1) are implemented; the manifest ships one violating and one compliant scenario per configured rule with exact expected finding counts.
-- Applicability: the mechanical comment-discipline rules apply to the first-party source dialects declared by the configuration's `file_globs`. In this repository that is the Rust tree; C++-specific constructs map to their Rust analogs (macro definitions per the MACRO-PREFIX rule, include guards per its guard pattern).
+---
 
 # 1. Purpose
 
