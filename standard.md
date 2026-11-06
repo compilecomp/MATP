@@ -12,6 +12,19 @@ Status: **Draft standard**
 
 ## Revision history
 
+**0.4 (2026-11-06).** Research and documentation revision; the mechanical comment-discipline rules are unchanged.
+
+- Chapters 51 through 62 extend the standard to research, generative optimization, and autotuning (RCO), extreme codegen (Pall), toolchain infrastructure, memory, and hardware saturation (Infrastructure), formal verification and theorem proving (FV), heterogeneous and accelerated computing, distributed HPC and network topology (Fabric), energy and thermodynamics (Joule), controlled nondeterminism (Chaos), AI/ML systems (Tensor), industrial-level testing and fuzzing (Crucible), and the atomic file topology.
+- The repository adopts `doc standard.md` as its Documentation Style Guide. Component documents follow its section 3 structure, and the CI documentation gate (rustdoc with warnings as errors plus doc tests) is required by its section 5; the repository layout of section 32.1 names the documentation directory `doc/`.
+- The lint configuration's `standard.version` was raised from the stale 0.1 to 0.4; the `CEP-LINT-DOC-SYNC` coverage check is total in both directions (a configured rule without a heading fails even when that rule is DOC-SYNC itself, per 50.3); the self-test manifest ships the compliant and violating document scenarios for DOC-SYNC with exact expected finding counts (50.6 item 3); the first-party extension list of the configuration is named `extensions`, and 50.3's `file_globs` wording is aligned to that name.
+
+**0.3 (2026-11-05).** Enforcement-completeness revision; no existing rule's detection semantics changed.
+
+- Chapter 50's DOC-SYNC contract is now mechanical in BOTH coverage directions: a rule documented in the chapter but absent from the configuration is a lint failure, and the document's `Version:` line must equal the configuration's `standard.version`. The previous any-line version pattern was satisfiable by stale cross-references elsewhere in this document and had silently drifted (the configuration enforced `CEP&CC 0.1` while this document was already 0.2).
+- `CEP-LINT-MACRO-PREFIX` is configured and enforced; it was documented in 50.3 but shipped unconfigured. In Rust sources, `macro_rules!` definitions are the object-like macro analog of `#define` and obey the same name and guard patterns.
+- The `--self-test` manifest (`tools/cep_lint/tests/manifest.json`, 50.6 item 3) and the `--version` tool-and-standard banner (50.1) are implemented; the manifest ships one violating and one compliant scenario per configured rule with exact expected finding counts.
+- Applicability: the mechanical comment-discipline rules apply to the first-party source dialects declared by the configuration's `file_globs`. In this repository that is the Rust tree; C++-specific constructs map to their Rust analogs (macro definitions per the MACRO-PREFIX rule, include guards per its guard pattern).
+
 ---
 
 # 1. Purpose
@@ -6492,7 +6505,7 @@ repo/
 ├── tools/
 ├── config/
 ├── security/
-├── docs/
+├── doc/
 ├── scripts/
 ├── third_party/
 ├── quarantine/
@@ -6516,7 +6529,7 @@ Meaning:
 | `tools/` | Build tools, generators, harnesses |
 | `config/` | Target configuration, feature configuration |
 | `security/` | Threat models, security policies, audits |
-| `docs/` | Human documentation |
+| `doc/` | Component documentation (Documentation Style Guide) |
 | `scripts/` | Python/Lua tooling scripts |
 | `third_party/` | Vendored third-party code |
 | `quarantine/` | Non-compliant code awaiting deletion or repair |
@@ -8860,7 +8873,7 @@ For C++26 compilers, the compiler must maintain a feature matrix.
 Example:
 
 ```text
-docs/compiler/cxx26_feature_matrix.md
+doc/compiler/cxx26_feature_matrix.md
 ```
 
 The feature matrix must include:
@@ -12036,7 +12049,7 @@ Every rule below is a key in `.cep/cep_lint.json` under `rules` and must have a 
 
 **Severity 1. Sections: 35, 10.2. Check: `comment_block_schema` (file header mode).**
 
-Every first-party source file in the configured dialects must begin with a CEP file header block containing `CEP:FILE`, `CEP:WHAT`, `CEP:WHY`, `CEP:CLASS`, `CEP:STATUS`, `CEP:FAILURE`, `CEP:ASSUMES`, `CEP:COST`, and `CEP:EVIDENCE`. For C++ the first-party dialects are `.cpp` and `.hpp`; a consuming repository declares its first-party set through the configuration's `file_globs` (this repository's is the Rust tree, per the 0.3 applicability note). The declared class must be one of the defined conformance classes (`CEP-0`, `CEP-1`, `CEP-2`, `CC`, `FFI`, `HPC-0`, `HPC-1`, `HPC-2`, `RCS-0`, `RCS-1`, `RCS-2`).
+Every first-party source file in the configured dialects must begin with a CEP file header block containing `CEP:FILE`, `CEP:WHAT`, `CEP:WHY`, `CEP:CLASS`, `CEP:STATUS`, `CEP:FAILURE`, `CEP:ASSUMES`, `CEP:COST`, and `CEP:EVIDENCE`. For C++ the first-party dialects are `.cpp` and `.hpp`; a consuming repository declares its first-party set through the configuration's `extensions` (this repository's is the Rust tree, per the 0.3 applicability note). The declared class must be one of the defined conformance classes (`CEP-0`, `CEP-1`, `CEP-2`, `CC`, `FFI`, `HPC-0`, `HPC-1`, `HPC-2`, `RCS-0`, `RCS-1`, `RCS-2`).
 
 Parameters: `max_start_line`, `required_fields`, `class_field`, `allowed_classes`.
 

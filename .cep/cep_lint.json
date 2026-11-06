@@ -1,6 +1,6 @@
 {
   "standard": {
-    "version": "0.1",
+    "version": "0.4",
     "doc_path": "standard.md"
   },
   "fail_on": [0, 1],

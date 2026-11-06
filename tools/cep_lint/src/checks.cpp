@@ -783,10 +783,10 @@ std::vector<Finding> check_doc_rule_coverage(
         finding.message = "rule heading " + name + " appears more than once in the standard";
         findings.push_back(finding);
     }
+    // 50.3: every configured rule must have a heading, including DOC-SYNC itself; the skip
+    // that excluded CEP-LINT-DOC-SYNC from this direction let the chapter drop its own
+    // section silently, which the normative contract does not allow.
     for (const auto& entry : rules) {
-        if (entry.first == "CEP-LINT-DOC-SYNC") {
-            continue;
-        }
         if (std::find(documented.begin(), documented.end(), entry.first) == documented.end()) {
             Finding finding;
             finding.file = document_path;

@@ -1,5 +1,5 @@
 // CEP:FILE: tools/cep_lint/src/selftest.cpp
-// CEP:WHAT: Self-test runner: executes the scenarios in tools/cep_lint/tests/manifest.json, materializes their inline files into a private temporary directory, lints them, and compares exact expected violation counts per rule.
+// CEP:WHAT: Self-test runner: executes the scenarios in tools/cep_lint/tests/manifest.json, materializes their inline files into a private temporary directory, lints them, runs inline document scenarios through the doc_rule_coverage primitive, and compares exact expected violation counts per rule.
 // CEP:WHY: CEP&CC 50.6 gate 3 requires every scenario to pass with exact expected counts; the runner is the executable proof that the primitives detect each violation class.
 // CEP:CLASS: CEP-2
 // CEP:STATUS: complete
@@ -105,19 +105,30 @@ bool run_self_test(const Configuration& config, const std::string& manifest_path
     for (const JsonValue& scenario : scenarios->as_array()) {
         const JsonValue* name = scenario.find("name");
         const JsonValue* files = scenario.find("files");
+        const JsonValue* document = scenario.find("document");
         const JsonValue* expected = scenario.find("expected_findings");
-        if (name == nullptr || files == nullptr || expected == nullptr) {
-            report_bootstrap_selftest("scenario is missing name, files, or expected_findings");
+        if (name == nullptr || expected == nullptr
+            || (files == nullptr && document == nullptr)) {
+            report_bootstrap_selftest(
+                "scenario is missing name, expected_findings, or both files and document");
             all_ok = false;
             continue;
         }
         std::vector<std::pair<std::string, std::string>> written;
-        for (const auto& member : files->as_object()) {
-            std::string target = root + "/" + member.first;
-            std::ofstream stream(target, std::ios::binary);
-            stream << member.second.as_string();
-            stream.close();
-            written.emplace_back(target, member.first);
+        if (files != nullptr) {
+            if (files->get_kind() != JsonValue::Kind::Object) {
+                report_bootstrap_selftest("scenario " + name->as_string()
+                                          + " has a non-object files member");
+                all_ok = false;
+                continue;
+            }
+            for (const auto& member : files->as_object()) {
+                std::string target = root + "/" + member.first;
+                std::ofstream stream(target, std::ios::binary);
+                stream << member.second.as_string();
+                stream.close();
+                written.emplace_back(target, member.first);
+            }
         }
         std::vector<Finding> all;
         for (const auto& entry : written) {
@@ -129,6 +140,21 @@ bool run_self_test(const Configuration& config, const std::string& manifest_path
             }
             std::vector<Finding> findings = lint_text(config, entry.first, body);
             all.insert(all.end(), findings.begin(), findings.end());
+        }
+        // Document scenarios exercise the doc_rule_coverage primitive (DOC-SYNC): the
+        // scenario carries the standard document text inline, and the primitive runs once
+        // against it with the live configuration, exactly as the engine runs it (50.6 item 5).
+        if (document != nullptr) {
+            if (document->get_kind() != JsonValue::Kind::String) {
+                report_bootstrap_selftest("scenario " + name->as_string()
+                                          + " has a non-string document");
+                all_ok = false;
+                continue;
+            }
+            const std::string document_path = name->as_string() + "/standard.md";
+            std::vector<Finding> document_findings = check_doc_rule_coverage(
+                config.rules, document->as_string(), document_path, config.standard_version);
+            all.insert(all.end(), document_findings.begin(), document_findings.end());
         }
         bool scenario_ok = true;
         std::vector<std::string> checked_rules;

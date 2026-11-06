@@ -271,6 +271,41 @@
           "count": 1
         }
       ]
+    },
+    {
+      "name": "doc_sync_compliant",
+      "document": "Version: **0.4**\n\n### Rule CEP-LINT-FILE-HEADER\n\n### Rule CEP-LINT-FUNC-BLOCK\n\n### Rule CEP-LINT-STATUS-VALUE\n\n### Rule CEP-LINT-TODO-OWNER\n\n### Rule CEP-LINT-STUB-DECL\n\n### Rule CEP-LINT-PLACEHOLDER-COMMENT\n\n### Rule CEP-LINT-PLACEHOLDER-TEXT\n\n### Rule CEP-LINT-MAGIC-NUMBER\n\n### Rule CEP-LINT-MACRO-PREFIX\n\n### Rule CEP-LINT-HOT-BANNED\n\n### Rule CEP-LINT-STUB-BODY\n\n### Rule CEP-LINT-EMPTY-CATCH\n\n### Rule CEP-LINT-EMPTY-BRANCH\n\n### Rule CEP-LINT-CONSTANT-RETURN\n\n### Rule CEP-LINT-NAMING-TYPE\n\n### Rule CEP-LINT-NAMING-FUNC\n\n### Rule CEP-LINT-COMMENTED-CODE\n\n### Rule CEP-LINT-DOC-SYNC\n",
+      "expected_findings": []
+    },
+    {
+      "name": "doc_sync_missing_rule_heading",
+      "document": "Version: **0.4**\n\n### Rule CEP-LINT-FILE-HEADER\n\n### Rule CEP-LINT-FUNC-BLOCK\n\n### Rule CEP-LINT-STATUS-VALUE\n\n### Rule CEP-LINT-TODO-OWNER\n\n### Rule CEP-LINT-STUB-DECL\n\n### Rule CEP-LINT-PLACEHOLDER-COMMENT\n\n### Rule CEP-LINT-PLACEHOLDER-TEXT\n\n### Rule CEP-LINT-MAGIC-NUMBER\n\n### Rule CEP-LINT-HOT-BANNED\n\n### Rule CEP-LINT-STUB-BODY\n\n### Rule CEP-LINT-EMPTY-CATCH\n\n### Rule CEP-LINT-EMPTY-BRANCH\n\n### Rule CEP-LINT-CONSTANT-RETURN\n\n### Rule CEP-LINT-NAMING-TYPE\n\n### Rule CEP-LINT-NAMING-FUNC\n\n### Rule CEP-LINT-COMMENTED-CODE\n\n### Rule CEP-LINT-DOC-SYNC\n",
+      "expected_findings": [
+        {
+          "rule": "CEP-LINT-DOC-SYNC",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "doc_sync_unconfigured_rule_and_version",
+      "document": "Version: **0.9**\n\n### Rule CEP-LINT-FILE-HEADER\n\n### Rule CEP-LINT-FUNC-BLOCK\n\n### Rule CEP-LINT-STATUS-VALUE\n\n### Rule CEP-LINT-TODO-OWNER\n\n### Rule CEP-LINT-STUB-DECL\n\n### Rule CEP-LINT-PLACEHOLDER-COMMENT\n\n### Rule CEP-LINT-PLACEHOLDER-TEXT\n\n### Rule CEP-LINT-MAGIC-NUMBER\n\n### Rule CEP-LINT-MACRO-PREFIX\n\n### Rule CEP-LINT-HOT-BANNED\n\n### Rule CEP-LINT-STUB-BODY\n\n### Rule CEP-LINT-EMPTY-CATCH\n\n### Rule CEP-LINT-EMPTY-BRANCH\n\n### Rule CEP-LINT-CONSTANT-RETURN\n\n### Rule CEP-LINT-NAMING-TYPE\n\n### Rule CEP-LINT-NAMING-FUNC\n\n### Rule CEP-LINT-COMMENTED-CODE\n\n### Rule CEP-LINT-DOC-SYNC\n\n### Rule CEP-LINT-GHOST\n",
+      "expected_findings": [
+        {
+          "rule": "CEP-LINT-DOC-SYNC",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "doc_sync_duplicate_heading",
+      "document": "Version: **0.4**\n\n### Rule CEP-LINT-FILE-HEADER\n\n### Rule CEP-LINT-FILE-HEADER\n\n### Rule CEP-LINT-FUNC-BLOCK\n\n### Rule CEP-LINT-STATUS-VALUE\n\n### Rule CEP-LINT-TODO-OWNER\n\n### Rule CEP-LINT-STUB-DECL\n\n### Rule CEP-LINT-PLACEHOLDER-COMMENT\n\n### Rule CEP-LINT-PLACEHOLDER-TEXT\n\n### Rule CEP-LINT-MAGIC-NUMBER\n\n### Rule CEP-LINT-MACRO-PREFIX\n\n### Rule CEP-LINT-HOT-BANNED\n\n### Rule CEP-LINT-STUB-BODY\n\n### Rule CEP-LINT-EMPTY-CATCH\n\n### Rule CEP-LINT-EMPTY-BRANCH\n\n### Rule CEP-LINT-CONSTANT-RETURN\n\n### Rule CEP-LINT-NAMING-TYPE\n\n### Rule CEP-LINT-NAMING-FUNC\n\n### Rule CEP-LINT-COMMENTED-CODE\n\n### Rule CEP-LINT-DOC-SYNC\n",
+      "expected_findings": [
+        {
+          "rule": "CEP-LINT-DOC-SYNC",
+          "count": 1
+        }
+      ]
     }
   ]
 }
