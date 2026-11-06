@@ -1,18 +1,27 @@
 
-# CEP&CC 0.1
+# CEP&CC 0.4
 
 ## Cycle-Exact Performance & Clean Code
 
 ### Psychopathic Tier
 
 Target dialect: **C++26**  
-Version: **0.1**  
+Version: **0.4**  
 Status: **Draft standard**  
 ---
 
+## Revision history
+
+**0.3 (2026-11-05).** Enforcement-completeness revision; no existing rule's detection semantics changed.
+
+- Chapter 50's DOC-SYNC contract is now mechanical in BOTH coverage directions: a rule documented in the chapter but absent from the configuration is a lint failure, and the document's `Version:` line must equal the configuration's `standard.version`. The previous any-line version pattern was satisfiable by stale cross-references elsewhere in this document and had silently drifted (the configuration enforced `CEP&CC 0.1` while this document was already 0.2).
+- `CEP-LINT-MACRO-PREFIX` is configured and enforced; it was documented in 50.3 but shipped unconfigured. In Rust sources, `macro_rules!` definitions are the object-like macro analog of `#define` and obey the same name and guard patterns.
+- The `--self-test` manifest (`tools/cep_lint/tests/manifest.json`, 50.6 item 3) and the `--version` tool-and-standard banner (50.1) are implemented; the manifest ships one violating and one compliant scenario per configured rule with exact expected finding counts.
+- Applicability: the mechanical comment-discipline rules apply to the first-party source dialects declared by the configuration's `file_globs`. In this repository that is the Rust tree; C++-specific constructs map to their Rust analogs (macro definitions per the MACRO-PREFIX rule, include guards per its guard pattern).
+
 # 1. Purpose
 
-CEP&CC 0.1 is a coding standard for C++26 codebases that require both of the following properties simultaneously:
+CEP&CC 0.4 is a coding standard for C++26 codebases that require both of the following properties simultaneously:
 
 1. **Cycle-exact performance discipline**  
    Performance is treated as a correctness requirement, not as a vague goal.
@@ -12032,7 +12041,7 @@ Every rule below is a key in `.cep/cep_lint.json` under `rules` and must have a 
 
 **Severity 1. Sections: 35, 10.2. Check: `comment_block_schema` (file header mode).**
 
-Every first-party `.cpp` and `.hpp` file must begin with a CEP file header block containing `CEP:FILE`, `CEP:WHAT`, `CEP:WHY`, `CEP:CLASS`, `CEP:STATUS`, `CEP:FAILURE`, `CEP:ASSUMES`, `CEP:COST`, and `CEP:EVIDENCE`. The declared class must be one of the defined conformance classes (`CEP-0`, `CEP-1`, `CEP-2`, `CC`, `FFI`, `HPC-0`, `HPC-1`, `HPC-2`, `RCS-0`, `RCS-1`, `RCS-2`).
+Every first-party source file in the configured dialects must begin with a CEP file header block containing `CEP:FILE`, `CEP:WHAT`, `CEP:WHY`, `CEP:CLASS`, `CEP:STATUS`, `CEP:FAILURE`, `CEP:ASSUMES`, `CEP:COST`, and `CEP:EVIDENCE`. For C++ the first-party dialects are `.cpp` and `.hpp`; a consuming repository declares its first-party set through the configuration's `file_globs` (this repository's is the Rust tree, per the 0.3 applicability note). The declared class must be one of the defined conformance classes (`CEP-0`, `CEP-1`, `CEP-2`, `CC`, `FFI`, `HPC-0`, `HPC-1`, `HPC-2`, `RCS-0`, `RCS-1`, `RCS-2`).
 
 Parameters: `max_start_line`, `required_fields`, `class_field`, `allowed_classes`.
 
@@ -12102,11 +12111,11 @@ Limits: the exemption context is the joined statement text, bounded to twelve li
 
 **Severity 2. Sections: 33.16, 8.4. Check: `macro_prefix_policy`.**
 
-Object-like macro names must match the `CEP_` prefix pattern or the include-guard pattern. All other macro definitions are violations.
+Object-like macro names must match the `CEP_` prefix pattern or the include-guard pattern. All other macro definitions are violations. In Rust sources, `macro_rules! NAME` definitions are the object-like macro analog of `#define NAME` and obey the same patterns (0.3 applicability note).
 
 Parameters: `name_pattern`, `guard_pattern`.
 
-Limits: function-like macro logic is banned by section 8.4 but is not yet detected mechanically; review remains required.
+Limits: function-like macro logic is banned by section 8.4 but is not yet detected mechanically; review remains required. The prefix check applies to the defined NAME of a function-like definition as well; only `#undef` and macro use sites are outside the check.
 
 ### Rule CEP-LINT-HOT-BANNED
 
@@ -12235,3 +12244,2083 @@ A change to the tool, the configuration, or this chapter is compliant only if al
 5. `CEP-LINT-DOC-SYNC` passes, proving this chapter and `.cep/cep_lint.json` agree.
 
 Adding or changing a rule requires updating the configuration and this chapter in the same change; the tool refuses the split.
+
+For the Rust implementation of the tool in this repository, the equivalents are: `cargo build`/`cargo clippy -- -D warnings` over the workspace (the 6.3 warning set as errors), `cargo test -p cep_lint` (the unit and integration suites), `cep_lint --self-test` over `tools/cep_lint/tests/manifest.json` (item 3 unchanged), and the live DOC-SYNC gate over this chapter and `.cep/cep_lint.json` (item 5 unchanged). Sanitizer coverage is provided by the CI's determinism, budget, and reproducible-build gates.
+---
+
+# 51. Research, Generative Optimization, and Autotuning (RCO)
+
+This chapter extends CEP&CC for research codebases, autotuners, superoptimizers, generative compilers, and exploratory algorithmic environments. 
+
+In these domains, code is often generated by machines, explores vast search spaces, or implements novel, unproven mathematical concepts. The standard does not relax for research. Research code is not an excuse for chaos. An autotuner that cannot reproduce its own winner is merely a random number generator. A superoptimizer that relies on Undefined Behavior (UB) without proof is a bug generator.
+
+For RCO, the following are first-class correctness requirements:
+1. reproducible search spaces,
+2. deterministic and hardware-pinned cost models,
+3. formal or mechanically verified equivalence proofs,
+4. explicit teardown or promotion plans for experimental code,
+5. artifact evaluation and reproducible environments.
+
+Where this chapter is stricter than the general CEP&CC rules, this chapter wins. Where this chapter is silent, the rest of CEP&CC (and Chapter 38: HPC) applies.
+
+---
+
+## 51.1 RCO Prime Law
+
+The RCO prime law is:
+> No optimality claim is valid without mechanical proof or reproducible evidence.
+> No search space is valid without explicit boundaries and deterministic termination.
+> No research code is allowed to rot; it must be promoted, refactored, or exterminated.
+> No generated code is exempt from CEP&CC; the generator is responsible for the output's compliance.
+
+Violations of the RCO prime law are Severity 0 unless proven otherwise by an explicit, reviewed, temporary waiver.
+
+---
+
+## 51.2 RCO Conformance Classes
+
+RCO defines three component classes.
+
+### 51.2.1 RCO-0: Generative and Optimization Engine Core
+RCO-0 is the strictest class for the *engine* that performs the search, tuning, or superoptimization.
+RCO-0 code includes:
+- autotuner search loops,
+- cost model evaluators,
+- superoptimizer peephole engines,
+- genetic algorithm fitness functions,
+- equivalence checking harnesses,
+- IR mutation operators.
+
+RCO-0 components must satisfy all CEP-0 and HPC-0 requirements. The engine itself must be cycle-exact, deterministic, and allocation-free in its hot paths.
+
+### 51.2.2 RCO-1: Experimental and Research Algorithms
+RCO-1 applies to the novel algorithms, experimental IR dialects, and research prototypes being evaluated.
+RCO-1 code includes:
+- novel loop transformation algorithms,
+- experimental memory layout strategies,
+- academic prototype implementations,
+- paper-reproduction code.
+
+RCO-1 code is exempt from OPT-0 (target-optimal) requirements, but it **must** be deterministic, reproducible, memory-safe, and have an explicit teardown plan.
+
+### 51.2.3 RCO-2: Research Tooling and Harnesses
+RCO-2 applies to offline tools used to orchestrate research.
+RCO-2 includes:
+- search-space visualizers,
+- benchmark orchestrators,
+- proof-script runners,
+- artifact packaging tools.
+
+RCO-2 must follow CEP-2 rules, but its outputs (generated code, proof logs) are fully subject to RCO-0/RCO-1 rules.
+
+---
+
+## 51.3 Research Code Policy: The Teardown Mandate
+
+Research code is inherently temporary. If it is good, it becomes mainline. If it is bad, it must be deleted. "Permanent experimental code" is a Severity 1 defect.
+
+### 51.3.1 The Teardown Mandate
+Every RCO-1 module, file, or major component must include a teardown plan in its file header.
+Required comment field:
+```cpp
+// CEP:RCO-TEARDOWN:
+```
+Allowed values for teardown plans:
+- `promote`: Will be merged into mainline HPC/CEP code by date X or ticket Y.
+- `delete`: Will be removed after paper Z is published or date X.
+- `archive`: Moved to a separate, versioned research repository; deleted from mainline.
+
+Bad:
+```cpp
+// CEP:RCO-TEARDOWN: keep for future reference
+```
+Good:
+```cpp
+// CEP:RCO-TEARDOWN: promote to cep::hot::decoder by 2026-12-01 (Ticket CEP-882).
+```
+
+### 51.3.2 Artifact Evaluation and Reproducibility
+Research code must be reproducible by a reviewer on a clean machine.
+Required:
+- locked dependency manifests (`Cargo.lock`, `vcpkg.json`, `requirements.txt` with hashes),
+- deterministic build scripts,
+- containerization (Dockerfile/Apptainer) if OS-level dependencies exist,
+- fixed random seeds for all stochastic algorithms.
+
+If a reviewer cannot build and run the research code using only the provided manifest, the code is **exterminated**.
+
+### 51.3.3 Differential Testing Baseline
+Novel research analyses or transformations must not be trusted on their own.
+Required:
+- a differential testing harness comparing the RCO-1 output against a known-good reference (e.g., an interpreter, a stable compiler version, or a formal model),
+- a fuzzing corpus targeting the novel transformation.
+
+If the research code cannot pass its own differential tests, it is not merged.
+
+---
+
+## 51.4 Autotuning and Search-Space Contracts
+
+An autotuner does not "guess." It searches a mathematically defined space using a deterministic cost model. The search process must be as rigorous as the generated code.
+
+### 51.4.1 Search Space Contracts
+Every autotuner script or configuration must explicitly declare its search space, its invariants, and its termination conditions.
+Required comment fields:
+```cpp
+// CEP:RCO-SPACE:
+// CEP:RCO-INVARIANT:
+// CEP:RCO-TERMINATION:
+```
+Example:
+```cpp
+// CEP:RCO-SPACE: tile_sizes=[16, 32, 64], vector_widths=[4, 8], unroll_factors=[1, 2, 4].
+// CEP:RCO-INVARIANT: Preserves floating-point rounding order; no reassociation.
+// CEP:RCO-TERMINATION: 10,000 iterations or 300 seconds wall-clock time.
+```
+
+### 51.4.2 Cost Models as Code
+Cost models in autotuners are often magic numbers in Python scripts. CEP&CC bans this.
+- Cost models must be deterministic, versioned, and executable.
+- They must be tested against real hardware micro-benchmarks.
+- Hardcoded latency numbers (e.g., `L1_CACHE_MISS = 4`) without a target-specific configuration file and a benchmark proving it are **exterminated**.
+
+Required comment field:
+```cpp
+// CEP:RCO-MODEL:
+```
+Example:
+```cpp
+// CEP:RCO-MODEL: hardware_counters.py (measured via PAPI); target arm64-a78; artifact COST-014.
+```
+
+### 51.4.3 Reproducibility of the Search
+Autotuners often use random seeds or rely on OS thread scheduling, making their "optimal" code unreproducible.
+Required:
+- The exact random seed, hardware topology, CPU pinning, and OS state must be recorded in the artifact.
+- If the autotuner cannot reproduce its own winning variant on the same hardware within a 2% variance threshold, the variant is **rejected**.
+
+---
+
+## 51.5 Superoptimization and Equivalence Proofs
+
+Superoptimizers exhaustively search for the shortest or fastest instruction sequence. Because they explore semantic equivalences, they are a massive miscompilation risk.
+
+### 51.5.1 Mandatory SMT-Backed Equivalence Proofs
+A superoptimizer cannot just claim "Sequence B is faster than Sequence A." It must *prove* they are observably equivalent.
+Required:
+- Every transformation generated by a superoptimizer must be accompanied by an SMT solver script (Z3, CVC5) or an Alive2 proof showing that for all valid inputs, A and B yield the same state.
+- The CI pipeline must run the SMT solver on every new peephole pattern. If the solver times out or finds a counterexample, the pattern is **exterminated**.
+
+Required comment field:
+```cpp
+// CEP:RCO-PROOF:
+```
+Example:
+```cpp
+// CEP:RCO-PROOF: smt_proof_004.z3 proves equivalence for all u32 inputs; Alive2 hash 8f3a2c.
+```
+
+### 51.5.2 Explicit UB Exploitation Contracts
+Superoptimizers love to exploit Undefined Behavior (UB) to find shorter sequences. CEP&CC restricts UB. For superoptimizers, UB exploitation must be explicit and bounded.
+- If a superoptimized sequence relies on UB, it must be gated by a formal proof that the input space *cannot* trigger the UB.
+- Alternatively, it must be marked with a strict compiler flag and isolated.
+
+Example:
+```cpp
+// CEP:RCO-UB-EXPLOIT: Assumes no signed overflow (WRAP=0).
+// CEP:RCO-UB-PROOF: smt_proof_005.z3 proves caller bounds input to INT32_MAX-10.
+```
+
+### 51.5.3 The "No Silent Deoptimization" Rule
+If a superoptimizer generates a sequence that is optimal for the *average* case but pessimal for the *worst* case (e.g., branchless code that causes severe cache thrashing or register spilling), it must document the worst-case cost. 
+OPT-0 requires worst-case bounds. A superoptimized pattern that violates the worst-case budget of the surrounding CEP-0 code is **exterminated**.
+
+---
+
+## 51.6 Formal Methods and IR Semantics
+
+Modern research compilers use multi-level IRs (like MLIR). When researching novel dialects or transformations, the semantics must be formal.
+
+### 51.6.1 Formal IR Semantics
+Every experimental IR opcode must have a formal mathematical definition.
+- The definition must be written in a proof assistant (e.g., Lean, Coq, K Framework, or Alive2).
+- You cannot write a backend lowering pass unless the source and target IR semantics are formally proven equivalent.
+
+Required comment field:
+```cpp
+// CEP:RCO-IR-SEMANTICS:
+// CEP:RCO-IR-PROOF:
+```
+
+### 51.6.2 Dialect Interoperability
+When researching new dialects, IR nodes crossing dialect boundaries must have explicit, versioned, `repr(C)`-equivalent layouts. Silent semantic changes during dialect lowering are Severity 0 defects.
+
+---
+
+## 51.7 RCO Comment Standard
+
+In addition to the standard CEP fields, RCO code must include the following fields where relevant.
+
+### 51.7.1 Required RCO Fields
+```cpp
+// CEP:RCO-CLASS:
+// CEP:RCO-TEARDOWN:
+// CEP:RCO-SPACE:
+// CEP:RCO-INVARIANT:
+// CEP:RCO-TERMINATION:
+// CEP:RCO-MODEL:
+// CEP:RCO-PROOF:
+// CEP:RCO-IR-SEMANTICS:
+// CEP:RCO-UB-EXPLOIT:
+```
+
+### 51.7.2 RCO Comment Example: Autotuner Cost Model
+```cpp
+// CEP:FILE: tools/autotuner/cost_model.cpp
+// CEP:WHAT: Hardware-aware cost model for ARM64 A78 vector operations.
+// CEP:WHY: Guides the autotuner search without requiring exhaustive hardware runs.
+// CEP:CLASS: RCO-0
+// CEP:STATUS: complete
+// CEP:FAILURE: Returns CostError::unsupported if instruction is not in the target manual.
+// CEP:ASSUMES: Target frequency is fixed at 2.8GHz; thermal throttling is disabled.
+// CEP:COST: 400 ns per evaluation; no allocation.
+// CEP:EVIDENCE: bench COST-014, micro-benchmark suite v2.
+// CEP:RCO-CLASS: RCO-0
+// CEP:RCO-MODEL: hardware_counters.py (measured via PAPI); target arm64-a78; artifact COST-014.
+```
+
+### 51.7.3 RCO Comment Example: Superoptimized Peephole
+```cpp
+// CEP:WHAT: Replaces (x << 2) + x with (x * 5) using LEA.
+// CEP:WHY: Reduces instruction count from 2 to 1 on x86_64.
+// CEP:STATUS: complete
+// CEP:FAILURE: none; pattern only matches valid SSA.
+// CEP:ASSUMES: x is a 64-bit integer; no overflow flags are read by subsequent code.
+// CEP:COST: saves 1 cycle, 1 uop.
+// CEP:EVIDENCE: Alive2 proof hash 99a1b2, bench HPC-404.
+// CEP:RCO-CLASS: RCO-0
+// CEP:RCO-PROOF: smt_proof_lea_01.z3; Alive2 hash 99a1b2.
+// CEP:RCO-UB-EXPLOIT: none; transformation is valid for all wrapping semantics.
+```
+
+---
+
+## 51.8 RCO Review Checklist and Extermination
+
+### 51.8.1 RCO Review Checklist
+
+**Research Code**
+- [ ] Teardown plan (`CEP:RCO-TEARDOWN`) is present and valid.
+- [ ] Dependencies are locked and reproducible.
+- [ ] Differential testing harness exists.
+- [ ] Fuzzing corpus exists for novel transformations.
+- [ ] No "permanent experimental" branches.
+
+**Autotuning**
+- [ ] Search space is explicitly declared (`CEP:RCO-SPACE`).
+- [ ] Invariants are declared (`CEP:RCO-INVARIANT`).
+- [ ] Cost model is code, not magic numbers (`CEP:RCO-MODEL`).
+- [ ] Search is reproducible (fixed seeds, pinned hardware).
+- [ ] Winning variant is reproducible within 2% variance.
+
+**Superoptimization**
+- [ ] Equivalence proof is present (`CEP:RCO-PROOF`).
+- [ ] SMT/Alive2 solver passes in CI.
+- [ ] UB exploitation is explicitly proven safe (`CEP:RCO-UB-EXPLOIT`).
+- [ ] Worst-case cost does not violate surrounding CEP-0 budgets.
+
+**Formal IR**
+- [ ] IR semantics are formalized (`CEP:RCO-IR-SEMANTICS`).
+- [ ] Cross-dialect lowering is proven equivalent.
+
+### 51.8.2 RCO Extermination Examples
+
+**Example 1: Magic Number Cost Model in Autotuner**
+Violation:
+```python
+# tools/autotuner/model.py
+L1_MISS_PENALTY = 14
+```
+Response:
+```text
+EXTERMINATE
+Reason: Hardcoded cost model constant without hardware evidence.
+Rule: CEP&CC 51.4.2
+Action: Replace with target-specific configuration file backed by micro-benchmarks.
+```
+
+**Example 2: Superoptimizer Pattern Without Proof**
+Violation:
+```cpp
+// Replaces a/b with a * (1/b) for faster execution.
+```
+No SMT proof attached.
+Response:
+```text
+EXTERMINATE
+Reason: Floating-point transformation without equivalence proof.
+Rule: CEP&CC 51.5.1
+Action: Provide Alive2/Z3 proof or remove pattern.
+```
+
+**Example 3: Research Code Without Teardown**
+Violation:
+```cpp
+// CEP:FILE: experimental/new_allocator.cpp
+// CEP:WHAT: Experimental slab allocator.
+// (No CEP:RCO-TEARDOWN field)
+```
+Response:
+```text
+FAIL
+Reason: Research code lacks teardown mandate.
+Rule: CEP&CC 51.3.1
+Action: Add CEP:RCO-TEARDOWN with promotion or deletion date.
+```
+
+**Example 4: Unreproducible Autotuner Search**
+Violation:
+Autotuner uses `std::random_device` to seed its genetic algorithm, and the winning generated code cannot be regenerated.
+Response:
+```text
+EXTERMINATE
+Reason: Search process is nondeterministic; winning artifact is unreproducible.
+Rule: CEP&CC 51.4.3
+Action: Pin random seed and record hardware topology in the artifact manifest.
+```
+
+**Example 5: Silent UB Exploitation in Peephole Optimizer**
+Violation:
+```cpp
+// Assumes pointer is aligned to 16 bytes to use aligned SIMD load.
+// (No proof that caller guarantees alignment)
+```
+Response:
+```text
+EXTERMINATE
+Reason: Silent UB exploitation without input-domain proof.
+Rule: CEP&CC 51.5.2
+Action: Add SMT proof of caller alignment or insert runtime alignment check.
+```
+
+---
+
+## 51.9 Final RCO Clause
+
+Research and optimization are the engines of progress, but they are also the primary sources of silent miscompilation, unreproducible science, and performance regressions. 
+
+If an autotuner cannot prove its search is bounded, it is exterminated.
+If a superoptimizer cannot prove its transformations are equivalent, it is exterminated.
+If a research prototype cannot be built on a clean machine, it is exterminated.
+If experimental code refuses to state when it will be deleted or promoted, it is exterminated.
+---
+
+# 52. Extreme Codegen and Compiler Optimization (The Pall Protocol)
+
+This chapter extends CEP&CC for the internal architecture of the compiler and the extreme optimization of the generated machine code. 
+
+Modern compilers are bloated. They generate code that is "correct" but structurally pessimal. They rely on generic abstractions, pointer-heavy intermediate representations, and naive instruction selection. This is unacceptable.
+
+A compiler does not merely translate source code; it **weaponizes the silicon**. The optimizer’s job is to destroy the lies of the source-level abstractions and leave only the bare metal, the math, and the execution ports.
+
+Where this chapter is stricter than Chapter 38 (HPC), this chapter wins.
+
+---
+
+## 52.1 The Prime Directive: The Hardware Manual is a Lie
+
+The ISA manual tells you what instructions exist. It does not tell you how the silicon executes them. 
+> You do not optimize for the ISA. You optimize for the microarchitecture, the execution ports, the uop cache, and the memory hierarchy.
+
+### 52.1.1 The Micro-Ops (Uop) Reality
+An x86 instruction is not an instruction; it is a macro that decodes into one or more micro-ops (uops). An ARM instruction is not free; it occupies a slot in the dispatch queue.
+- Every optimization pass must reason in terms of **uops**, **execution ports**, and **latency/throughput**, not just instruction count.
+- Instruction count is a vanity metric. Uop count and dependency chain length are the truth.
+
+### 52.1.2 The Measurement Mandate
+If you did not measure it with Performance Monitoring Counters (PMCs), you did not optimize it. You guessed.
+- Every peephole optimization, loop transformation, and register allocation heuristic must be validated by reading hardware PMCs (e.g., `perf stat`, `uops.info`, IACA).
+- **Extermination:** Adding an optimization pass that claims to be "faster" without a microbenchmark proving a reduction in actual cycles or uops is **exterminated**.
+
+---
+
+## 52.2 IR Architecture: The Zero-Pointer-Chase Mandate
+
+The compiler’s own Intermediate Representation (IR) is the bottleneck of compilation speed and the foundation of optimization quality. Pointer-heavy, object-oriented IRs (like trees of `std::unique_ptr<Node>`) are a fatal design flaw.
+
+### 52.2.1 Flat, Arena-Allocated IR
+The IR must be flat, contiguous, and cache-friendly.
+- **Banned:** Tree-based IRs where traversing a basic block requires following pointers to scattered heap allocations.
+- **Required:** Array-based or linked-list IRs allocated in contiguous arenas. Instructions in a basic block must be physically contiguous in memory.
+- **Why:** The CPU prefetcher cannot predict pointer chases. A pointer-heavy IR guarantees L1/L2 cache misses during every optimization pass.
+
+### 52.2.2 String Interning and Hashing
+Identifiers, type names, and metadata must be interned.
+- **Banned:** Allocating `std::string` or `std::vector<char>` for IR metadata.
+- **Required:** A global, lock-free (or thread-local) string interning table. All names are reduced to `uint32_t` or `uint64_t` handles.
+- **Extermination:** Using `std::unordered_map<std::string, Node*>` in the hot path of the compiler is **exterminated**. Use integer handles and flat hash maps (e.g., `ankerl::unordered_dense` or a custom open-addressing map).
+
+---
+
+## 52.3 Instruction Selection: Port-Level Mastery
+
+Instruction selection is not about picking the shortest mnemonic. It is about feeding the CPU's execution ports without causing stalls.
+
+### 52.3.1 Execution Port Awareness
+Modern CPUs have multiple execution ports (e.g., x86 has ports for ALU, AGU, loads, stores, vector). 
+- The instruction selector must know which port an instruction uses.
+- If a loop generates three instructions that all compete for Port 5, the loop will stall, regardless of how "short" the code is.
+- **Required:** The cost model must include a **port-pressure penalty**.
+
+### 52.3.2 Latency vs. Throughput and ILP
+- **Latency** is the time from input to output for a single instruction.
+- **Throughput** is how many of that instruction the CPU can start per cycle.
+- The optimizer must break dependency chains to maximize Instruction-Level Parallelism (ILP).
+- **Example:** Instead of `a = b + c; d = a + e;` (latency bound), rewrite to `t1 = b + c; t2 = d + e; a = t1 + t2;` if semantics allow, to hide latency.
+
+### 52.3.3 The "No False Sharing" of Registers
+Do not reuse a register for unrelated values if it creates a false dependency.
+- **Extermination:** Generating an instruction that writes to a register that is still being read by a subsequent independent instruction, creating a false dependency chain, is **exterminated** unless register pressure demands it.
+
+---
+
+## 52.4 Register Allocation: The Zero-Spill Mandate
+
+Registers are the only memory that matters. Spilling to the stack is a failure of the allocator.
+
+### 52.4.1 Advanced Allocation Algorithms
+Linear-scan register allocation is for amateurs and JITs with sub-millisecond latency constraints. For a high-performance compiler, it is unacceptable.
+- **Required:** Graph coloring, or advanced SSA-based register allocation (e.g., linear scan with split intervals, or optimal coloring for critical loops).
+- **Coalescing:** Copy elimination is mandatory. If `a = b`, they must share the same physical register.
+
+### 52.4.2 Rematerialization over Spilling
+If a value is cheap to recompute (e.g., a constant, an address calculation, a simple cast), **do not spill it**. Recompute it.
+- Memory is slow. ALU is fast.
+- **Extermination:** Spilling a value to the stack that can be rematerialized in 1 or 2 ALU instructions is **exterminated**.
+
+### 52.4.3 Hinting and Pinning
+For hot loops, the register allocator must respect hardware hints (e.g., x86 `r13` as a base pointer, or ARM `x19-x28` as callee-saved).
+- Callee-saved registers should be reserved for loop-carried dependencies to avoid saving/restoring overhead in the prologue/epilogue.
+
+---
+
+## 52.5 The War on Abstraction in Generated Code
+
+The generated code must not contain the "bloat" of the source language. The optimizer must ruthlessly destroy abstractions.
+
+### 52.5.1 Devirtualization and Speculative Inlining
+Virtual dispatch and indirect calls in hot paths are a failure of the optimizer.
+- **Required:** Class Hierarchy Analysis (CHA), devirtualization via profile-guided optimization (PGO), and speculative inlining with deoptimization fallbacks.
+- **Extermination:** Emitting an indirect call (`call [rax]`) in CEP-0 generated code when the target can be statically proven or profile-guided is **exterminated**.
+
+### 52.5.2 Escape Analysis and Scalar Replacement
+Objects allocated on the heap that do not escape the function must be destroyed.
+- **Required:** The optimizer must perform escape analysis and scalar replacement of aggregates (SROA). A `struct Point { int x, y; }` allocated locally must be reduced to two registers.
+- **Extermination:** Emitting a heap allocation or a stack spill for an object whose fields can be kept in registers is **exterminated**.
+
+### 52.5.3 Loop Invariant Code Motion (LICM) and Unrolling
+- **LICM:** Must be aggressive. If it doesn't change semantics, it moves out of the loop.
+- **Unrolling:** Must be driven by the cost model, not a magic number. Unroll only if it breaks dependency chains or allows vectorization.
+- **Extermination:** Unrolling a loop by a factor of 4 without proving that the register pressure remains within the physical register file limits is **exterminated**.
+
+---
+
+## 52.6 Vectorization: The SIMD Mandate
+
+Scalar code in a hot loop is a defect if the data is contiguous and the operations are uniform.
+
+### 52.6.1 Auto-Vectorization Requirements
+The vectorizer must prove:
+1. No loop-carried dependencies.
+2. Alignment (or generate masked prologue/epilogue).
+3. Trip count is sufficient to amortize setup cost.
+
+### 52.6.2 Intrinsics and SLP (Superword Level Parallelism)
+If auto-vectorization fails, the compiler must fall back to SLP (packing independent scalar instructions into vectors) or expose intrinsics.
+- **Extermination:** Generating a scalar loop for an array addition when the target supports SIMD and the data is aligned is **exterminated**.
+
+---
+
+## 52.7 The Compiler's Own Performance (Bootstrapping the Beast)
+
+The compiler itself must be cycle-exact. A slow compiler is a tax on the developer.
+
+### 52.7.1 Allocation-Free Hot Paths
+The lexer, parser, and IR construction phases must not allocate memory per-token or per-node from the global heap.
+- **Required:** Arena allocators. Bump pointers. 
+- **Extermination:** Calling `malloc` or `new` inside the lexer or parser hot loop is **exterminated**.
+
+### 52.7.2 Branchless Parsing and Lexing
+The lexer should use table-driven, branchless techniques (e.g., perfect hashing for keywords, SIMD-accelerated string scanning) where possible.
+- **Extermination:** Using a `switch` statement with 50 cases for ASCII character classification in the lexer is **exterminated**. Use a 256-byte lookup table.
+
+---
+
+## 52.8 Extreme Optimization Comment Standard
+
+When documenting an extreme optimization, the standard CEP comments are not enough. You must document the silicon reality.
+
+### 52.8.1 Required Codegen Fields
+```cpp
+// CEP:CODEGEN-UOPS: 
+// CEP:CODEGEN-PORTS: 
+// CEP:CODEGEN-LATENCY: 
+// CEP:CODEGEN-THROUGHPUT: 
+// CEP:CODEGEN-SPILLS: 
+// CEP:CODEGEN-VECTOR: 
+```
+
+### 52.8.2 Codegen Comment Example
+```cpp
+// CEP:WHAT: Inner loop of matrix multiplication (A * B = C).
+// CEP:WHY: Fused multiply-add (FMA) and register blocking to maximize ILP.
+// CEP:STATUS: complete
+// CEP:CODEGEN-UOPS: 4 loads, 2 FMAs, 1 store per iteration (unrolled 2x).
+// CEP:CODEGEN-PORTS: Loads on Port 2/3, FMAs on Port 0/1. Perfect port balance.
+// CEP:CODEGEN-LATENCY: Hidden by 2-way unrolling; FMA latency is 4 cycles, throughput is 2/cycle.
+// CEP:CODEGEN-SPILLS: 0. All 6 accumulators fit in physical registers.
+// CEP:CODEGEN-VECTOR: AVX2 256-bit; processes 8 floats per FMA.
+// CEP:EVIDENCE: perf stat shows 98% FMA port utilization. Artifact bench-matmul-avx2.
+```
+
+---
+
+## 52.9 Extermination Examples (The Pall Protocol)
+
+### Example 1: Pointer-Chasing IR Traversal
+**Violation:**
+```cpp
+for (auto* inst = bb->first; inst != nullptr; inst = inst->next) {
+    // ...
+}
+```
+Where `inst` is a heap-allocated object.
+**Response:**
+```text
+EXTERMINATE
+Reason: Pointer-chasing IR traversal guarantees L1 cache misses.
+Rule: CEP&CC 52.2.1
+Action: Refactor IR to use contiguous arena allocation and array indices.
+```
+
+### Example 2: Naive Register Spilling
+**Violation:**
+The register allocator spills a loop counter to the stack because it ran out of virtual registers, instead of rematerializing it.
+**Response:**
+```text
+EXTERMINATE
+Reason: Memory spill for a cheap-to-compute value. ALU is faster than L1 cache.
+Rule: CEP&CC 52.4.2
+Action: Implement rematerialization for loop induction variables.
+```
+
+### Example 3: Port Contention in Instruction Selection
+**Violation:**
+The instruction selector emits three `imul` instructions in a row. On x86, `imul` can only execute on Port 1.
+**Response:**
+```text
+EXTERMINATE
+Reason: Severe execution port contention. The CPU will stall waiting for Port 1.
+Rule: CEP&CC 52.3.1
+Action: Rewrite to use `lea` (Port 0/1/5) or shift/add sequences to distribute load across ports.
+```
+
+### Example 4: Unmeasured Peephole Optimization
+**Violation:**
+```cpp
+// Replaces (x << 1) with (x + x) because it's "faster".
+```
+No benchmark attached.
+**Response:**
+```text
+EXTERMINATE
+Reason: Optimization based on assumption, not measurement. On modern x86, both are 1 uop on Port 0/1/5. This change is useless and bloats the pass.
+Rule: CEP&CC 52.1.2
+Action: Delete the pass or provide a microbenchmark proving a cycle reduction on the target microarchitecture.
+```
+
+---
+
+## 52.10 Final Pall Clause
+
+> The silicon does not care about your source code. 
+> The silicon does not care about your clean abstractions. 
+> The silicon only cares about the uops you feed it, the cache lines you touch, and the execution ports you saturate.
+
+If your compiler generates code that leaves execution ports idle, you have failed.
+If your compiler's IR requires pointer chasing, you have failed.
+If your register allocator spills to memory when the ALU is free, you have failed.
+If you claim an optimization is "fast" without reading the Performance Monitoring Counters, you are lying.
+
+Optimize for the metal. Measure everything. Exterminate the bloat.
+---
+
+# 53. Toolchain Infrastructure, Memory, and Hardware Saturation (The Infrastructure Protocol)
+
+This chapter extends CEP&CC for the internal execution engine of compilers, linkers, build systems, and static analysis tools. 
+
+Modern toolchains are bloated. They rely on pointer-heavy abstract syntax trees, heap-allocated strings for every token, mutexes for thread coordination, and naive file I/O. They treat the host machine’s memory hierarchy as an afterthought. This is unacceptable.
+
+A compiler is a data-processing engine. Its inputs are bytes; its outputs are bytes. The intermediate representations are just data in memory. If the toolchain spends its time chasing pointers, allocating memory, or waiting on locks, it is failing the developer.
+
+Where this chapter is stricter than the general CEP&CC rules, this chapter wins.
+
+---
+
+## 53.1 The Prime Directive: The Toolchain is a Hot Path
+
+Compilation time is developer time. Memory is physical silicon. 
+> The toolchain’s internal data structures must be treated with the same ruthlessness as a game engine’s render loop.
+> The compiler does not "manage" memory; it *commands* it.
+> The compiler does not "wait" for threads; it *saturates* the execution units.
+
+### 53.1.1 The Measurement Mandate for Toolchains
+If you did not measure the compiler’s own IPC (Instructions Per Cycle), cache miss rate, and memory bandwidth utilization, you did not optimize it. You guessed.
+- **Extermination:** Adding a compiler pass or build-system feature that claims to be "fast" without hardware performance counters proving it saturates the target host is **exterminated**.
+
+---
+
+## 53.2 Memory Architecture: The Zero-Fragmentation Mandate
+
+Compilers are notorious memory hogs. `std::vector` growth, `std::string` allocations, and pointer-heavy trees guarantee memory fragmentation, TLB misses, and L1/L2 cache thrashing.
+
+### 53.2.1 Monotonic Arenas and Bump Allocators
+The compiler must not use the global heap for AST nodes, IR instructions, or symbol table entries.
+- **Banned:** `new`, `delete`, `malloc`, `free`, `std::make_unique`, and `std::vector::push_back` (which triggers reallocation) in the lexer, parser, and IR construction hot paths.
+- **Required:** Monotonic arena allocators. Memory is allocated in large, contiguous, page-aligned chunks. Individual nodes are bump-allocated. When a compilation phase finishes, the entire arena is freed in $O(1)$ time by resetting the bump pointer.
+- **Why:** Bump allocation is a single pointer addition. It is literally one instruction. It guarantees zero fragmentation and perfect spatial locality.
+
+### 53.2.2 String Interning and the "No std::string" Rule
+Every identifier, type name, and file path must be interned.
+- **Banned:** `std::string`, `std::string_view` (as owning types), and `char*` allocations for IR metadata.
+- **Required:** A global, lock-free (or thread-local) string interning table. All strings are deduplicated. The compiler only ever passes around `uint32_t` or `uint64_t` string IDs.
+- **Why:** Comparing two `uint32_t` IDs is one cycle. Comparing two strings is a cache miss and a branch. 
+
+### 53.2.3 Flat, Contiguous IR and AST
+Pointer-chasing is a disease. Trees of `std::unique_ptr<Node>` guarantee that traversing a basic block results in an L1 cache miss for every single node.
+- **Required:** IR and AST nodes must be stored in contiguous `std::vector`-like flat arrays (allocated via the arena). Child nodes are referenced by integer indices, not pointers.
+- **Why:** The CPU prefetcher can predict sequential array access. It cannot predict pointer chases. Flat arrays turn $O(N)$ cache misses into $O(1)$ cache misses.
+
+---
+
+## 53.3 Startup and Cold-Path Optimization
+
+Cold start latency is the first thing a developer experiences. If the compiler takes 2 seconds just to initialize its internal tables before reading a single byte of source code, it is defective.
+
+### 53.3.1 Zero-Copy Parsing and Memory-Mapped I/O
+Reading a 500 MB source file into a `std::vector<char>` is a catastrophic waste of memory and time.
+- **Banned:** `std::ifstream`, `fread`, `std::vector<char>` for file ingestion.
+- **Required:** Memory-mapped files (`mmap` / `CreateFileMapping`). The compiler parses directly from the page cache. Zero copies. Zero allocations.
+- **Why:** The OS already cached the file. By mapping it, you let the compiler parse directly from physical RAM without a single `memcpy`.
+
+### 53.3.2 `constinit` and the Ban on Dynamic Initialization
+- **Banned:** Global or static variables with non-trivial constructors (e.g., `std::map`, `std::vector`, or any class with a constructor that allocates).
+- **Required:** All static lookup tables, opcode maps, and keyword dictionaries must be `constexpr` or `constinit`. They must be placed in the `.rodata` section by the compiler.
+- **Why:** Dynamic initialization requires the C++ runtime to execute constructors before `main()`. This causes page faults, cache pollution, and startup latency. `constinit` guarantees the data is baked into the binary.
+
+### 53.3.3 SIMD-Accelerated Lexing
+The lexer is the bottleneck of parsing. A byte-by-byte `switch` statement is unacceptable.
+- **Required:** The lexer must use SIMD instructions (e.g., AVX2, NEON) to scan for whitespace, identifiers, and string boundaries. 
+- **Why:** Scanning 32 bytes per cycle with SIMD is 32x faster than scanning 1 byte per cycle with scalar code.
+
+---
+
+## 53.4 Incremental Compilation and Caching (The CAS Protocol)
+
+Caching is not "save the object file to disk and check the timestamp." Timestamps are a lie. Caching must be mathematically proven via Content-Addressable Storage (CAS).
+
+### 53.4.1 Content-Addressable Storage (CAS)
+Every artifact in the build system must be identified by a cryptographic hash of its *content*, not its file path or timestamp.
+- **Required:** The build system must hash the source code, the compiler flags, the environment variables, and the toolchain version. The resulting hash is the cache key.
+- **Why:** If you change a single byte in a header, the hash changes. If you change a compiler flag, the hash changes. Timestamps fail when files are copied or checked out from version control. Content hashes never lie.
+
+### 53.4.2 Fine-Grained Dependency Tracking
+File-level dependency tracking is too coarse. If a header has 50 classes, and you change one, you should not recompile the 49 translation units that only use the other 49 classes.
+- **Required:** The compiler must emit a fine-grained dependency graph at the symbol or AST-node level. The build system must track exactly which symbols are read and which are written.
+- **Why:** Recompiling untouched code is a tax on the developer. The build system must do the absolute minimum amount of work required to reach the correct state.
+
+### 53.4.3 Persistent, Cross-Build IR Caches
+If the compiler parses a 10,000-line header, it should never parse it again unless the header changes.
+- **Required:** The compiler must serialize the parsed AST/IR into a persistent, memory-mapped cache file. On subsequent builds, the compiler maps this file and instantly materializes the AST in memory, bypassing the lexer and parser entirely.
+- **Extermination:** A compiler that re-parses unchanged headers is **exterminated**.
+
+---
+
+## 53.5 Hardware Saturation and Multi-Threading (The Lock-Free Mandate)
+
+Compilers historically fail at multi-threading because they rely on mutexes. Mutexes cause context switches, cache-line bouncing, and priority inversion. 
+
+### 53.5.1 The Ban on Mutexes in Hot Paths
+- **Banned:** `std::mutex`, `std::shared_mutex`, `std::lock_guard`, and critical sections in the lexer, parser, IR construction, and optimization passes.
+- **Required:** Thread-local arenas, lock-free queues, and work-stealing schedulers. 
+- **Why:** A mutex is a confession of failure. It means you could not design a data structure that allows concurrent access without serialization.
+
+### 53.5.2 Thread-Local Arenas and Zero-Contention Allocation
+If Thread A and Thread B both need to allocate an IR node, they must not fight over a global allocator.
+- **Required:** Every worker thread must have its own monotonic arena. Allocation is a local pointer bump. When the thread finishes its work, its arena is merged or discarded.
+- **Why:** Cross-thread allocation requires atomic operations and cache-line synchronization. Thread-local allocation is literally one instruction and zero synchronization.
+
+### 53.5.3 Work-Stealing Schedulers
+A static partitioning of work (e.g., "Thread 1 takes files 1-10, Thread 2 takes files 11-20") guarantees that one thread will finish early and sit idle.
+- **Required:** The build system and compiler passes must use a work-stealing scheduler. Idle threads steal tasks from the queues of busy threads.
+- **Why:** It guarantees that all CPU cores remain saturated until the very last microsecond of the build.
+
+### 53.5.4 Cache-Line Padding and False Sharing
+If Thread A writes to `counter_A` and Thread B writes to `counter_B`, and both variables sit on the same 64-byte cache line, the CPU cores will violently invalidate each other's caches (false sharing).
+- **Required:** Any mutable state accessed by multiple threads must be padded to the target cache-line size (`alignas(64)` or `alignas(128)`).
+- **Extermination:** Profiling a multi-threaded compiler pass and finding cache-line bouncing (measured via `perf c2c`) without padding is a **Severity 0 defect**.
+
+### 53.5.5 NUMA-Aware Memory Allocation
+On multi-socket systems, accessing memory attached to the other CPU socket is twice as slow.
+- **Required:** The toolchain must allocate memory on the NUMA node local to the thread that will process it. First-touch allocation policies must be enforced.
+- **Why:** Cross-NUMA memory access destroys memory bandwidth and latency.
+
+---
+
+## 53.6 The "Saturate the Silicon" Measurement Mandate
+
+You cannot optimize what you do not measure. The toolchain must be measured using hardware performance counters.
+
+### 53.6.1 Required Toolchain Metrics
+Every major compiler pass and build-system phase must document:
+- **Wall-clock time:** Total elapsed time.
+- **CPU utilization:** Must be >95% on the target host. If a 64-core machine is at 40% CPU, the toolchain is defective.
+- **Peak RSS (Resident Set Size):** Maximum physical memory used.
+- **Memory Bandwidth:** GB/s consumed.
+- **L1/L2 Cache Miss Rate:** Must be minimized.
+- **IPC (Instructions Per Cycle):** Must be measured to ensure the CPU is not stalled.
+
+### 53.6.2 The "No Idle Cores" Rule
+If the build system leaves CPU cores idle while there is work in the dependency graph, it is a bug.
+- **Required:** The scheduler must continuously monitor core utilization and aggressively spawn or steal work to maintain 100% saturation.
+- **Extermination:** A build system that takes 10 minutes on a 64-core machine when a perfect scheduler could do it in 2 minutes is **exterminated**.
+
+---
+
+## 53.7 Toolchain Comment Standard
+
+When documenting a toolchain component, you must document its resource consumption and threading model.
+
+### 53.7.1 Required Infrastructure Fields
+```cpp
+// CEP:INFRA-MEM: 
+// CEP:INFRA-ALLOC: 
+// CEP:INFRA-THREAD: 
+// CEP:INFRA-CACHE: 
+// CEP:INFRA-SATURATION: 
+```
+
+### 53.7.2 Infrastructure Comment Example
+```cpp
+// CEP:WHAT: Parallel AST parser for C++26 translation units.
+// CEP:WHY: Parses source files into IR using all available hardware threads.
+// CEP:STATUS: complete
+// CEP:FAILURE: Returns ParseError on syntax failure. No allocation. No throw.
+// CEP:ASSUMES: Input is memory-mapped; thread pool is initialized.
+// CEP:COST: 1.2 GB/s memory bandwidth, 98% CPU saturation on 32-core host.
+// CEP:EVIDENCE: perf stat artifact infra-bench-04.
+// CEP:INFRA-MEM: Peak RSS 4.2 GB. Zero fragmentation.
+// CEP:INFRA-ALLOC: Thread-local monotonic arenas. Bump allocation. No global heap.
+// CEP:INFRA-THREAD: Work-stealing scheduler. Lock-free task queue. No mutexes.
+// CEP:INFRA-CACHE: AST nodes are flat arrays. String IDs are interned. Zero pointer chasing.
+// CEP:INFRA-SATURATION: 98% CPU utilization. False sharing eliminated via 64-byte padding on task queues.
+```
+
+---
+
+## 53.8 Extermination Examples (The Infrastructure Protocol)
+
+### Example 1: `std::string` Allocation in the Lexer
+**Violation:**
+```cpp
+struct Token {
+    std::string text;
+    // ...
+};
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Heap allocation for every token guarantees memory fragmentation and cache misses.
+Rule: CEP&CC 53.2.2
+Action: Intern the string. Store a uint32_t string ID in the Token struct.
+```
+
+### Example 2: Mutex in the IR Builder
+**Violation:**
+```cpp
+class IRBuilder {
+    std::mutex m_mutex;
+    void add_instruction(Instruction* inst) {
+        std::lock_guard lock(m_mutex);
+        m_instructions.push_back(inst);
+    }
+};
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Mutex in a hot compiler path causes context switching and cache-line bouncing.
+Rule: CEP&CC 53.5.1
+Action: Use thread-local IR builders. Merge the thread-local instruction arrays after parsing.
+```
+
+### Example 3: Timestamp-Based Caching
+**Violation:**
+```python
+if os.path.getmtime(source_file) > os.path.getmtime(object_file):
+    recompile()
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Timestamps are non-deterministic and fail on network drives, git checkouts, and copied files.
+Rule: CEP&CC 53.4.1
+Action: Implement Content-Addressable Storage (CAS) using SHA-256 hashes of file contents and compiler flags.
+```
+
+### Example 4: Pointer-Chasing AST
+**Violation:**
+```cpp
+struct ASTNode {
+    std::unique_ptr<ASTNode> left;
+    std::unique_ptr<ASTNode> right;
+};
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Pointer-chasing AST guarantees an L1 cache miss for every node traversal.
+Rule: CEP&CC 53.2.3
+Action: Store AST nodes in a flat std::vector<ASTNode> arena. Use uint32_t indices for children.
+```
+
+### Example 5: False Sharing in Thread Counters
+**Violation:**
+```cpp
+struct ThreadStats {
+    uint64_t nodes_processed;
+    uint64_t errors_found;
+};
+ThreadStats stats[MAX_THREADS];
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: False sharing. Adjacent counters share a cache line, causing violent cache invalidation across cores.
+Rule: CEP&CC 53.5.4
+Action: Pad the struct to 64 bytes: `alignas(64) struct ThreadStats { ... };`.
+```
+
+---
+
+## 53.9 Final Infrastructure Clause
+
+> The toolchain is the multiplier of human productivity. 
+> A slow toolchain is a tax on every developer, every day, every hour.
+> A memory-bloated toolchain forces the OS to page, thrash, and swap.
+> A poorly-threaded toolchain leaves millions of dollars of silicon idle.
+
+If your compiler allocates a string for every token, you have failed.
+If your build system relies on file timestamps, you have failed.
+If your multi-threaded passes use mutexes, you have failed.
+If your 64-core build server is only using 40% of its CPU, you have failed.
+---
+
+# 54. Formal Verification and Theorem Proving (FV)
+This chapter extends CEP&CC for codebases that use interactive theorem provers (Lean 4, Isabelle/HOL, Coq, HOL4, HOL Light) or automated SMT solvers (Z3, CVC5) to verify code, models, or compiler transformations.
+
+Formal verification is not a decoration. It is not a "mathematical comment." It is a machine-checked proof that a system satisfies its specification. If a proof script contains `sorry`, `Admitted`, or unproven axioms, it is not a proof; it is a placeholder. If a formal model simplifies away the hard parts of the code (memory aliasing, integer overflow, concurrency) without a refinement proof, it is not a model of the code; it is a model of a toy problem.
+
+For FV, the following are first-class correctness requirements:
+1. machine-checked, complete proofs (zero `sorry`/`Admitted`),
+2. exact model fidelity (no unproven simplifications),
+3. verified extraction or verified refinement (the model and the code must match),
+4. reproducible proof scripts,
+5. explicit handling of solver timeouts and axioms.
+
+---
+
+## 54.1 FV Prime Law
+The FV prime law is:
+> A proof with `sorry`, `Admitted`, or unproven axioms is not a proof. It is a lie.
+> A model that simplifies away operational reality without a refinement proof is not a model. It is a fiction.
+> The formal model and the executable code must be mathematically linked. You cannot verify a Lean model and then hand-write a C++ implementation and claim it is verified.
+> Automated solver scripts must be deterministic, bounded, and reproducible.
+
+Violations of the FV prime law are Severity 0.
+
+---
+
+## 54.2 FV Conformance Classes
+FV defines three component classes.
+
+### 54.2.1 FV-0: Machine-Checked Critical Proofs
+FV-0 applies to properties that are mathematically proven and machine-checked.
+FV-0 includes:
+- security-critical cryptographic implementations,
+- safety-critical control algorithms,
+- compiler transformation equivalence proofs,
+- memory-safety proofs for unsafe FFI boundaries,
+- verified extraction from Lean/Coq to C++/Rust.
+
+FV-0 requirements:
+- Zero `sorry` (Lean), `Admitted` (Coq/Isabelle), or `assume` (HOL).
+- Zero unproven axioms unless explicitly declared as target-hardware axioms (e.g., `axiom hardware_memory_model : ...`) and justified.
+- The proof script must compile and pass in CI on every commit.
+- The model must exactly match the operational semantics of the code.
+
+### 54.2.2 FV-1: Verified Models and Partial Proofs
+FV-1 applies to models that are verified but may rely on unverified glue code, or proofs that cover only a subset of the state space.
+FV-1 includes:
+- abstract state machine models,
+- protocol verification (e.g., distributed consensus),
+- bounded model checking results.
+
+FV-1 requirements:
+- The core model must be `sorry`-free.
+- Any gaps between the model and the code must be explicitly documented as `CEP:FV-REFINEMENT` gaps and bridged by runtime checks or manual review.
+
+### 54.2.3 FV-2: Proof Tooling and Tactics
+FV-2 applies to custom tactics, decision procedures, and proof orchestration scripts.
+FV-2 must be deterministic and must not introduce unsoundness into the prover kernel.
+
+---
+
+## 54.3 The "No Sorry" and "No Admitted" Mandate
+Interactive theorem provers allow you to skip proof steps. CEP&CC bans this in FV-0.
+
+### 54.3.1 Lean 4 Policy
+- **Banned:** `sorry`, `panic!`, `unsafe` (unless isolated and proven), `axiom` (unless representing a hardware/OS axiom).
+- **Required:** Every theorem must be proven. If a proof is too hard, the theorem must be weakened, or the component must be downgraded to FV-1.
+- **Extermination:** A Lean file containing `sorry` in an FV-0 module is **exterminated**.
+
+### 54.3.2 Isabelle/HOL and Coq Policy
+- **Banned:** `Admitted` (Coq), `sorry` (Isabelle), `skip` (HOL4).
+- **Required:** All proofs must be completed with `Qed`, `done`, or equivalent.
+- **Extermination:** An Isabelle theory containing `Admitted` in an FV-0 module is **exterminated**.
+
+### 54.3.3 The Axiom Exception
+Axioms are only allowed if they represent physical or hardware reality that cannot be proven in software.
+Example of allowed axiom:
+```lean
+-- Axiom: The hardware memory model is sequentially consistent for this region.
+axiom hw_seq_cst (addr : UInt64) : ...
+```
+Example of banned axiom:
+```lean
+-- BANNED: Axiom: The array bounds check passes. (This is a software property, not a hardware axiom).
+axiom bounds_check_passes : ...
+```
+
+---
+
+## 54.4 Model Fidelity and the "No Simplification" Rule
+The most common failure in formal verification is verifying a simplified model while deploying a complex implementation.
+
+### 54.4.1 The Fidelity Mandate
+The formal model must include all operational details that affect the verified property.
+- If you verify memory safety, the model **must** include memory allocation, pointers, and aliasing. You cannot model memory as a mathematical set and claim the C++ code is memory-safe.
+- If you verify integer arithmetic, the model **must** include overflow, underflow, and wrapping semantics. You cannot model integers as $\mathbb{Z}$ (unbounded mathematical integers) and claim the `uint32_t` code is correct.
+- If you verify concurrency, the model **must** include the memory consistency model (e.g., C++26 memory model, TSO, ARMv8).
+
+### 54.4.2 The Refinement Proof Requirement
+If the model *must* simplify a detail for tractability, you must provide a **refinement proof** or a **runtime bridge**.
+- **Refinement Proof:** A machine-checked proof that the concrete C++/Rust implementation refines the abstract Lean/Isabelle model.
+- **Runtime Bridge:** A verified wrapper in the implementation language that checks the abstract preconditions before calling the concrete code.
+
+Bad:
+```lean
+-- Model: Unbounded integers.
+def add (a b : Int) : Int := a + b
+-- C++ Code:
+uint32_t add(uint32_t a, uint32_t b) { return a + b; } // OVERFLOW NOT MODELED!
+```
+
+Good:
+```lean
+-- Model: Bounded 32-bit integers with explicit overflow.
+def add (a b : UInt32) : Option UInt32 := ...
+-- C++ Code:
+std::expected<uint32_t, Error> add(uint32_t a, uint32_t b) {
+  if (b > UINT32_MAX - a) return std::unexpected(Error::overflow);
+  return a + b;
+}
+```
+
+---
+
+## 54.5 Tool-Specific Policies
+
+### 54.5.1 Lean 4
+- **Extraction:** If using `Lean.Compiler.Export` or similar to extract Lean code to C++, the extraction process must be proven correct, or the extracted code must be wrapped in a verified FFI boundary.
+- **Dependencies:** All Lean dependencies must be version-pinned. A proof that relies on a mutable `git` dependency is not reproducible.
+- **CI Gate:** `lake build` and `lake test` must pass in CI. Proof scripts must not rely on local environment variables.
+
+### 54.5.2 Z3 and SMT Solvers
+- **Bounded Verification:** SMT solvers are not theorem provers; they are semi-decision procedures. A timeout is not a proof of falsehood.
+- **Required:** Every Z3 script must document its timeout limit. If the solver times out, the property is **unproven**, not false.
+- **Quantifiers:** Universal quantifiers (`forall`) in SMT can cause infinite loops in the solver. Use quantifier instantiation patterns (`:pattern`) explicitly.
+- **Extermination:** A Z3 script that relies on `:timeout 0` (infinite) or hides a timeout failure is **exterminated**.
+
+### 54.5.3 Isabelle/HOL and HOL4
+- **Code Generation:** If using Isabelle's `code_gen` to generate SML, OCaml, or Haskell, the generated code must be reviewed for performance and memory safety. The generator is not magic.
+- **L4v/seL4 Style:** If verifying an OS or kernel, the C code must be annotated with `cspec` and `dspec` contracts, and the refinement chain must be unbroken.
+
+---
+
+## 54.6 Code-to-Model Refinement (Bridging the Gap)
+You cannot verify a Lean model and then hand-write a C++ implementation. The link must be formal.
+
+### 54.6.1 Verified Extraction
+If the code is extracted from the prover (e.g., Lean to C++, Coq to OCaml):
+- The extraction mechanism must be trusted or proven.
+- The target language's runtime (e.g., C++ `std::vector`, garbage collection in OCaml) must be modeled or bounded.
+
+### 54.6.2 Verified Implementation (Refinement)
+If the code is written in C++/Rust and the model is written in Lean/Isabelle:
+- The C++/Rust code must be annotated with contracts (e.g., using Frama-C, Verus, or Prusti).
+- A refinement proof must show that the C++ state transitions simulate the Lean state transitions.
+- **Extermination:** Claiming a C++ function is "verified by Lean" when the Lean file only verifies a mathematical algorithm and the C++ code contains manual memory management is **exterminated**.
+
+---
+
+## 54.7 FV Comment Standard
+Formal verification artifacts must include specific comment fields.
+
+### 54.7.1 Required FV Fields
+```text
+// CEP:FV-CLASS:
+// CEP:FV-PROVER:
+// CEP:FV-SCRIPT:
+// CEP:FV-SORRY-COUNT:
+// CEP:FV-REFINEMENT:
+// CEP:FV-AXIOMS:
+```
+
+### 54.7.2 FV Comment Example: Lean Theorem
+```lean
+/-
+CEP:FILE: src/crypto/aes_verify.lean
+CEP:WHAT: Proves that the AES implementation has no secret-dependent branches.
+CEP:WHY: Constant-time execution is required for security.
+CEP:CLASS: FV-0
+CEP:STATUS: complete
+CEP:FAILURE: Proof fails if the implementation introduces data-dependent control flow.
+CEP:ASSUMES: The hardware executes instructions in constant time (no cache timing modeled).
+CEP:FV-CLASS: FV-0
+CEP:FV-PROVER: Lean 4
+CEP:FV-SCRIPT: src/crypto/aes_verify.lean
+CEP:FV-SORRY-COUNT: 0
+CEP:FV-REFINEMENT: C++ implementation uses verified lookup tables; refinement proven in aes_refinement.lean.
+CEP:FV-AXIOMS: hardware_constant_time (justified by target manual).
+-/
+```
+
+### 54.7.3 FV Comment Example: Z3 Script
+```python
+# CEP:FILE: tools/verify_bounds.py
+# CEP:WHAT: Bounded verification of array index calculation.
+# CEP:WHY: Proves no overflow occurs for inputs < 1024.
+# CEP:CLASS: FV-1
+# CEP:FV-PROVER: Z3
+# CEP:FV-SCRIPT: tools/verify_bounds.py
+# CEP:FV-SORRY-COUNT: N/A (SMT)
+# CEP:FV-REFINEMENT: Bounded to 1024; unbounded proof requires induction in Lean.
+```
+
+---
+
+## 54.8 FV Review Checklist
+A formal verification change is compliant only if:
+- [ ] Zero `sorry` / `Admitted` in FV-0.
+- [ ] Proof scripts compile and pass in CI.
+- [ ] No unproven axioms (unless hardware/OS axioms).
+- [ ] Model fidelity matches operational reality (no unproven simplifications).
+- [ ] Refinement proof or runtime bridge exists between model and code.
+- [ ] SMT timeouts are documented and bounded.
+- [ ] Dependencies are version-pinned and reproducible.
+- [ ] Extraction mechanisms are trusted or verified.
+
+---
+
+## 54.9 FV Extermination Examples
+
+### Example 1: The `sorry` in Lean
+**Violation:**
+```lean
+theorem aes_constant_time : ... := by
+  sorry -- TODO: finish proof later
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: FV-0 module contains `sorry`. The proof is incomplete.
+Rule: CEP&CC 54.3.1
+Action: Complete the proof or downgrade the component to FV-1 and document the gap.
+```
+
+### Example 2: The Simplified Model (Unbounded Integers)
+**Violation:**
+```lean
+-- Lean Model
+def checksum (data : List Int) : Int := data.foldl (· + ·) 0
+
+-- C++ Code
+uint32_t checksum(uint32_t* data, size_t len) {
+  uint32_t sum = 0;
+  for (size_t i = 0; i < len; i++) sum += data[i]; // OVERFLOW!
+  return sum;
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Model uses unbounded integers (Int); code uses bounded uint32_t. The model simplifies away overflow. No refinement proof exists.
+Rule: CEP&CC 54.4.1
+Action: Rewrite the Lean model using UInt32 and explicit wrapping semantics, or provide a refinement proof.
+```
+
+### Example 3: Z3 Timeout Hidden
+**Violation:**
+```python
+s = z3.Solver()
+s.set("timeout", 0) # Infinite timeout
+s.add(...)
+if s.check() == z3.sat:
+    print("Verified")
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: SMT solver timeout is set to infinite. If the solver hangs, the CI hangs. If it times out in a constrained environment, the verification is silently skipped.
+Rule: CEP&CC 54.5.2
+Action: Set a strict timeout (e.g., 10 seconds). If it times out, the build must fail.
+```
+
+### Example 4: Isabelle `Admitted`
+**Violation:**
+```isabelle
+lemma security_property:
+  shows "valid_state s --> secure s"
+  oops -- Admitted
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: FV-0 theory contains `oops` (Admitted). The property is unproven.
+Rule: CEP&CC 54.3.2
+Action: Complete the proof.
+```
+
+### Example 5: Unverified Hand-Written C++ After Lean Extraction
+**Violation:**
+The team writes a beautiful, verified Lean model of a scheduler. They then manually rewrite it in C++ for performance, claiming "it's the same algorithm, so it's verified."
+**Response:**
+```text
+EXTERMINATE
+Reason: The C++ code is not the extracted code, and no refinement proof links the C++ memory model to the Lean model. The verification is broken.
+Rule: CEP&CC 54.6
+Action: Use verified extraction, or write a refinement proof linking the C++ code to the Lean model.
+```
+
+---
+
+## 54.10 Final FV Clause
+> Mathematics does not care about your intentions.
+> The prover does not care about your comments.
+> If there is a `sorry`, you have not proven it.
+> If the model ignores memory, you have not verified the code.
+> If the C++ code is not linked to the model, you have not verified the system.
+
+Formal verification is the highest standard of correctness. It is not a place for hand-waving.
+Prove it completely. Prove it faithfully. Or do not claim it is verified.
+---
+
+# 55. Heterogeneous & Accelerated Computing (The Accelerator Protocol)
+This chapter extends CEP&CC for code executing on GPUs (CUDA, HIP, SYCL), TPUs, FPGAs, and other hardware accelerators. 
+The CPU-centric assumptions of earlier chapters do not apply to accelerators. On a GPU, "cycle-exact" translates to "warp-exact." The silicon is massively parallel, but the memory hierarchy is a treacherous cliff. A single hidden global memory access, a single warp divergence, or a single shared memory bank conflict can destroy throughput by orders of magnitude.
+
+## 55.1 Accelerator Conformance Classes
+### 55.1.1 CEP-A-0: Accelerator-Critical Hot Code
+CEP-A-0 applies to device kernels, wavefront/warp execution paths, and DMA engines.
+CEP-A-0 requirements:
+- Zero hidden global memory accesses in hot loops.
+- Zero warp/wavefront divergence unless mathematically proven and budgeted.
+- Zero shared memory bank conflicts.
+- Explicit register pressure documentation and occupancy calculations.
+- No dynamic parallelism (device-side kernel launches).
+- No framework-level abstractions (e.g., no implicit PyTorch tensor operations inside the kernel).
+- No uncoalesced memory accesses.
+
+### 55.1.2 CEP-A-1: Device Support and Host-Launch Code
+Host-side launch configuration, stream management, event synchronization, and device memory allocation. Must be deterministic, bounded, and explicitly measured for latency.
+
+### 55.1.3 CEP-A-2: Offline Accelerator Tooling
+Kernel profilers, trace analyzers, code generators, and autotuners.
+
+## 55.2 The Memory Hierarchy Mandate
+Accelerator memory is not a flat array. It is a strict, unforgiving hierarchy. Every pointer access must be classified and proven.
+
+### 55.2.1 Memory Classification and Access Rules
+Every kernel must document its memory access pattern using the `CEP:MEM-HIERARCHY` field.
+- **Registers:** Private, fastest. Must not spill to local memory. Spilling is a Severity 1 defect unless proven unavoidable by the occupancy calculator.
+- **Shared/LDS:** Fast, on-chip. Must be explicitly staged. Bank conflicts are Severity 1. Padding must be used to avoid conflicts.
+- **Constant:** Read-only, cached. Must not exceed hardware limits (e.g., 64KB on NVIDIA).
+- **Global/VRAM:** Slow, off-chip. Must be 128-byte aligned and coalesced.
+
+### 55.2.2 The "No Hidden Global" Rule
+If a kernel reads from global memory inside a hot loop without explicit staging through shared memory or registers, it is a **Severity 0 defect**.
+```cpp
+// CEP:MEM-HIERARCHY: Global read coalesced; 128-byte aligned. Staged to shared mem.
+// CEP:ASSUMES: input_ptr is 128-byte aligned; enforced by host-side cudaMalloc.
+```
+
+### 55.2.3 Coalescing and Alignment
+- **Banned:** Strided global memory accesses where stride != 1 (unless explicitly using texture memory or scatter/gather intrinsics with proven hardware support).
+- **Required:** All global memory pointers passed to kernels must be aligned to the maximum vector width of the target (e.g., 16 bytes for FP32x4).
+- **Extermination:** Passing an unaligned pointer to a vectorized kernel without a scalar prologue/epilogue to handle the misalignment is **exterminated**.
+
+## 55.3 Warp/Wavefront-Exact Performance
+### 55.3.1 Divergence Policy
+Warp divergence is a performance tax. It serializes parallel execution.
+- **Banned in CEP-A-0:** Data-dependent branching inside inner loops unless proven that all threads in a warp take the same path.
+- **Required:** If divergence is unavoidable, the exact divergence cost (in stalled cycles and serialized execution phases) must be measured via hardware profilers (e.g., `nsight compute`, `rocprof`) and documented.
+```cpp
+// CEP:WARP: Divergence on branch `if (mask & 1)`. 
+// CEP:WARP-COST: Worst-case 15% thread stall; 2 serialized execution phases.
+// CEP:EVIDENCE: nsight-compute-artifact-04.
+```
+
+### 55.3.2 Occupancy and Launch Bounds
+Magic launch configurations are banned. The compiler cannot guess your register pressure.
+- **Required:** All kernels must use `__launch_bounds__` (CUDA/HIP) or equivalent workgroup size attributes.
+- **Required:** The launch bounds must be justified by an occupancy calculator proving the target register usage, shared memory footprint, and resulting theoretical occupancy.
+```cpp
+// CEP:OCCUPANCY: 4 warps/SM. 64 registers/thread. 16KB shared. 
+// CEP:OCCUPANCY-TARGET: 100% theoretical occupancy on SM80 (A100).
+// CEP:EVIDENCE: cuda-occupancy-calculator-v4.
+__launch_bounds__(128, 8) __global__ void kernel(...)
+```
+
+### 55.3.3 Warp-Level Primitives
+- **Required:** Use warp-level primitives (`__shfl_sync`, `__ballot_sync`, `__reduce_sync`) for intra-warp communication. 
+- **Banned:** Using shared memory to communicate between threads in the *same* warp. This introduces false dependencies and bank conflicts.
+
+## 55.4 Framework Agnosticism and Intrinsics
+### 55.4.1 CUDA / HIP / SYCL / Triton
+The standard applies equally to all accelerator frameworks. 
+- **Banned in CEP-A-0:** Dynamic parallelism, implicit synchronization primitives (e.g., `cudaDeviceSynchronize()` inside a hot path), framework-level error checking inside kernels.
+- **Required:** Use of `__restrict__` on all pointer arguments to prove no aliasing to the compiler.
+- **Required:** Triton kernels must explicitly declare `tl.static_assert` for shape and alignment invariants. Triton's Python-level abstractions must not hide memory allocation.
+
+### 55.4.2 Error Handling on the Device
+- **Banned:** `assert()` or `printf()` inside CEP-A-0 kernels unless compiled out in release builds.
+- **Required:** Device-side error codes must be written to a pinned, pre-allocated global memory buffer, and checked by the host after kernel completion.
+
+## 55.5 PCIe / NVLink / Infinity Fabric Bandwidth Budgets
+Data movement is often the true bottleneck. The network and the PCIe bus are not infinite.
+
+### 55.5.1 Transfer Contracts
+Every host-to-device (H2D) and device-to-host (D2H) transfer must have an explicit byte-count budget and latency expectation.
+```cpp
+// CEP:TRANSFER: H2D 4096 bytes. D2H 256 bytes. 
+// CEP:TRANSFER-BUS: PCIe Gen4 x16. 
+// CEP:TRANSFER-BUDGET: 1.2 us worst-case latency.
+```
+
+### 55.5.2 Overlap and Pinning
+- **Required:** Host buffers must be page-locked (pinned) via `cudaMallocHost` or `hipHostMalloc`. Unpinned DMA transfers in CEP-A-0 are **exterminated** because they trigger implicit OS page faults and synchronous copies.
+- **Required:** Compute and transfer must overlap via explicit stream ordering and double-buffering.
+
+## 55.6 Accelerator Extermination Examples
+
+**Example 1: Uncoalesced Global Memory Access**
+```cpp
+// Thread i reads data[i * stride] where stride != 1.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Uncoalesced global memory access destroys memory bandwidth. Generates 32x memory transactions instead of 1.
+Rule: CEP&CC 55.2.3
+Action: Transpose data or restructure access pattern for 128-byte coalescing.
+```
+
+**Example 2: Missing Launch Bounds**
+```cpp
+__global__ void my_kernel(float* a) { ... }
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Missing __launch_bounds__. Register pressure is uncontrolled; occupancy is unknown; compiler may spill to local memory.
+Rule: CEP&CC 55.3.2
+Action: Add __launch_bounds__ and attach occupancy calculator evidence.
+```
+
+**Example 3: Shared Memory Bank Conflict**
+```cpp
+__shared__ float smem[32][32]; // 32 words per row = 128 bytes = 32 banks.
+float val = smem[col][row];    // Column-major access on square padding.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: 32-way bank conflict. Every thread in the warp accesses the same bank. Throughput drops by 32x.
+Rule: CEP&CC 55.2.1
+Action: Pad shared memory: `__shared__ float smem[32][33];`.
+```
+
+## 55.7 Accelerator Review Checklist
+- [ ] All global memory accesses are 128-byte aligned and coalesced.
+- [ ] Shared memory accesses are padded to avoid bank conflicts.
+- [ ] Warp divergence is measured and documented.
+- [ ] `__launch_bounds__` or equivalent is present and justified.
+- [ ] No register spilling to local memory in CEP-A-0.
+- [ ] Host buffers for DMA are page-locked (pinned).
+- [ ] H2D/D2H byte counts and latencies are budgeted.
+- [ ] No dynamic parallelism in CEP-A-0.
+- [ ] No implicit framework synchronization in hot paths.
+
+---
+
+# 56. Distributed HPC & Network Topology (The Fabric Protocol)
+HPC rarely lives on a single node. When code crosses the network, the network becomes part of the execution environment. Network latency, packet reordering, NIC queue depths, and topology are correctness and performance constraints.
+
+## 56.1 Network-Exact Performance
+### 56.1.1 The Fabric Budget
+Just as CPU cycles are budgeted, network hops and NIC resources must be budgeted.
+Required documentation via `CEP:FABRIC`:
+- Hop count / topology distance (e.g., NVLink intra-node, InfiniBand inter-node).
+- NIC queue depth limits.
+- RDMA Completion Queue (CQ) polling frequency.
+- Maximum in-flight messages.
+
+### 56.1.2 Polling vs. Interrupts
+- **Banned in CEP-0:** Blocking on network interrupts without a bounded timeout.
+- **Required:** Explicit polling budgets. If polling exceeds the budget, the thread must yield or escalate.
+```cpp
+// CEP:FABRIC: RDMA CQ polling. Max 1024 completions per poll. 
+// CEP:FABRIC-BUDGET: 4 us worst-case poll latency.
+```
+
+## 56.2 Collective Operation Contracts
+MPI, NCCL, and RCCL calls are not simple function calls; they are massive, synchronized, topology-dependent barriers.
+
+### 56.2.1 The Collective Ban in Hot Paths
+Collective operations (e.g., `MPI_Allreduce`, `ncclAllReduce`) are **banned in CEP-0 hot loops** unless explicitly waived. They introduce global synchronization and nondeterministic latency.
+
+### 56.2.2 Algorithm and Topology Documentation
+If a collective is used, the underlying algorithm and topology awareness must be documented.
+```cpp
+// CEP:COLLECTIVE: NCCL AllReduce. 
+// CEP:COLLECTIVE-ALGO: Ring. 
+// CEP:COLLECTIVE-TOPO: NVLink fully connected (intra-node).
+// CEP:COLLECTIVE-COST: 14 us for 64MB on 8-GPU node.
+```
+
+### 56.2.3 Banned Collective Patterns
+- **Banned:** Using `MPI_Allreduce` for single-scalar synchronization. Use point-to-point or atomic flags.
+- **Banned:** Nested collectives.
+- **Banned:** Collectives with mismatched datatypes or counts across ranks.
+
+## 56.3 Deterministic Distributed Execution
+Network packet reordering and non-deterministic collective algorithms destroy reproducibility.
+
+### 56.3.1 The Determinism Mandate
+Distributed simulations and training runs must produce bitwise-identical results across runs, regardless of network jitter.
+- **Required:** Use deterministic collective algorithms (e.g., NCCL's deterministic tree/ring modes, MPI deterministic reductions).
+- **Required:** Explicit seed synchronization across all ranks before any stochastic operation.
+```cpp
+// CEP:DETERMINISM: Rank-local RNG seeded with base_seed + rank_id. 
+// CEP:COLLECTIVE: Deterministic AllReduce enforced via NCCL_ALGO=Tree,NCCL_PROTO=Simple.
+```
+
+### 56.3.2 Floating-Point Non-Associativity in Reductions
+Floating-point addition is not associative. A tree-based reduction yields different results than a ring-based reduction.
+- **Required:** The reduction algorithm must be fixed and documented.
+- **Required:** If bitwise reproducibility is required, the compiler must ban FMA contraction and reassociation (`-ffp-contract=off`, `-fno-unsafe-math-optimizations`) inside the reduction kernel.
+
+## 56.4 Distributed Extermination Examples
+
+**Example 1: Nondeterministic AllReduce**
+```cpp
+ncclAllReduce(..., stream); // Default algorithm used
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Default NCCL algorithm may use non-deterministic reduction ordering, breaking bitwise reproducibility.
+Rule: CEP&CC 56.3.1
+Action: Force deterministic algorithm via environment or API flag; document in CEP:COLLECTIVE.
+```
+
+**Example 2: Unbounded NIC Queue Depth**
+```cpp
+for (int i=0; i<100000; i++) { ibv_post_send(...); }
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Unbounded posting to NIC send queue. Will exhaust NIC memory and cause silent drops or crashes.
+Rule: CEP&CC 56.1.1
+Action: Bound the queue depth to the hardware limit; implement backpressure or polling.
+```
+
+## 56.5 Distributed Review Checklist
+- [ ] Network hops and topology are documented.
+- [ ] NIC queue depths and CQ polling are bounded.
+- [ ] Collectives are banned from CEP-0 hot loops (or explicitly waived).
+- [ ] Collective algorithms and topology awareness are documented.
+- [ ] Distributed RNG seeds are explicitly synchronized.
+- [ ] Floating-point reductions use fixed algorithms and ban reassociation.
+
+---
+
+# 57. Energy and Thermodynamics (The Joule Protocol)
+In exascale and edge HPC, FLOPS/Watt is a primary correctness metric. Thermal throttling destroys cycle-exact guarantees. A system that violates its energy budget is a defective system.
+
+## 57.1 Joule-Exact Budgeting
+### 57.1.1 Energy as a First-Class Constraint
+Hot paths must be profiled for energy consumption, not just time.
+- **Required:** Use hardware energy counters (Intel RAPL `pkg`/`dram`/`core` domains, NVIDIA NVML, ARM SCMI).
+- **Required:** Document the energy cost per operation.
+```cpp
+// CEP:ENERGY: 4.2 nJ per element processed. 
+// CEP:ENERGY-MEASURED-VIA: Intel RAPL PKG domain, 10ms sampling.
+```
+
+### 57.1.2 Energy Bounds
+Every CEP-0 function must declare its worst-case energy consumption.
+```cpp
+// CEP:ENERGY-MAX: 150 mJ per invocation. Exceeding this triggers DVFS throttle.
+```
+
+## 57.2 Thermal Throttling Awareness
+### 57.2.1 The "No Sustained Boost" Rule
+Code must **never** assume sustained boost clocks. 
+- **Banned:** Hard-coding cycle counts based on maximum turbo frequency.
+- **Required:** WCET must be calculated at the *sustained base frequency* or the *thermal throttling floor*.
+```cpp
+// CEP:ASSUMES: Execution timed at 2.1 GHz (sustained base), NOT 3.5 GHz (turbo).
+```
+
+### 57.2.2 DVFS Contracts
+If the system uses Dynamic Voltage and Frequency Scaling (DVFS), the code must explicitly declare its frequency requirements.
+- **Required:** Request minimum frequency via OS/hypervisor APIs before entering hot paths.
+- **Required:** Release frequency constraint immediately after.
+- **Banned:** Relying on the OS governor to "figure it out." The OS governor reacts too slowly for microsecond-level hot paths.
+
+## 57.3 Energy Extermination Examples
+
+**Example 1: Assuming Turbo Clocks**
+```cpp
+// CEP:COST: 1024 cycles. (Assumes 3.8 GHz turbo).
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Cycle count assumes transient turbo state. Thermal throttling will violate this WCET.
+Rule: CEP&CC 57.2.1
+Action: Recalculate and document cost at sustained base frequency (e.g., 2.4 GHz).
+```
+
+**Example 2: Unmeasured Energy in Hot Loop**
+```cpp
+// CEP:COST: 10 cycles/iter.
+// (No CEP:ENERGY field)
+```
+**Response:**
+```text
+FAIL
+Reason: Energy cost not measured. In exascale/edge contexts, power draw may trip breakers or throttle the node.
+Rule: CEP&CC 57.1.1
+Action: Profile via RAPL/NVML and add CEP:ENERGY field.
+```
+
+## 57.4 Energy Review Checklist
+- [ ] Energy cost measured via hardware counters (RAPL/NVML).
+- [ ] WCET calculated at sustained base frequency, not turbo.
+- [ ] DVFS frequency requests are explicit and bounded.
+- [ ] Thermal throttling floor is documented.
+
+---
+
+# 58. Controlled Nondeterminism & Adaptive Systems (The Chaos Protocol)
+The standard bans nondeterminism, but advanced HPC domains (Adaptive Mesh Refinement, dynamic load balancing, speculative execution) require controlled chaos. If you must be nondeterministic, you must prove it is safe.
+
+## 58.1 Bounded Adaptive Execution
+### 58.1.1 The "Bounded Nondeterminism" Contract
+If a system uses work-stealing, speculative execution, or adaptive refinement, it must mathematically prove two things:
+1. The final observable state is strictly deterministic.
+2. The variance in execution time is strictly bounded.
+```cpp
+// CEP:ADAPTIVE: Work-stealing scheduler. 
+// CEP:DETERMINISM: Final state proven deterministic via commutative reduction.
+// CEP:VARIANCE: Execution time variance < 4.2% across 10,000 runs.
+```
+
+### 58.1.2 Banned Adaptive Patterns
+- **Banned:** Unbounded work-stealing queues.
+- **Banned:** Adaptive refinement without a maximum depth limit.
+- **Banned:** Dynamic load balancing that migrates tasks without bounding the migration latency.
+
+## 58.2 Rollback Contracts
+Speculative execution (e.g., optimistic concurrency, speculative decoding) requires rollback on misprediction.
+
+### 58.2.1 The Rollback Budget
+The cost of a misprediction/rollback must be explicitly measured and included in the worst-case cost model.
+```cpp
+// CEP:SPECULATION: Speculative loop unrolling.
+// CEP:ROLLBACK-COST: 450 cycles worst-case to restore architectural state.
+// CEP:COST: Expected 12 cycles/iter. Worst-case (with rollback) 462 cycles.
+```
+
+### 58.2.2 Banned Speculative Patterns
+- **Banned:** Speculative execution without a verified, bounded rollback mechanism.
+- **Banned:** Speculation that leaks side-channel information during the speculative window.
+
+## 58.3 Adaptive Extermination Examples
+
+**Example 1: Unbounded Work-Stealing**
+```cpp
+while (!global_queue.empty()) { steal(); }
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Unbounded work-stealing loop. If global queue is starved, threads spin indefinitely, violating WCET.
+Rule: CEP&CC 58.1.2
+Action: Bound the steal attempts; implement a deterministic fallback or timeout.
+```
+
+## 58.4 Adaptive Review Checklist
+- [ ] Final observable state is proven deterministic.
+- [ ] Execution time variance is bounded and measured.
+- [ ] Rollback costs are measured and included in WCET.
+- [ ] Maximum depth/limits for adaptive structures are enforced.
+
+---
+
+# 59. AI/ML Systems & Data-Centric Frameworks (The Tensor Protocol)
+Modern HPC is driven by AI frameworks (PyTorch, JAX, TensorFlow). These frameworks are bloated, dynamic, and hide massive overhead. CEP&CC does not exempt ML code. A custom CUDA kernel or Triton script is still code, and it must comply.
+
+## 59.1 Graph-Level CEP
+### 59.1.1 The Framework Boundary
+The ML framework (Python/Graph layer) is treated as **Cold/CEP-2**. The actual compute (C++ extensions, Triton kernels, CUDA graphs) is **CEP-A-0**.
+
+### 59.1.2 Custom Kernels are CEP-0
+Any custom C++ extension, JAX Pallas kernel, or Triton script must include full CEP comment blocks, prove occupancy, and eliminate hidden allocations.
+
+## 59.2 Framework Overhead Elimination
+### 59.2.1 The "No Hidden Overhead" Mandate
+Framework abstractions hide cost. In hot paths, these abstractions must be destroyed.
+- **Banned in Hot Paths:** Python GIL contention, implicit tensor copies, implicit dtype promotions, unmeasured autograd graph construction.
+- **Required:** Explicit memory views (e.g., `torch::from_blob` with explicit ownership).
+- **Required:** Disable autograd (`torch::NoGradGuard` or `torch::inference_mode()`) in inference hot paths.
+- **Required:** Release the GIL (`pybind11::call_guard<pybind11::gil_scoped_release>()`) for all C++ extensions that do not touch Python objects.
+
+### 59.2.2 Tensor Layout Contracts
+Tensors are just memory views. Their layout must be explicit.
+```cpp
+// CEP:TENSOR: Contiguous, NCHW layout, FP16. Strides: [1024, 1, 32, 1].
+// CEP:ASSUMES: No implicit padding; aligned to 16 bytes.
+```
+
+### 59.2.3 Operator Fusion and Kernel Launch Overhead
+- **Banned:** Launching a separate CUDA kernel for every element-wise operation in a hot path.
+- **Required:** Use framework fusion engines (e.g., `torch.compile`, XLA, TensorRT) or write custom fused kernels. The cost of a kernel launch (5-10 us) must be amortized.
+
+## 59.3 ML Extermination Examples
+
+**Example 1: Implicit Tensor Copy in Forward Pass**
+```cpp
+auto out = model(input); // Framework implicitly casts FP32 to FP16, allocating a new tensor.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Hidden allocation and implicit dtype promotion in hot path.
+Rule: CEP&CC 59.2.1
+Action: Pre-cast input to FP16 before entering the hot loop; use in-place operations.
+```
+
+**Example 2: Autograd in Inference**
+```cpp
+torch::Tensor forward(torch::Tensor x) { return x * weight; } // Autograd enabled by default.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Autograd graph construction adds hidden overhead and memory tracking to inference.
+Rule: CEP&CC 59.2.1
+Action: Wrap in torch::NoGradGuard or use torch::inference_mode().
+```
+
+**Example 3: Holding the GIL in C++ Extension**
+```cpp
+m.def("fast_kernel", &fast_kernel_impl); // GIL is held by default in pybind11.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: C++ extension holds the Python GIL, blocking all other Python threads and preventing true parallelism.
+Rule: CEP&CC 59.2.1
+Action: Add pybind11::call_guard<pybind11::gil_scoped_release>().
+```
+
+## 59.4 ML Review Checklist
+- [ ] Autograd is explicitly disabled in inference hot paths.
+- [ ] Python GIL is released in all C++ extensions.
+- [ ] Tensor layouts, dtypes, and strides are explicitly documented.
+- [ ] No implicit tensor copies or dtype promotions.
+- [ ] Kernel launch overhead is amortized via fusion.
+
+---
+# 60. The Uncompromising Reality
+The addition of accelerators, distributed networks, energy constraints, adaptive systems, and AI frameworks does not weaken CEP&CC. It strengthens it. 
+
+The silicon has changed. The scale has changed. But the law remains:
+> **The hardware does not care about your abstractions.**
+> **The network does not care about your assumptions.**
+> **The thermodynamics do not care about your intentions.**
+
+If your GPU kernel diverges, you have failed.
+If your distributed training is nondeterministic, you have failed.
+If your ML framework hides a tensor copy, you have failed.
+If your legacy code refuses to die, you have failed.
+---
+
+# 61. Industrial-Level Testing and Fuzzing (The Crucible Protocol)
+This chapter extends CEP&CC for the testing, fuzzing, and quality assurance infrastructure of the codebase. 
+Modern software is not defeated by simple logic errors; it is defeated by resource exhaustion, malformed state, edge-case entropy, and adversarial inputs. A test suite that only verifies the happy path is decorative. It proves the code works when it works. It does not prove the code survives reality.
+
+For industrial-grade systems, the following are first-class correctness requirements:
+1. Grammar-aware fuzzing at the billion-execution scale.
+2. Targeted component fuzzing at the million-execution scale.
+3. Exhaustive regression matrices (50 tests per bug).
+4. Adversarial test distribution (worst-case dominance).
+
+Where this chapter is stricter than the general CEP&CC rules, this chapter wins.
+
+---
+
+## 61.1 The Prime Directive: The Happy Path is a Lie
+> Unit tests that only verify the happy path are a liability. They create a false sense of security.
+> If your fuzzer has not run for billions of iterations, you are not testing; you are guessing.
+> Industrial scale is the minimum baseline. 
+
+Violations of the testing quotas and distribution mandates are Severity 0 defects. A release cannot be qualified if the Crucible Protocol quotas are not met.
+
+---
+
+## 61.2 The Testing Quotas (The Baseline)
+Testing quotas are not recommendations. They are CI gates. The quotas scale based on the repository/project size (measured in lines of code, IR nodes, or attack surface area).
+
+### 61.2.1 Grammar-Aware Fuzzing (The 5 Billion Mandate)
+Grammar-aware fuzzers (e.g., custom mutators for libFuzzer, AFL++, or domain-specific AST/IR generators) must be used to test parsers, lexers, IR readers, deserializers, and binary formats.
+- **Baseline Quota**: **5,000,000,000 (5 billion)** valid/invalid grammar executions per release cycle for a standard-sized project.
+- **Scaling Rule**: For every 100,000 lines of parsing, deserialization, or IR construction code, the quota increases by 1 billion executions.
+- **Why**: Dumb fuzzing (byte flipping) cannot bypass checksums, magic numbers, or structural invariants. Grammar-aware fuzzing mutates the AST/IR/parse tree directly, reaching deep optimization passes and semantic analyzers.
+- **Extermination**: Running a dumb byte-mutator on a complex binary format and claiming "fuzzed" is **exterminated**.
+
+### 61.2.2 Targeted Fuzzing (The 1 Million Mandate)
+Targeted fuzzing focuses on specific, high-risk components: register allocators, loop vectorizers, alias analysis, state machines, lock-free data structures, and complex math routines.
+- **Baseline Quota**: **1,000,000** targeted harness executions per complex component, per release cycle.
+- **Scaling Rule**: For every complex state machine, optimization pass, or lock-free structure, add 500,000 targeted executions.
+- **Harness Requirements**: The harness must bypass the parser and inject directly into the IR or internal API, using seeded corpora derived from real-world codebases and worst-case synthetic generators.
+- **Extermination**: Fuzzing a top-level API without a targeted harness for the underlying complex algorithm is **exterminated**.
+
+---
+
+## 61.3 Regression Testing: The 50-Test Rule
+When a bug is discovered (via fuzzing, production, or review), it is not enough to add a single unit test that reproduces the crash. A single test proves you fixed *that specific input*. It does not prove you fixed the *class of bug*.
+
+- **The Quota**: Exactly **50 regression tests** must be added per confirmed bug.
+- **Why 50?**:
+  1. The exact trigger (1 test).
+  2. Boundary variations (e.g., N-1, N, N+1, 0, MAX) (5 tests).
+  3. Type/size variations (e.g., different integer widths, different string lengths, different alignments) (10 tests).
+  4. Contextual variations (e.g., different surrounding IR, different memory states, different thread interleavings) (14 tests).
+  5. Mutated payloads that *almost* trigger the bug but shouldn't (negative testing) (20 tests).
+- **Extermination**: Adding a single `test_bug_123.cpp` and closing the ticket is **exterminated**. The bug is not understood until 50 variations are proven safe.
+
+---
+
+## 61.4 The Reality Curve: Test Distribution
+Test suites must not be dominated by happy-path scenarios. The distribution of test inputs (fuzzing seeds, unit test parameters, property-based generators) must follow the "Reality Curve". 
+
+If 80% of your test suite is happy-path, your coverage metrics are lying to you.
+
+### 61.4.1 The Distribution Mandate
+All test corpora and generated inputs must follow this distribution:
+1. **Worst-Case (40% - 50%)**: Maximum depth, maximum allocation, maximum entropy, resource exhaustion, malformed trailing data, nested recursion limits, zero-sized allocations, maximum integer bounds.
+2. **Middle / Adversarial Average (30% - 40%)**: Realistic but hostile workloads. Large but valid files, high-frequency interrupt simulations, fragmented memory layouts, partially truncated streams.
+3. **Happy Path (< 5%)**: Simple, valid, expected inputs. 
+
+### 61.4.2 Rationale
+The happy path is already covered by basic smoke tests. The fuzzer's and the test suite's job is to find the cliffs. The system must be proven to fail *gracefully* and *deterministically* when pushed to the absolute limits of the hardware and the specification.
+- **Extermination**: A test suite or fuzzing corpus where >20% of the data is simple happy-path input is **exterminated**.
+
+---
+
+## 61.5 Fuzzing Infrastructure and Determinism
+- **Crash Reproducibility**: Every crash found by the fuzzer must be reducible to a minimal reproducer using tools like `creduce`, `topformflat`, or custom AST reducers. A 500 MB crash file is a defect in the fuzzing pipeline.
+- **Deterministic Replay**: The fuzzing harness must be 100% deterministic. Given the same seed, it must produce the exact same execution trace, memory layout, and crash. Nondeterministic harnesses are **exterminated**.
+- **Continuous Fuzzing**: Fuzzing is not a pre-release gate; it is a continuous CI process. The 5 billion / 1 million quotas are cumulative over the release cycle, running 24/7 on dedicated cluster nodes.
+
+---
+
+## 61.6 Comment and Artifact Standards for Testing
+Fuzzing campaigns, regression suites, and test harnesses must be documented using the CEP schema.
+
+### 61.6.1 Required Testing Fields
+```cpp
+// CEP:TEST-CLASS:
+// CEP:TEST-TARGET:
+// CEP:TEST-QUOTA:
+// CEP:TEST-DISTRIBUTION:
+// CEP:TEST-SCALING:
+// CEP:TEST-EVIDENCE:
+```
+
+### 61.6.2 Testing Comment Example: Grammar-Aware Fuzzer
+```cpp
+// CEP:FILE: tests/fuzz/ir_parser_fuzz.cpp
+// CEP:WHAT: Grammar-aware fuzzer for the CEP IR binary format.
+// CEP:WHY: Proves the parser survives adversarial, malformed, and deeply nested IR streams.
+// CEP:CLASS: CEP-2 (Test Harness)
+// CEP:STATUS: complete
+// CEP:TEST-CLASS: Grammar-Aware Fuzz
+// CEP:TEST-TARGET: IR Parser / Deserializer
+// CEP:TEST-QUOTA: 5,000,000,000 executions per release.
+// CEP:TEST-DISTRIBUTION: 45% worst-case (max depth/exhaustion), 45% middle, 10% happy-path.
+// CEP:TEST-SCALING: Base 5B + 1B per 100k LOC of parser code.
+// CEP:TEST-EVIDENCE: cluster-run-2026-11-05, 0 crashes, 99.9% block coverage.
+```
+
+### 61.6.3 Testing Comment Example: Regression Matrix
+```cpp
+// CEP:FILE: tests/regression/bug_CEP_901_matrix.cpp
+// CEP:WHAT: 50-test regression matrix for null-pointer dereference in alias analysis.
+// CEP:WHY: Proves the fix covers the entire class of boundary and alignment failures.
+// CEP:TEST-CLASS: Regression Matrix
+// CEP:TEST-TARGET: Alias Analysis Pass
+// CEP:TEST-QUOTA: 50 tests (1 trigger, 5 boundary, 10 type/size, 14 context, 20 negative).
+// CEP:TEST-DISTRIBUTION: 60% worst-case (null/garbage pointers), 40% middle.
+// CEP:TEST-EVIDENCE: All 50 tests pass on ASan/UBSan.
+```
+
+---
+
+## 61.7 Extermination Examples (The Crucible Protocol)
+
+### Example 1: The "Happy Path" Unit Test Suite
+**Violation:**
+A parser has 500 unit tests. 490 of them are valid, simple JSON/IR strings.
+**Response:**
+```text
+EXTERMINATE
+Reason: Test suite is 98% happy-path. Fails the Reality Curve mandate (61.4).
+Rule: CEP&CC 61.4.2
+Action: Delete 400 happy-path tests. Replace with grammar-aware worst-case generators.
+```
+
+### Example 2: The Single Regression Test
+**Violation:**
+A null-pointer dereference is fixed. The developer adds `test_null_ptr.cpp` containing one test case.
+**Response:**
+```text
+EXTERMINATE
+Reason: Only 1 regression test provided. The 50-test rule is violated (61.3).
+Rule: CEP&CC 61.3
+Action: Generate 49 additional variations (different types, different nesting depths, different memory alignments, negative tests) before merging the fix.
+```
+
+### Example 3: Dumb Fuzzing on a Complex Format
+**Violation:**
+Running AFL++ (dumb byte-mutation) on a custom binary IR format with a 16-byte magic header and a CRC32 checksum.
+**Response:**
+```text
+EXTERMINATE
+Reason: Dumb fuzzing cannot bypass the CRC32. 0% of the CPU time is spent testing the actual IR logic. Fails the Grammar-Aware mandate (61.2.1).
+Rule: CEP&CC 61.2.1
+Action: Implement a grammar-aware custom mutator that preserves the magic and recalculates the CRC32 on the fly, mutating the AST structure directly.
+```
+
+### Example 4: Missing Targeted Harness for Complex Pass
+**Violation:**
+Fuzzing the top-level `compile()` API to test a novel loop vectorization pass.
+**Response:**
+```text
+EXTERMINATE
+Reason: Top-level fuzzing dilutes the corpus. The vectorizer requires targeted IR injection to reach deep edge cases (61.2.2).
+Rule: CEP&CC 61.2.2
+Action: Write a targeted harness that injects 1,000,000 mutated SSA IR graphs directly into the vectorizer, bypassing the parser.
+```
+---
+
+# 62. Atomic File Topology and Extreme Separation of Concerns
+This chapter extends CEP&CC for the physical organization of source code, translation units, and repository topology. 
+
+Modern codebases rot from the inside out because developers treat files as "containers" for related text. They create 10,000-line "god files" that mash together unrelated optimization passes, entangle multiple target backends, and hide instruction selection logic inside a labyrinth of `switch` statements. This is unacceptable. 
+
+A file is not a container. A file is an **atomic unit of compilation, review, ownership, and mechanical enforcement**. If a file contains multiple unrelated concepts, it is a lie. It claims to be a translation unit, but it is actually a landfill.
+
+Where this chapter is stricter than Chapter 32 (File Structure), this chapter wins.
+
+---
+
+## 62.1 The Prime Directive: The Atomic File Mandate
+> **Every file must do exactly one thing.**
+> **Every file must have exactly one reason to change.**
+> **Every file must be reviewable in a single sitting without context-switching.**
+> **Giant files where everything is mashed together are a Severity 0 defect.**
+
+The "Single Responsibility Principle" does not just apply to functions or classes; it applies to the **file itself**. 
+If a reviewer must scroll past 4,000 lines of unrelated code to understand the memory aliasing logic in an optimization pass, the file structure has failed.
+
+### 62.1.1 The "One Thing" Rule
+A translation unit (`.cpp`, `.cc`, `.rs`, `.zig`) and its corresponding interface/header (`.cppm`, `.hpp`, `.h`) must encapsulate **exactly one** of the following:
+- One optimization pass.
+- One instruction selection pattern or class.
+- One target architecture backend (or a strictly partitioned sub-component of it).
+- One IR node definition and its immediate operations.
+- One data structure and its direct invariants.
+- One hardware abstraction or peripheral driver.
+
+### 62.1.2 Banned File Patterns
+- **The "God File":** A file exceeding 800 lines of code (LOC) that contains multiple distinct logical components.
+- **The "Pass Landfill":** A file like `loop_passes.cpp` that contains LICM, loop unrolling, and loop fusion.
+- **The "Target Monolith":** A file like `x86_backend.cpp` that contains register allocation, instruction selection, and scheduling.
+- **The "Junk Drawer":** Files named `utils.cpp`, `helpers.h`, `common.rs`, or `misc.cpp`.
+
+---
+
+## 62.2 Repository Topology by Project Scale
+Repository structure must scale with the complexity of the system. A small library does not need a 40-directory monorepo, but a multi-target compiler requires strict domain isolation.
+
+### 62.2.1 Scale 1: Small (Libraries, Utilities, Single-Purpose Tools)
+**Structure:** Flat but logically separated.
+```text
+src/
+├── hot/
+│   ├── decoder.cpp / decoder.hpp
+│   └── checksum.cpp / checksum.hpp
+├── cold/
+│   └── config.cpp / config.hpp
+└── target/
+    └── generic.cpp / generic.hpp
+```
+**Rule:** Even in small projects, hot and cold code must not share a file. One concept per file.
+
+### 62.2.2 Scale 2: Medium (Single Compiler, Game Engine, RTOS)
+**Structure:** Layered by concern, then by component.
+```text
+src/
+├── ir/
+│   ├── node_def.cpp        # IR node definitions
+│   └── verifier.cpp        # IR verification pass
+├── passes/
+│   ├── licm/
+│   │   ├── licm.cpp        # ONLY Loop Invariant Code Motion
+│   │   └── licm.hpp
+│   └── sroa/
+│       ├── sroa.cpp        # ONLY Scalar Replacement of Aggregates
+│       └── sroa.hpp
+├── targets/
+│   ├── arm64/
+│   │   ├── isa.cpp         # Arm64 instruction definitions
+│   │   ├── isel.cpp        # Arm64 instruction selection
+│   │   └── regalloc.cpp    # Arm64 register allocation
+│   └── x86_64/
+│       ├── isa.cpp
+│       ├── isel.cpp
+│       └── regalloc.cpp
+```
+
+### 62.2.3 Scale 3: Large (Multi-Target, Multi-Frontend Compiler Monorepo)
+**Structure:** Strict domain boundaries, isolated translation units, feature-partitioned targets.
+```text
+src/
+├── frontend/
+│   ├── c/
+│   └── rust/
+├── middle_end/
+│   ├── ir/
+│   ├── analysis/
+│   │   ├── alias_analysis.cpp
+│   │   └── dependence_analysis.cpp
+│   └── transforms/
+│       ├── vectorization/
+│       │   ├── slp.cpp
+│       │   └── loop_vec.cpp
+│       └── scalar/
+│           ├── dce.cpp
+│           └── sccp.cpp
+├── backends/
+│   ├── arm64/
+│   │   ├── isel/
+│   │   │   ├── arithmetic.cpp   # ONLY arithmetic ISEL
+│   │   │   ├── memory.cpp       # ONLY load/store ISEL
+│   │   │   └── simd.cpp         # ONLY SIMD ISEL
+│   │   ├── schedule/
+│   │   └── emit/
+```
+
+---
+
+## 62.3 Compiler and Toolchain Topology Rules
+For compilers, linkers, and IR transformers (HPC/CEP-0), the separation of concerns is a correctness requirement. Mashed-together files hide illegal transformations and break determinism.
+
+### 62.3.1 One Optimization Pass Per File
+An optimization pass is a distinct transformation with its own legality conditions, analyses, and invalidations. 
+- **Banned:** Grouping passes by "phase" (e.g., `early_opt.cpp`, `late_opt.cpp`).
+- **Required:** One pass per file. The file name must match the pass name.
+- **Example:** `src/passes/licm.cpp` contains *only* LICM. If you need to add loop fusion, it goes in `src/passes/loop_fusion.cpp`.
+
+### 62.3.2 One Target Per Directory, Subdivided by Concern
+A target backend is not a single file. It is a collection of distinct hardware-mapping concerns.
+- **Banned:** `target_arm64.cpp` (5,000 lines).
+- **Required:** The target directory must be subdivided by concern:
+  - `isel/` (Instruction Selection)
+  - `regalloc/` (Register Allocation)
+  - `schedule/` (Instruction Scheduling)
+  - `emit/` (Object Emission / Relocations)
+
+### 62.3.3 Instruction Selection Partitioning
+Instruction selection (ISEL) is the most complex part of a backend. If a target has more than 300 instructions, the ISEL **must** be partitioned by instruction class.
+- **Example:** 
+  - `isel/arithmetic.cpp` (ADD, SUB, MUL, DIV)
+  - `isel/memory.cpp` (LOAD, STORE, FENCE)
+  - `isel/control_flow.cpp` (BR, CALL, RET)
+  - `isel/simd.cpp` (VADD, VLOAD, etc.)
+- **Extermination:** A single `isel.cpp` file containing a 2,000-line `switch` statement over opcode enums is **exterminated**.
+
+---
+
+## 62.4 The Ban on "Junk Drawers" and "Utils"
+Files named `utils`, `helpers`, `common`, `misc`, or `tools` are a Severity 1 defect. They are where dead code, hidden allocations, and unmaintained assumptions go to hide.
+
+### 62.4.1 The Rule of Explicit Naming
+Every function must live in a file named after the **domain** it serves, not the **mechanism** it uses.
+- **Bad:** `string_utils.cpp` (Contains string hashing, string splitting, and string formatting).
+- **Good:** `string_hash.cpp`, `string_split.cpp`, `string_format.cpp`.
+- **Bad:** `math_helpers.h`
+- **Good:** `simd_math.h`, `scalar_fallback.h`
+
+### 62.4.2 The "Three Strike" Eviction
+If a "utility" file contains more than three unrelated functions, it must be shattered. The functions must be moved to the domain-specific files that actually use them. If no domain uses them, they are dead code and must be **exterminated**.
+
+---
+
+## 62.5 Mechanical File Limits and Enforcement
+Clean code cannot be enforced by vibes. It must be enforced by `cep_lint` and CI gates.
+
+### 62.5.1 Hard File Size Limits
+Files that are too large are, by definition, mashed together.
+- **CEP-0 (Hot Code):** Maximum **400 lines** per translation unit.
+- **CEP-1 (Cold Code):** Maximum **800 lines** per translation unit.
+- **CEP-2 (Tooling):** Maximum **1,200 lines** per translation unit.
+*Exception:* Generated code (e.g., opcode tables) is exempt from line limits but must be generated by a deterministic tool.
+
+### 62.5.2 Symbol Density Limits
+- **Maximum 1 primary public class/struct** per header/module interface.
+- **Maximum 1 optimization pass registration** per `.cpp` file.
+- **Maximum 1 target backend entry point** per `.cpp` file.
+
+### 62.5.3 `cep_lint` Rule: CEP-LINT-ATOMIC-FILE
+**Severity 1. Check: `file_topology_policy`.**
+The linter must enforce:
+1. File line counts do not exceed the class limits.
+2. Files named `*util*`, `*helper*`, `*misc*`, `*common*` are rejected.
+3. A single `.cpp` file in `src/passes/` does not register more than one pass.
+4. A single `.cpp` file in `src/targets/*/isel/` does not contain more than one instruction class category (detected via comment tags or namespace structure).
+
+---
+
+## 62.6 Extermination Examples (The Atomic File Protocol)
+
+### Example 1: The "Pass Landfill"
+**Violation:**
+```cpp
+// src/passes/loop_optimizations.cpp
+void run_licm(IR& ir) { ... } // 400 lines
+void run_loop_unroll(IR& ir) { ... } // 300 lines
+void run_loop_fusion(IR& ir) { ... } // 500 lines
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: File contains three distinct optimization passes. Violates the "One Pass Per File" mandate. Hides pass-specific legality conditions and analysis invalidations.
+Rule: CEP&CC 62.3.1
+Action: Shatter into src/passes/licm.cpp, src/passes/loop_unroll.cpp, and src/passes/loop_fusion.cpp.
+```
+
+### Example 2: The "Target Monolith"
+**Violation:**
+```cpp
+// src/targets/arm64.cpp
+// 8,000 lines of Arm64 backend code.
+// Contains ISEL, Register Allocation, Scheduling, and Emit.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Giant file mashing together unrelated target concerns. A reviewer cannot audit the register allocator when it is buried inside instruction selection.
+Rule: CEP&CC 62.3.2
+Action: Create src/targets/arm64/isel/, src/targets/arm64/regalloc/, etc.
+```
+
+### Example 3: The "Junk Drawer"
+**Violation:**
+```cpp
+// src/utils/common_helpers.cpp
+uint32_t hash_string(string_view s) { ... }
+void log_error(error_code e) { ... }
+bool is_prime(int n) { ... }
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: "Utils" file violates the ban on junk drawers. Hashing, logging, and math have no business sharing a translation unit.
+Rule: CEP&CC 62.4
+Action: Move hash_string to src/cold/hash.cpp. Move log_error to src/cold/diagnostics.cpp. Delete is_prime if unused, or move to src/cold/math.cpp.
+```
+
+### Example 4: The "Mega ISEL"
+**Violation:**
+```cpp
+// src/targets/x86_64/isel.cpp
+Instruction select(Node* n) {
+    switch(n->opcode) {
+        case OP_ADD: ...
+        case OP_VADD: ...
+        case OP_LOAD: ...
+        // 3,000 more cases...
+    }
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Monolithic instruction selection. Guarantees merge conflicts, hides port-contention logic, and prevents independent measurement of scalar vs. SIMD selection.
+Rule: CEP&CC 62.3.3
+Action: Partition into isel/scalar_arithmetic.cpp, isel/simd.cpp, isel/memory.cpp.
+```
+
+---
+
+## 62.7 Atomic File Review Checklist
+A repository topology is compliant only if:
+- [ ] No file exceeds the line-count limit for its CEP class.
+- [ ] No file contains more than one optimization pass.
+- [ ] No file contains more than one primary target concern (ISEL, RegAlloc, Schedule).
+- [ ] No files named `utils`, `helpers`, `misc`, or `common` exist.
+- [ ] Instruction selection is partitioned by instruction class for complex targets.
+- [ ] Every file has exactly one `CEP:WHAT` that describes a single, atomic concept.
+- [ ] Include graphs are minimal; files do not include headers they don't strictly need.
+- [ ] Merge conflicts are localized to the single atomic component being changed.
+
+---
