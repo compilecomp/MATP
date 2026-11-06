@@ -6,7 +6,7 @@
 // CEP:FAILURE: tests fail loudly on any invariant break.
 // CEP:ASSUMES: the pigeonhole fixture from the controller test refutes with via_avatar = true; assertion symbols are reserved before finalize.
 // CEP:COST: offline; runtime cost irrelevant.
-// CEP:EVIDENCE: this file is the evidence cited by hot/avatar/controller.rs and docs/formal/18_fol_clause_learning.md.
+// CEP:EVIDENCE: this file is the evidence cited by hot/avatar/controller.rs and doc/formal/18_fol_clause_learning.md.
 // CEP:SECURITY: every budget and skip counter is exercised here.
 
 #![allow(non_upper_case_globals)]

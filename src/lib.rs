@@ -8,6 +8,7 @@
 // CEP:COST: compile-time only; no runtime instructions.
 // CEP:EVIDENCE: every test target under tests/ compiles against this facade.
 // CEP:SECURITY: no untrusted input; no FFI.
+// CEP:TODO(mapt-team): CEP-1057: document every public item (630 of 893 measured without a doc comment), then deny the missing_docs lint per doc standard.md section 5.2.
 
 pub use mapt_cold as cold;
 pub use mapt_config as config;

@@ -6,7 +6,7 @@
 // CEP:FAILURE: the test fails on any Err from saturate (the crash), on any outcome other than GaveUp(MemoryBudget), or when the search terminated without doing inference work; #[ignore]d because reaching the bound takes a long saturation run (the reporter's "once the search runs long enough").
 // CEP:ASSUMES: the Peano recursion axiom set below is satisfiable and superposition-productive (the recursion equation orients under KBO with the fixture's id-order precedence, h declared after f); the chain pair grows the resolution family without bound so the shared arena (kAtpFixtureArenaBytes minus the term table and the space structures) exhausts deterministically - arithmetic, not chance; demodulation cannot collapse the family (kMaxSimplifyRounds bounds the rewrite chain per clause).
 // CEP:COST: one saturate run bounded by the arena capacity; minutes-scale wall time, hence #[ignore].
-// CEP:EVIDENCE: cited by hot/inference/mod.rs (From<TermError>), hot/inference/builder.rs (term_error), hot/inference/superposition.rs (replace_at), hot/search/generate.rs (step_superposition_from, the drop policy), hot/search/given_clause.rs (saturate capacity conversion); ticket docs/tickets.md CEP-1056.
+// CEP:EVIDENCE: cited by hot/inference/mod.rs (From<TermError>), hot/inference/builder.rs (term_error), hot/inference/superposition.rs (replace_at), hot/search/generate.rs (step_superposition_from, the drop policy), hot/search/given_clause.rs (saturate capacity conversion); ticket doc/tickets.md CEP-1056.
 // CEP:SECURITY: the memory bound under test is the denial-of-service boundary (CEP&CC 22.10, design 20.2).
 
 #![allow(non_upper_case_globals)]

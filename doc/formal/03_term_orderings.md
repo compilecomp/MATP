@@ -1,17 +1,18 @@
-# Formal Specification 03: Term Orderings — KBO and LPO
+# Formal Specification 03: Term Orderings: KBO and LPO
 
-Version: 0.1
-Status: complete for the Phase 2 scope (design 8.3, ticket CEP-1013)
-Role: normative reference for `hot/ordering/`; cited by their `CEP:HPC-PASS-LEGALITY` and `CEP:EVIDENCE` fields and by the ordering property tests.
-References: Knuth & Bendix 1970; Kamin & Lévy 1980 (LPO as presented by Kamin and Redy 1994 and Baader & Nipkow, *Term Rewriting and All That*, ch. 5); design sections 8.3 and 10.2.
+## Abstract
 
-## 1. Precedence
+This document is the normative reference for `hot/ordering/` (precedence, Knuth-Bendix ordering, lexicographic path ordering), cited by the `CEP:HPC-PASS-LEGALITY` and `CEP:EVIDENCE` fields of that module and by the ordering property tests (design sections 8.3 and 10.2, ticket CEP-1013). It defines the precedence table, the two simplification orders over the Specification 01 term algebra, their admissibility theorems, and the comparison algorithms with their measured costs. Inputs are two term pointers and a validated precedence table; outputs are the four-valued comparison verdict (`OrderingComparison`): Greater, Less, Equal, or Incomparable. References: Knuth & Bendix 1970; Kamin & Lévy 1980 (LPO as presented by Kamin and Redy 1994 and Baader & Nipkow, *Term Rewriting and All That*, ch. 5).
+
+## Formal Definitions
+
+### 1. Precedence
 
 A **precedence** is a strict total order on term heads: all symbol IDs of the frozen symbol table plus one pseudo-head for equality atoms (they carry no symbol ID; the dedicated slot prevents aliasing with symbol zero). MAPT stores it as a flat u32 rank array (`hot/ordering/precedence.rs`); the default policy is rank(symbol i) = i with the equality head maximal, and strategy-supplied ranks are validated to be a permutation at the trust boundary before the hot path can depend on totality.
 
 The precedence is a parameter of both orderings below; nothing in this specification depends on which total order is chosen.
 
-## 2. Knuth-Bendix Ordering (KBO)
+### 2. Knuth-Bendix Ordering (KBO)
 
 Fix a weight function `w` with `w(f) >= 1` for every symbol (validated at symbol-table freeze) and `w(x) = 1` for variables (`kKboVariableWeight`). The weight extends homomorphically: `w(f(t_1..t_n)) = w(f) + w(t_1) + ... + w(t_n)`; MAPT caches it on the term header at intern time.
 
@@ -47,7 +48,7 @@ Here `#x(u)` is the number of occurrences of `x` in `u`. Variables relate to not
 
 **Implementation contract.** `compare_kbo` (`hot/ordering/kbo.rs`) returns Greater / Less / Equal / Incomparable; the variable condition is verified lazily in the structurally winning direction (sound because both directions cannot hold when occurrence counts differ, and both hold trivially when they are equal); work is bounded by `kMaxOrderingSteps`.
 
-## 3. Lexicographic Path Ordering (LPO)
+### 3. Lexicographic Path Ordering (LPO)
 
 **Definition (LPO, strict).** `s >_lpo t` iff
 1. `t` is a variable occurring in `s` (and `s != t`), or
@@ -66,7 +67,22 @@ Here `#x(u)` is the number of occurrences of `x` in `u`. Variables relate to not
 
 **Implementation contract.** `compare_lpo` (`hot/ordering/lpo.rs`) evaluates both directions of the strict predicate; the recursion is bounded by `kMaxOrderingSteps` and by the intern-time depth cap; Application and Lambda heads are rejected as `UnsupportedHead` (higher-order orderings are Phase 5, ticket CEP-1033).
 
-## 4. Cost evidence
+## Algorithm
+
+The KBO comparison (`compare_kbo`) proceeds in two stages:
+
+1. Compare the cached term weights of section 2. If they differ, the weight-dominance case decides immediately, subject to the variable condition of the winning direction (verified lazily, per the implementation contract).
+2. On equal weights, compare heads by precedence; on equal heads, scan children left to right and recurse on the first differing pair (lexicographic descent).
+
+The LPO comparison (`compare_lpo`) evaluates the strict predicate of section 3 recursively in both directions:
+
+1. Handle the variable case (case 1).
+2. Try case 2a over the children of `s`; on failure decide by precedence (case 2b) or the same-head lexicographic descent (case 2c).
+3. Bound every recursion by `kMaxOrderingSteps` and the intern-time depth cap; exhaustion returns the bounded-failure error rather than an unbounded stack.
+
+Space is O(depth) recursion for both orders under the depth cap. Assumptions: the precedence table is a validated permutation (section 1) and symbol weights satisfy `w(f) >= 1` (validated at symbol-table freeze).
+
+### 4. Cost evidence
 
 Measured medians on x86-64 (Intel Xeon, virtualized), rustc 1.99.0, release, 2026-10-10 (bench CEP-BENCH-0007):
 
@@ -75,3 +91,33 @@ Measured medians on x86-64 (Intel Xeon, virtualized), rustc 1.99.0, release, 202
 - LPO nested ground comparison: 22.22 cycles (`benches/artifacts/ordering_lpo.json`).
 
 Disassembly evidence: `benches/artifacts/disasm_ordering.txt`.
+
+## Invariants
+
+1. Strictness: both `>_kbo` and `>_lpo` are irreflexive and antisymmetric (Theorems 2.1, 3.1).
+2. Transitivity: on ground terms always, and on all terms when the variable condition holds along the chain (Theorems 2.2, 3.2; `tests/property/ordering_property_test.rs::ordering_transitive_ground`).
+3. Subterm property: a proper subterm is strictly smaller in both orders (Theorems 2.3, 3.3; `tests/property/ordering_property_test.rs::subterm_property_both_orderings`).
+4. Ground totality: under a total precedence, exactly one of `s > t`, `t > s`, `s = t` holds for ground terms (Theorems 2.4, 3.4; `tests/property/ordering_property_test.rs::ordering_total_on_ground`).
+5. Stability: `s > t` implies `s*sigma > t*sigma` over the shared variable namespace (Theorem 2.5; `tests/property/ordering_property_test.rs::kbo_stable_under_substitution`).
+6. Bounded work: every comparison consumes at most `kMaxOrderingSteps` steps (implementation contracts of sections 2 and 3).
+7. Precedence totality: ranks supplied at the trust boundary are validated to be a permutation before the hot path depends on them (section 1).
+
+## Integration Points
+
+Depends on:
+
+- `hot/ir/term.rs` (`TermView::symbol(&self) -> u32`, `TermView::weight(&self) -> u32`, `TermView::child(&self, index: u16) -> Result<TermPtr, TermError>`) for heads, cached weights, and child traversal.
+- `hot/ir/symbol_table.rs` (`SymbolTable::symbol_weight(&self, symbol_id: u32) -> Result<u32, SymbolError>`) for the `w(f) >= 1` validation at freeze.
+- `config/limits.rs` (`kMaxOrderingSteps`, `kKboVariableWeight`, `kDefaultSymbolWeight`) for bounds and defaults.
+
+Depended on by:
+
+- `hot/inference/superposition.rs` and `hot/inference/selection.rs` (literal maximality and strictness side conditions of Specification 07).
+- `hot/search/passive.rs` and `hot/search/active.rs` (weight-based clause evaluation uses the same weight function of section 2).
+- `hot/ordering/mod.rs` exports `OrderingComparison` and `OrderingError`, the verdict vocabulary every caller consumes.
+
+## Known Limitations
+
+- Application and Lambda heads are rejected with `UnsupportedHead`; higher-order orderings are Phase 5 scope (ticket CEP-1033).
+- Comparison caching (design 8.3, tickets CEP-1025 and CEP-1026: variable-occurrence signatures on term headers, LPO memoization keyed by term-offset pairs) is not implemented; the caching rows are "measure first" work items.
+- Transitivity on non-ground terms holds conditionally on the variable condition along the chain (Theorem 2.2); the engine's eligibility checks operate on clauses where the condition is discharged by construction, and this reliance is documented rather than mechanized.

@@ -161,7 +161,7 @@ fn read_literals(fixture: &PropertyFixture, id: u64) -> Vec<(TermPtr, bool)> {
 // CEP:FAILURE: property fails on any literal mismatch.
 // CEP:ASSUMES: the scheme ids directly follow the inputs (the installer appends in scan order).
 // CEP:COST: K runs x small fixtures.
-// CEP:EVIDENCE: cited by hot/induction/scheme.rs (file header HPC-PASS-LEGALITY) and docs/formal/15_structural_induction.md sections 3-4.
+// CEP:EVIDENCE: cited by hot/induction/scheme.rs (file header HPC-PASS-LEGALITY) and doc/formal/15_structural_induction.md sections 3-4.
 // CEP:SECURITY: none.
 #[test]
 fn schemes_match_hand_clausification() {

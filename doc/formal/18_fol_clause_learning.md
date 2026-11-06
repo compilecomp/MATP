@@ -1,6 +1,12 @@
 # Formal Spec 18: Bidirectional FOL Clause Learning over AVATAR
 
-## 1. Scope
+## Abstract
+
+This specification fixes the clause-learning feature of the AVATAR bridge (Formal Spec 12): the one-shot reservation of a bounded assertion-symbol space, the staging of first-order conflict lemmas, the transfer of abstraction-solver learnt clauses into first-order clauses, and the budgets and policy bounds that keep every path deterministic, bounded, and counted (CEP&CC 23, 22.10, Law 4). Inputs are the controller's conflict-slot buffer and the abstraction solver's registry; outputs are staged and transferred `SatLearn` clauses with counted skips. The feature is **opt-in and off by default**; every budget is a named constant in `config/limits.rs`; zero machine learning of any kind is involved — "learning" here is the standard automated-deduction term for recording logical consequences as new clauses (conflict-driven clause learning, CDCL).
+
+## Formal Definitions
+
+### 1. Scope
 
 This specification fixes the clause-learning feature of the AVATAR bridge (Formal Spec 12): the one-shot reservation of a bounded assertion-symbol space, the staging of first-order conflict lemmas, the transfer of abstraction-solver learnt clauses into first-order clauses, and the budgets and policy bounds that keep every path deterministic, bounded, and counted (CEP&CC 23, 22.10, Law 4). The feature is **opt-in and off by default**; every budget is a named constant in `config/limits.rs`; zero machine learning of any kind is involved — "learning" here is the standard automated-deduction term for recording logical consequences as new clauses (conflict-driven clause learning, CDCL).
 
@@ -9,9 +15,9 @@ The two directions:
 - **FOL ← SAT (conflict lemma staging).** Each abstraction conflict round bans the component conjunction used by the refutation (Spec 12 Lemma 2). The same ban clause is *staged* in the first-order store as a `SatLearn` lemma over 0-ary assertion atoms, anchored at the round's refuting empty clause.
 - **FOL ← SAT (learnt transfers).** Each abstraction solver learnt clause (a DRAT-disciplined consequence of the abstraction's problem clauses) is transferred into a first-order `SatLearn` clause over the mapped assertion atoms and enters the passive set.
 
-There is deliberately **no SAT ← FOL direction** in this phase: the abstraction's problem clauses are exactly the split disjunctions, and the first-order search contributes consequences over the original signature, which the abstraction cannot represent. The extension is ticketed (CEP-1056).
+There is deliberately **no SAT ← FOL direction** in this phase: the abstraction's problem clauses are exactly the split disjunctions, and the first-order search contributes consequences over the original signature, which the abstraction cannot represent. The extension is ticketed (CEP-1058).
 
-## 2. The assertion-atom convention
+### 2. The assertion-atom convention
 
 The FOL copies speak only through **assertion atoms**: 0-ary predicate applications whose symbols come from the one-shot reservation
 
@@ -28,7 +34,7 @@ which declares the deterministic names `mapt_assertion_0 .. mapt_assertion_{coun
 
 Interpretation (the Spec 12 reading): the assertion atom `A_i` holds in a model of the extended clause set exactly when the abstraction assigns component slot `i` true. Because the atoms are **fresh 0-ary predicates not occurring in any input clause**, adding assertion-atom clauses never changes satisfiability of the first-order clause set over the original signature (every model of the inputs extends to a model of the inputs plus any assertion-atom clause by choosing the assertion interpretation freely, and vice versa by projection). This is the soundness argument for both staging and transfer: **the extension is conservative over the input signature.**
 
-## 3. Conflict lemma staging
+### 3. Conflict lemma staging
 
 `add_conflict_lemma_from_buffer(space, context, used, refutation_id)` stages the FOL copy of the ban clause currently held in the controller's conflict-slot buffer (written by `plan_conflict`, Spec 12 section 5):
 
@@ -39,7 +45,7 @@ Interpretation (the Spec 12 reading): the assertion atom `A_i` holds in a model 
 
 **Soundness of the staged proposition.** The SAT ban clause `¬a_{i1} ∨ ... ∨ ¬a_{ik}` is entailed by the problem clauses plus the refutation's justification (Spec 12 Lemma 2). The staged FOL clause is the same proposition over `A_{i1}..A_{ik}`; by section 2's conservativity it is sound to record, and by S3 it cannot interfere with the first-order search.
 
-## 4. Learnt transfers
+### 4. Learnt transfers
 
 `transfer_learnts(space, context)` runs after every **unconditional** abstraction solve that returns `Satisfiable` (the initial round and each post-conflict round; assumption solves do not transfer):
 
@@ -50,7 +56,7 @@ Interpretation (the Spec 12 reading): the assertion atom `A_i` holds in a model 
 - **T5 (searched):** the transferred clause **enters the passive set** (unlike S3): it is a sound recorded consequence, its atoms are fresh, and the search may consume it as it consumes any recorded clause.
 - **T6 (bounded and counted):** transfers are capped by `learning_max_transfers` (production default `kLearningMaxLearntTransfers`); budget exhaustion stops the sweep **without** advancing the cursor past the deferred entries (retried on the next unconditional solve) and counts one bounded skip; every policy or naming skip advances the cursor (one-shot) and increments `stats.learning_skipped`.
 
-## 5. The kernel's SatLearn arm
+### 5. The kernel's SatLearn arm
 
 The certified kernel (Formal Spec 19) verifies a `SatLearn` step as:
 
@@ -60,9 +66,17 @@ The certified kernel (Formal Spec 19) verifies a `SatLearn` step as:
 | Transfer lemma (`parent_count == 0`) | every conclusion literal is a 0-ary predicate atom **inside the reserved range**. |
 | Anything else | rejected (`BrokenSatLearn`). |
 
-The vocabulary check is **executable on the verification side**, not just documented on the introduction side: `verify_refutation_with_options` / `verify_clause_step_with_options` carry `KernelOptions { assertion_base, assertion_count }`; the production whole-proof path (`check_proof`) uses the empty range (the refutation DAG cannot contain SatLearn steps under the current protocol — staged lemmas are children of the refutation, section 3), so any SatLearn step appearing there is rejected; the clause-learning diagnostics pass the controller's configured range. A forged parentless lemma over user-declared 0-ary input predicates is therefore rejected executably (`forged_sat_learn_rejected_outside_vocabulary`), and the name-prefix discipline (`mapt_assertion_`) remains enforced on the introduction side by R3/R4. The trust boundary is: *introduction* bounded and named (R1–R4, S1–S4, T1–T6); *verification* shape-complete AND vocabulary-complete (the kernel arm above).
+The vocabulary check is **executable on the verification side**, not just documented on the introduction side: `verify_refutation_with_options` / `verify_clause_step_with_options` carry `KernelOptions { assertion_base, assertion_count }`; the production whole-proof path (`check_proof`) uses the empty range (the refutation DAG cannot contain SatLearn steps under the current protocol — staged lemmas are children of the refutation, section 3), so any SatLearn step appearing there is rejected; the clause-learning diagnostics pass the controller's configured range. A forged parentless lemma over user-declared 0-ary input predicates is therefore rejected executably (`forged_sat_learn_rejected_outside_vocabulary`), and the name-prefix discipline (`mapt_assertion_`) remains enforced on the introduction side by R3/R4. The trust boundary is: *introduction* bounded and named (R1-R4, S1-S4, T1-T6); *verification* shape-complete AND vocabulary-complete (the kernel arm above).
 
-## 6. Budgets and constants
+## Algorithm
+
+Staging (`add_conflict_lemma_from_buffer`): deduplicate the used slots in index order, apply S2 (all-or-nothing naming) and S4 (budgets), and store the all-negative assertion-atom clause with the `SatLearn` derivation and the empty anchor parent; the record never enters the passive set (S3).
+
+Transfer (`transfer_learnts`): sweep registry entries `[transfer_cursor, entry_count)` in age order; per entry apply T2 (policy), T3 (naming, all-or-nothing), and T6 (budget with deferral semantics), and push passing clauses into the passive set with the T4 shape. The cursor advances past considered entries only (deferrals retry).
+
+Cost per call is O(entry span) for transfers and O(used) for staging under the named caps; space is one clause record per staged or transferred lemma. Assumptions: the controller's conflict-slot buffer is `plan_conflict`'s deduplicated output; the registry enumeration is the Spec 06 deterministic order.
+
+### 6. Budgets and constants
 
 | Constant | Value | Role |
 |---|---|---|
@@ -74,11 +88,35 @@ The vocabulary check is **executable on the verification side**, not just docume
 
 All five are pinned by the static-assertion block of `config/limits.rs`; the controller options are injectable per CEP&CC 34.3 with these as production defaults, and learning is disabled while `learning_symbol_count == 0` (the default).
 
-## 7. Determinism
+### 7. Determinism
 
 Everything in this specification is a deterministic function of the search state: the conflict-slot buffer is `plan_conflict`'s deduplicated output (index order), the staging and transfer loops iterate ascending indices, the cursor is monotone, and no clock, address, or randomness participates (CEP&CC 38.10). Two identical runs stage and transfer identical clauses in identical order, and the counters are equal.
 
-## 8. Evidence map
+## Invariants
+
+1. Conservativity: assertion-atom clauses never change satisfiability over the input signature (section 2's argument; the atoms are fresh 0-ary predicates).
+2. Reservation discipline: bounded (R1), one-shot (R2), collision-refusing (R3), dense and deterministic (R4).
+3. Staging all-or-nothing: no partial ban clause is ever staged (S2); staging is bounded and every skip is counted (S4).
+4. Staged-not-searched: staged lemmas never enter the passive set (S3); transferred lemmas always do (T5).
+5. One-shot transfer cursor: every registry entry is considered at most once, deterministically in age order; deferrals retry without skipping (T1, T6).
+6. Vocabulary completeness: the kernel rejects any `SatLearn` step outside the reserved symbol range, on both shapes (section 5; `forged_sat_learn_rejected_outside_vocabulary`).
+7. Determinism: staging, transfer, and counters are pure functions of the search state (section 7).
+
+## Integration Points
+
+Depends on:
+
+- `cold/symbol_table_builder.rs` (`reserve_assertion_symbols(count) -> base`, `assertion_symbol_name`) for the R1-R4 reservation.
+- `hot/avatar/controller.rs` (`plan_conflict`, the conflict-slot buffer, `transfer_cursor`, injectable learning options) for staging and transfer.
+- `cold/kernel.rs` (`KernelOptions { assertion_base, assertion_count }`, `verify_refutation_with_options`, `verify_clause_step_with_options`) for the vocabulary-complete verification of section 5.
+- `config/limits.rs` for the five constants of section 6.
+
+Depended on by:
+
+- `hot/avatar/controller.rs`, the only caller of staging and transfer, per the section 3 and 4 triggers.
+- The evidence map of section 8 (below).
+
+### 8. Evidence map
 
 | Property | Executable pin |
 |---|---|
@@ -90,3 +128,10 @@ Everything in this specification is a deterministic function of the search state
 | Disabled by default | `unit/hot/avatar_learning_test.rs::learning_disabled_by_default` |
 | Reservation bound, one-shot, density, collision refusal | `unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded` |
 | Kernel SatLearn arm (both shapes) | `cold/kernel.rs` SatLearn arm; `unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary`; `unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable` |
+
+## Known Limitations
+
+- There is no SAT ← FOL direction; the abstraction cannot consume first-order consequences over the original signature (section 1, ticket CEP-1058).
+- Staged conflict lemmas are proof artifacts only; the first-order search never consumes them (S3, by design).
+- Transfers are quality-gated (LBD, length) and budget-capped; learnt clauses outside the policy are skipped permanently (T2, T6).
+- The production whole-proof path uses the empty assertion range, so any SatLearn step in a shipped refutation is rejected (section 5); diagnostic verification with a live range is the only path that accepts them.

@@ -1,12 +1,16 @@
-# Formal Specification 13 — Portfolio Concurrency
+# Formal Specification 13: Portfolio Concurrency
 
-## 1. Scope
+## Abstract
+
+This document is normative for the Phase 4 concurrency layer (`hot/concurrency/`, `cold/portfolio/`; design section 19): the bounded MPMC clause-sharing pool, the Chase-Lev work-stealing deque, the portable clause codec, and the portfolio manager's worker protocol. Every `CEP:HPC-PASS-LEGALITY` comment in `hot/concurrency/` and `cold/portfolio/` cites a definition or theorem here. Inputs are derived-clause records exported by workers; outputs are exactly-once delivered imports, work-stealing backlogs, and the first-to-finish verdict of the portfolio run. References: Chase and Lev, SPAA 2005 ("Dynamic Circular Work-Stealing Deque"); Vyukov, bounded MPMC queue (algorithm description, 1024cores.net); design 19.5 (determinism).
+
+## Formal Definitions
+
+### 1. Scope
 
 This document is normative for the Phase 4 concurrency layer (design section 19): the bounded MPMC clause-sharing pool, the Chase-Lev work-stealing deque, the portable clause codec, and the portfolio manager's worker protocol. Every `CEP:HPC-PASS-LEGALITY` comment in `hot/concurrency/` and `cold/portfolio/` cites a definition or theorem here.
 
-References: Chase and Lev, SPAA 2005 ("Dynamic Circular Work-Stealing Deque"); Vyukov, bounded MPMC queue (algorithm description, 1024cores.net); design 19.5 (determinism).
-
-## 2. The sharing pool (design 19.2)
+### 2. The sharing pool (design 19.2)
 
 **Definition 2.1 (Cell protocol).** The pool is an array of cells, one sequence number per cell (initialized to the cell index), a monotonic produce cursor, and a monotonic consume cursor. Enqueue at position p claims cell p mod n by CAS on the produce cursor (Relaxed - the claim is exclusive but unordered), writes the record words (Relaxed - the cell is the claimant's until publication), and publishes by storing seq = p + 1 (Release - pairs with every consumer's Acquire seq load). Dequeue at position q claims by CAS on the consume cursor when seq = q + 1 (Acquire), reads the words (Relaxed - visibility carried by the Acquire), and recycles by storing seq = q + n (Release), freeing the cell exactly for the produce position one full turn ahead.
 
@@ -16,7 +20,7 @@ References: Chase and Lev, SPAA 2005 ("Dynamic Circular Work-Stealing Deque"); V
 
 **Bounds.** Full at capacity (`PoolError::Full` - the exporter counts and skips, design 19.2's bounded queue); retry budget per call bounds spinning (CEP&CC 22.10).
 
-## 3. The work-stealing deque (design 19.3)
+### 3. The work-stealing deque (design 19.3)
 
 **Definition 3.1 (Protocol).** Owner push at bottom b: slot store (Relaxed - owner-exclusive until publication) then `bottom.fetch_add(1)` (Release - publication). Owner pop: `bottom.fetch_sub(1)` (SeqCst) reserves slot b-1; top load (Acquire); three cases - t < b-1 (owner-exclusive take), t > b-1 (empty; restore), t = b-1 (the last element: the top CAS t → t+1 with SeqCst success decides the winner against thieves). Thief steal: top load (Acquire), bottom load (Acquire, ordered after top for the conservative emptiness check), slot read (Relaxed - visibility carried by the Acquire chain), top CAS t → t+1 (SeqCst) claims.
 
@@ -26,7 +30,7 @@ References: Chase and Lev, SPAA 2005 ("Dynamic Circular Work-Stealing Deque"); V
 
 **Role in the portfolio (Spec 13 section 5).** The pool is the primary sharing bus; each worker's deque is the overflow backlog: pool-full exports spill into the owner's deque as deferred frames (length word, then the record words, in push order), and the steal side - the oldest end - reads frames in order for any thief, including the owner thread. This is design 19.3's work-stealing load balancing applied to the sharing backlog.
 
-## 4. The portable clause codec
+### 4. The portable clause codec
 
 **Definition 4.1 (Record layout).** Word 0: [total words:16][literal count:16][reserved:32]. Per literal: one polarity word (0 or 1), then the atom's node words in prefix order (parent first, children left to right). Node word: [tag:3][symbol or variable id:32][child count:10]. Tags follow `TermTag`; Lambda is rejected (Phase 5 scope).
 
@@ -34,7 +38,17 @@ References: Chase and Lev, SPAA 2005 ("Dynamic Circular Work-Stealing Deque"); V
 
 **Contract.** The record is fixed-budget (`kSharedClauseMaxWords`); over-budget clauses are not exported (counted - design 19.2 degradation). The decoder validates every header, tag, child count, symbol id, and variable id before interning (untrusted-record discipline).
 
-## 5. The worker protocol (design 19.1)
+### 6. Determinism (design 19.5)
+
+A single worker without imports is exactly the Phase 3 loop (deterministic). Multi-worker delivery order is scheduling-dependent by design; every delivered record is exactly-once and uncorrupted (Theorems 2.1, 3.1), and the winner's proof is independently checkable (Spec 14). The determinism gate runs single-worker workloads.
+
+### 7. Resource bounds (design 19.4, 20.1)
+
+Threads are created once, before the search, and joined before returning (graceful shutdown by construction). Worker count bounded by `kPortfolioMaxWorkers`; pool and deque storage bounded by their capacities; the export scan bounded per slice (`kPortfolioExportPerSlice`); worker arenas are process-lifetime (the fixture discipline; pooling is ticket CEP-1038); thread pinning and NUMA-aware placement are deferred (ticket CEP-1037) rather than half-implemented through unsafe OS-affinity calls.
+
+## Algorithm
+
+### 5. The worker protocol (design 19.1)
 
 **Definition 5.1 (Slice loop).** Each worker: (1) boundary checks (stop flag; cancellation); (2) import phase - steal deferred frames from every deque (own included), then dequeue the pool, decoding and adding each record as an Input-role clause; (3) search phase - one wall-clock slice of the given-clause loop (or the AVATAR protocol), the slice deadline injected through the clock-free CEP-1005 callback; (4) export phase - an incremental id scan of the worker's new clauses, filtered by design 19.2's quality list (weight below `kSharedClauseMaxWeight`, LBD below `kSharedClauseMaxLbd`, rule in {resolution, superposition, factoring}) and the codec budget, enqueued to the pool with deque spill.
 
@@ -42,14 +56,39 @@ References: Chase and Lev, SPAA 2005 ("Dynamic Circular Work-Stealing Deque"); V
 
 **Theorem 5.2 (First-to-finish linearization).** The winner CAS on the shared slot (SeqCst) linearizes the race: exactly one winner; the stop flag (SeqCst - nothing rides on its order, only visibility) cancels the other workers at their next boundary. A loser that finished inside the same slice window also reports Theorem - both outcomes are legitimate; the manager reports the CAS winner.
 
-## 6. Determinism (design 19.5)
+Per-worker cost per slice is the given-clause cost of Spec 08 plus O(imported + exported records) pool and codec work under the record budget; space is one deque and one arena per worker plus the shared pool, all capacity-bounded. Assumptions: every worker rebuilds the symbol table identically (section 4); the stop flag and winner slot are the only shared control state.
 
-A single worker without imports is exactly the Phase 3 loop (deterministic). Multi-worker delivery order is scheduling-dependent by design; every delivered record is exactly-once and uncorrupted (Theorems 2.1, 3.1), and the winner's proof is independently checkable (Spec 14). The determinism gate runs single-worker workloads.
-
-## 7. Resource bounds (design 19.4, 20.1)
-
-Threads are created once, before the search, and joined before returning (graceful shutdown by construction). Worker count bounded by `kPortfolioMaxWorkers`; pool and deque storage bounded by their capacities; the export scan bounded per slice (`kPortfolioExportPerSlice`); worker arenas are process-lifetime (the fixture discipline; pooling is ticket CEP-1038); thread pinning and NUMA-aware placement are deferred (ticket CEP-1037) rather than half-implemented through unsafe OS-affinity calls.
-
-## 8. CEP&CC mapping
+### 8. CEP&CC mapping
 
 `hot/concurrency/{mpmc_pool,chase_lev,clause_codec}.rs` and `cold/portfolio/manager.rs` cite sections 2-5 of this document in their `CEP:HPC-PASS-LEGALITY` fields. The executable evidence: `unit/hot/{mpmc_pool,chase_lev,clause_codec}_test.rs`, `unit/cold/portfolio_test.rs`, and `property/concurrency_property_test.rs` (exactly-once and conservation under real interleaving; the codec roundtrip property; the portfolio soundness property). The CI `tsan` job runs the concurrency suites under ThreadSanitizer (ticket CEP-1008's closure condition).
+
+## Invariants
+
+1. Exactly-once: every enqueued record is delivered to exactly one dequeue, uncorrupted (Theorem 2.1; `property/concurrency_property_test.rs`).
+2. Linearization: the last-element race has exactly one deliverer (Theorem 3.1); the first-to-finish race has exactly one CAS winner (Theorem 5.2).
+3. Codec fidelity: decode(encode(c)) = c for in-budget clauses over the shared symbol table (Lemma 4.1; the roundtrip property).
+4. Import soundness: every imported clause is a consequence of the shared inputs, independent of interleaving (Theorem 5.1).
+5. Bounded refusal: pool-full exports are counted and spilled or skipped; no operation blocks indefinitely (sections 2 and 5, CEP&CC 22.10).
+6. Lifecycle safety: threads are created before the search and joined before return; shutdown is graceful by construction (section 7).
+7. Untrusted decode: every decoded record is fully validated before interning (section 4 contract).
+
+## Integration Points
+
+Depends on:
+
+- `hot/search/given_clause.rs` (`saturate` with the injected stop callback) for the search slice of the worker loop.
+- `hot/ir/clause.rs` (clause ids, `DerivationStep`, rule tags) for the export scan and the codec's rule filter.
+- `config/limits.rs` (`kPortfolioMaxWorkers`, `kSharedClauseMaxWords`, `kSharedClauseMaxWeight`, `kSharedClauseMaxLbd`, `kPortfolioExportPerSlice`, pool and deque capacities).
+
+Depended on by:
+
+- `cold/portfolio/manager.rs` (scoped threads, wall-clock slices, winner slot), the only orchestrator of the protocol.
+- `hot/concurrency/mpmc_pool.rs`, `hot/concurrency/chase_lev.rs`, `hot/concurrency/clause_codec.rs`, the three mechanisms specified in sections 2 through 4.
+- `tests/property/concurrency_property_test.rs`, `tests/unit/hot/{mpmc_pool,chase_lev,clause_codec}_test.rs`, `tests/unit/cold/portfolio_test.rs`, and the CI `tsan` job.
+
+## Known Limitations
+
+- Multi-worker delivery order is scheduling-dependent; determinism holds for single-worker workloads only (section 6).
+- Worker arenas are process-lifetime; cross-run pooling is ticket CEP-1038.
+- Thread pinning and NUMA-aware placement are deferred (ticket CEP-1037), not half-implemented.
+- The codec rejects Lambda tags and over-budget clauses (section 4); wider records require a budget revision, not a silent overflow.

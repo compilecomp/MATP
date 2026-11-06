@@ -740,7 +740,7 @@ fn non_unary_and_unoccurring_predicates_ignored() {
 // CEP:FAILURE: test fails if the schemes do not produce the refutation or the plain run unexpectedly refutes.
 // CEP:ASSUMES: the custom precedence (zero ranked highest); the default selection (None, pure maximality).
 // CEP:COST: two small saturations.
-// CEP:EVIDENCE: cited by hot/induction/mod.rs (file header) and docs/formal/15_structural_induction.md section 6.
+// CEP:EVIDENCE: cited by hot/induction/mod.rs (file header) and doc/formal/15_structural_induction.md section 6.
 // CEP:SECURITY: none.
 #[test]
 fn induction_refutes_inductive_theorem() {

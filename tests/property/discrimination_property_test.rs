@@ -6,7 +6,7 @@
 // CEP:FAILURE: tests fail loudly on any violated property.
 // CEP:ASSUMES: fixtures from tests/common/mod.rs; the deterministic LCG makes every run identical.
 // CEP:COST: offline; runtime cost irrelevant.
-// CEP:EVIDENCE: this file is the evidence cited by hot/index/discrimination_tree.rs and docs/formal/04_term_indexing.md.
+// CEP:EVIDENCE: this file is the evidence cited by hot/index/discrimination_tree.rs and doc/formal/04_term_indexing.md.
 // CEP:SECURITY: none; no untrusted input.
 
 #![allow(non_upper_case_globals)]
@@ -168,7 +168,7 @@ fn sequences_match(
 // CEP:FAILURE: test fails on any set difference.
 // CEP:ASSUMES: random vocabularies and queries.
 // CEP:COST: quadratic in the vocabulary per round (bounded).
-// CEP:EVIDENCE: cited by hot/index/discrimination_tree.rs retrieve and docs/formal/04_term_indexing.md.
+// CEP:EVIDENCE: cited by hot/index/discrimination_tree.rs retrieve and doc/formal/04_term_indexing.md.
 // CEP:SECURITY: none.
 #[test]
 fn retrieval_matches_naive_scan() {

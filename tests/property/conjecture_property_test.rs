@@ -290,7 +290,7 @@ fn full_ancestry_contains(fixture: &ConjecturePropertyFixture, from: u64, target
 // CEP:FAILURE: property fails if any lemma fails the oracle.
 // CEP:ASSUMES: the harvest ran to completion.
 // CEP:COST: K runs.
-// CEP:EVIDENCE: cited by hot/conjecture/{mod,filter}.rs (no-unproven-lemma invariant) and docs/formal/16_conjecture_generation.md section 6.
+// CEP:EVIDENCE: cited by hot/conjecture/{mod,filter}.rs (no-unproven-lemma invariant) and doc/formal/16_conjecture_generation.md section 6.
 // CEP:SECURITY: soundness certification.
 #[test]
 fn only_proved_lemmas_added() {
@@ -381,7 +381,7 @@ fn harvest_deterministic_double_run() {
 // CEP:FAILURE: property fails on any mutation.
 // CEP:ASSUMES: the snapshot before the harvest.
 // CEP:COST: K runs.
-// CEP:EVIDENCE: cited by hot/conjecture/filter.rs (isolation) and docs/formal/16_conjecture_generation.md section 5.
+// CEP:EVIDENCE: cited by hot/conjecture/filter.rs (isolation) and doc/formal/16_conjecture_generation.md section 5.
 // CEP:SECURITY: store integrity.
 #[test]
 fn harvest_preserves_existing_clauses() {

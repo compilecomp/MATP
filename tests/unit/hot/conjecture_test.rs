@@ -953,7 +953,7 @@ fn checker_accepts_conjecture_lemma() {
 // CEP:FAILURE: test fails if any proof-only or lemma clause leaks into the second harvest's premise set.
 // CEP:ASSUMES: the oriented axiom b=a; the derived unit b=a; both harvests import the same symmetry lemma.
 // CEP:COST: two harvests.
-// CEP:EVIDENCE: cited by hot/search/given_clause.rs::{proof_base, add_proof_clause}, hot/conjecture/filter.rs::{collect_axiom_ids, is_axiom_rule}, and docs/formal/16_conjecture_generation.md section 5.
+// CEP:EVIDENCE: cited by hot/search/given_clause.rs::{proof_base, add_proof_clause}, hot/conjecture/filter.rs::{collect_axiom_ids, is_axiom_rule}, and doc/formal/16_conjecture_generation.md section 5.
 // CEP:SECURITY: soundness boundary.
 #[test]
 fn two_harvests_stay_sound() {

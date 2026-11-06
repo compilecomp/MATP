@@ -2,6 +2,8 @@
 
 These documents are normative for MAPT (design section 23): every `CEP:HPC-PASS-LEGALITY` comment must cite a specific definition or theorem here, and every hot component must be justified by one of these documents or be quarantined (design section 23.3).
 
+Each component document follows the Documentation Style Guide (`doc standard.md` section 3): Title, Abstract, Formal Definitions, Algorithm, Invariants, Integration Points, Known Limitations. The numbered sections of the earlier revisions are preserved as numbered subsections inside this structure, so citations of the form "Spec NN section M" resolve unchanged (493 such citations exist across `hot/`, `cold/`, `tests/`, and `benches/`).
+
 | # | Document | Scope | Status |
 |---|---|---|---|
 | 01 | `01_fol_syntax_semantics.md` | Signature, terms, hash-consing canonicality, literals, clauses, canonical order, IR contract | Complete (Phase 1 scope) |
@@ -25,4 +27,4 @@ These documents are normative for MAPT (design section 23): every `CEP:HPC-PASS-
 | 19 | `19_certified_kernel.md` | The certified proof kernel: verdict vocabulary, bounded walk and replay budget, the exhaustive production-replaying arms (CEP-1054 rename-apart repair, CEP-1036 exact demodulation), integration | Complete (Phase 5 scope) |
 | 20+ | reserved | DPLL(T), theory reasoning, benchmark suite — later phases | Not started |
 
-Numbering follows the design document's plan as re-sequenced by the revised build order (Phase 4 = induction, conjecture generation, proof recording); gaps are reserved for their future owners as listed in `docs/tickets.md` (18 onward: DPLL(T) integration, theory reasoning, benchmark suite).
+Numbering follows the design document's plan as re-sequenced by the revised build order (Phase 4 = induction, conjecture generation, proof recording); gaps are reserved for their future owners as listed in `doc/tickets.md` (18 onward: DPLL(T) integration, theory reasoning, benchmark suite).

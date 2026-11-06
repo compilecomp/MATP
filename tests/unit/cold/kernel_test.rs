@@ -684,7 +684,7 @@ fn verify_clause_step_matches_walk() {
 // CEP:FAILURE: test fails when the forged lemma is accepted or a genuine assertion lemma is rejected.
 // CEP:ASSUMES: hand-built records; the fixture has no reserved assertion block, so the forged range in the second half is constructed ad hoc (base = r's symbol id, count 1) to show the range check is the deciding factor.
 // CEP:COST: two step verifications.
-// CEP:EVIDENCE: cited by cold/kernel.rs's SatLearn arm and docs/formal/18_fol_clause_learning.md section 5.
+// CEP:EVIDENCE: cited by cold/kernel.rs's SatLearn arm and doc/formal/18_fol_clause_learning.md section 5.
 // CEP:SECURITY: proof validation.
 #[test]
 fn forged_sat_learn_rejected_outside_vocabulary() {

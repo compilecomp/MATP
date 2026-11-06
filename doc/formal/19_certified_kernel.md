@@ -1,12 +1,18 @@
 # Formal Spec 19: The Certified Proof Kernel
 
-## 1. Scope
+## Abstract
+
+This specification fixes the certified proof kernel (`cold/kernel.rs`; design 18.4): the single internal verifier every MAPT proof passes through before the search claims `Theorem` or the writer emits TSTP output. It defines the verdict and rejection vocabularies, the budgeted walk, and the per-rule replay arms over the production inference functions. Inputs are the clause store and a refutation root (or a single clause for diagnostic verification); outputs are `KernelVerdict` verdicts with named rejections, mapped by the TSTP layer onto its error vocabulary. The kernel absorbs the replay checker that Formal Spec 14 section 6 placed in the TSTP layer: the derivation-DAG walk, the conclusion pipeline, the multiset comparison, and the per-rule replay arms live in `cold/kernel.rs`, and the TSTP module delegates to it (`check_proof` is the kernel verdict mapping; `reachable_proof_ids` delegates to the kernel's walk). The unification with the rest of the checker is total: **no other component verifies derivations**, and no component may bypass the kernel.
+
+## Formal Definitions
+
+### 1. Scope
 
 This specification fixes the certified proof kernel (`cold/kernel/`): the single internal verifier every MAPT proof passes through before the search claims `Theorem` or the writer emits TSTP output. The kernel absorbs the replay checker that Formal Spec 14 section 6 placed in the TSTP layer: the derivation-DAG walk, the conclusion pipeline, the multiset comparison, and the per-rule replay arms live in `cold/kernel.rs`, and the TSTP module delegates to it (`check_proof` is the kernel verdict mapping; `reachable_proof_ids` delegates to the kernel's walk). The unification with the rest of the checker is total: **no other component verifies derivations**, and no component may bypass the kernel.
 
 The kernel's contract, restated from design 18.4: *an ATP that produces an invalid proof is worse than one that produces no proof.* Verification cost is bounded and measured (CEP&CC 23); budget exhaustion is an **error**, never a rejection; every rejection names its step and reason (Law 6).
 
-## 2. The verdict vocabulary
+### 2. The verdict vocabulary
 
 ```
 KernelVerdict ::= Valid
@@ -32,7 +38,7 @@ The rejection vocabulary distinguishes structural corruption from replay failure
 | `BrokenReductio` | the ConjectureLemma reductio shape fails |
 | `BrokenTheoryLemma` | a TheoryLemma record claims parents |
 
-## 3. The walk and the budget
+### 3. The walk and the budget
 
 **Walk.** `walk_proof_dag(store, refutation)` collects the reachable clause ids in one descending pass over the id range, marking ancestors (parents are strictly older than children, so one pass is exact — Spec 14 section 2). It reports `NonMonotonicDerivation` (naming the offending parent) and `UnreadableClause` as rejections. The TSTP writer's `reachable_proof_ids` delegates here and maps the walk rejections onto `CycleDetected` / `UnreadableClause` for its existing error vocabulary.
 
@@ -40,7 +46,7 @@ The rejection vocabulary distinguishes structural corruption from replay failure
 
 `verify_clause_step(context, store, id, budget)` verifies one clause outside a whole-proof walk (the clause-learning tests' entry point); it runs the same arm, so a single-step verdict equals the step's verdict inside a full verification.
 
-## 4. The replay arms
+### 4. The replay arms
 
 The arms replay the **production** rule functions — `resolve`, `superpose`, `factor`, `equality_factor`, `equality_resolve`, `demodulate`, `try_split_with` — never a parallel reimplementation, and compare the replayed conclusion to the recorded one **modulo the loop's pipeline** (restandardize to a dense namespace, then dedupe exact literal repeats — the same `restandardize_clause` + dedupe the search applies before storage, Spec 08 section 6). Multiset equality is canonical-order equality on hash-consed atom pointers and polarities.
 
@@ -55,8 +61,6 @@ The arms replay the **production** rule functions — `resolve`, `superpose`, `f
 
 **SatLearn (the executable vocabulary check).** Both shapes of Spec 18 section 5, with the trust boundary made executable: every conclusion atom must be a 0-ary predicate **whose symbol id lies inside the reserved assertion range** `[assertion_base, assertion_base + assertion_count)` carried by `KernelOptions`. The production whole-proof path (`verify_refutation_with_budget`, and therefore `check_proof`) uses the empty range - the refutation DAG cannot contain SatLearn steps under the current protocol (staged lemmas are children of the refutation, Spec 18 section 3), so any SatLearn step that appears is rejected; the clause-learning diagnostics verify staged lemmas through `verify_clause_step_with_options` with the controller's configured range. A forged parentless lemma over user-declared 0-ary predicates is rejected (`forged_sat_learn_rejected_outside_vocabulary`).
 
-**SatLearn.** Both shapes of Spec 18 section 5: conflict lemmas are all-negative 0-ary assertion atoms over an empty anchor parent; transfers are parentless 0-ary assertion atoms. Anything else is `BrokenSatLearn`.
-
 **ConjectureLemma (the reductio check, from Spec 17 section 4).** Unchanged in content, moved into the kernel: `parent_count == 2`; parent 0 is a `ConjectureNegation` clause with the literal-wise complement of the lemma (multiset match); parent 1 is the empty clause; parent 0 is an ancestor of parent 1 (`ancestor_of`).
 
 **Parentless introductions.** `Input`, `NegatedConjecture`, `StructuralInduction`, `WellFoundedInduction`, `ConjectureNegation` require `parent_count == 0` (existence is checked by the walk); `TheoryLemma` likewise (rejecting with its own reason).
@@ -65,17 +69,52 @@ The arms replay the **production** rule functions — `resolve`, `superpose`, `f
 
 The match over `InferenceRule` is exhaustive over its twenty variants — a new rule cannot compile without an arm (the CEP-0 discipline applied to soundness).
 
-## 5. What the kernel does not verify
+### 5. What the kernel does not verify
 
 The kernel verifies **derivations**: that each recorded clause follows from its recorded parents by a legal application of the recorded rule. It does not re-prove the metatheory (the soundness of each rule is Spec 07's theorem set; the AVATAR protocol's soundness is Spec 12; the DRAT discipline covers the SAT engine's own derivations, Formal Spec 11; the SatLearn introduction discipline is Spec 18). The composition is the standard trusted-core argument: rules with machine-checked soundness proofs + shape-complete introduction bounds + an exhaustive, production-replaying verifier over the recorded DAG.
 
-## 6. Integration
+## Algorithm
+
+Whole-proof verification (`verify_refutation_with_budget`, and `check_proof` above it):
+
+1. Walk the derivation DAG from the refutation root in one descending id pass, collecting the reachable set and rejecting `NonMonotonicDerivation` / `UnreadableClause` with the offending id (section 3).
+2. For each reachable derived clause in ascending order, run the rule's replay arm of section 4 against its recorded parents, charging one unit per attempted replay; the first failed arm returns `Invalid { clause_id, rejection }`.
+3. Parentless introductions and deletion rules are decided by the shape checks of section 4 without replay work.
+4. On budget exhaustion return `Err(ReplayBudgetExhausted)`; on completion return `Valid`.
+
+Cost is O(walked ids + charged attempts) under `kKernelReplayBudget`; space is the visited bitmap plus the replay workspace. Assumptions: clause ids are dense and monotonic (Spec 14 Lemma 2.1); the production rule functions are the same binaries the search ran (the arms call them directly).
+
+## Invariants
+
+1. Exhaustive dispatch: every `InferenceRule` variant has an arm; adding a rule without an arm fails to compile (section 4).
+2. Production replay: arms call the production rule functions, never a reimplementation; conclusions are compared modulo the search's own pipeline (section 4).
+3. Naming rejections: every rejection carries the offending clause id and a vocabulary reason (section 2, Law 6).
+4. Honest budgets: charging is per attempt; exhaustion is the distinct error `ReplayBudgetExhausted`, never a rejection (section 3; `rejects_budget_exhaustion`).
+5. Monotonicity: non-monotonic parentage is a walk-level rejection naming the offending parent (section 3).
+6. Vocabulary completeness: SatLearn conclusions must lie in the reserved assertion range; the production path's empty range rejects any SatLearn step (section 4; `forged_sat_learn_rejected_outside_vocabulary`).
+7. Single-step equivalence: `verify_clause_step` returns the same verdict a whole-proof walk would return for that step (section 3; `verify_clause_step_matches_walk`).
+
+## Integration Points
+
+Depends on:
+
+- `hot/ir/clause.rs` (`ClauseStore::clause_by_id(&self, id: ClauseId) -> Result<&Clause, ClauseError>`, `DerivationStep`, `InferenceRule`) for the records under verification.
+- `hot/inference/` production functions (`resolve`, `superpose`, `factor`, `equality_factor`, `equality_resolve`, `demodulate`) and `hot/avatar/splitter.rs` (`try_split_with`) for the replay arms.
+- `config/limits.rs` (`kKernelReplayBudget`, `kKernelSplitReplayGate`) for the budget and gate constants.
+
+Depended on by:
+
+- `cold/proof_output/tstp.rs` (`check_proof`, `reachable_proof_ids`, `render_verified_proof`), the mapping layer of section 6.
+- `hot/avatar/controller.rs` and the clause-learning diagnostics (`verify_clause_step_with_options` with a live assertion range; Spec 18 section 5).
+- The evidence map of section 7 (below).
+
+### 6. Integration
 
 - `cold/proof_output/tstp.rs::check_proof` = the verdict mapping: `Valid` passes; `Invalid { clause_id, .. }` maps to `TstpError::InvalidStep(clause_id)` (the TSTP error vocabulary keeps its payload contract); `Err(ReplayBudgetExhausted)` maps to the new `TstpError::BudgetExhausted`.
 - `render_verified_proof` keeps the verified-then-emitted ordering.
 - The property tests' corruption paths (`corrupted_proof_rejected`) run through the kernel; the former structural demodulation acceptance is now the executable rejection `checker_rejects_unrecorded_demodulation`.
 
-## 7. Evidence map
+### 7. Evidence map
 
 | Property | Executable pin |
 |---|---|
@@ -91,3 +130,10 @@ The kernel verifies **derivations**: that each recorded clause follows from its 
 | Every loop refutation formats and checks; corruption rejected | `property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}` |
 | Staged learning lemmas verify | `unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable` |
 | Forged SatLearn over user predicates rejected; range check decides | `unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary` |
+
+## Known Limitations
+
+- The kernel verifies derivations, not the metatheory: rule soundness (Spec 07), the AVATAR protocol (Spec 12), the DRAT discipline (Spec 11), and the SatLearn introduction bounds (Spec 18) are the trusted core (section 5).
+- Budget exhaustion leaves a proof neither verified nor condemned; callers must treat the error as "no verdict" (section 2, CEP&CC 34.3).
+- The replay compares modulo the restandardize-plus-dedupe pipeline; conclusion shapes outside that pipeline (future pipeline changes) require revisiting the comparison, not just the arms.
+- The demodulation arm requires the CEP-1036 two-parent chain; derivation records predating the chain are rejected as corruption (section 4, `UnrecordedRule`), so historical traces recorded before the chain cannot be verified by the current kernel.

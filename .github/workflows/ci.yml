@@ -31,6 +31,19 @@ jobs:
       - name: "Evidence chain check (Law 4: every CEP:EVIDENCE pointer must resolve)"
         run: python3 scripts/check_evidence.py
 
+  docs:
+    name: doc (rustdoc warnings-as-errors, doc tests; Documentation Style Guide 5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - name: "cargo doc (Documentation Style Guide 5.2: broken internal links fail the build)"
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
+      - name: "Doc tests (Documentation Style Guide 5.2: every documentation example must compile)"
+        run: cargo test --doc
+      - name: "Public-item doc comments are ticketed (Documentation Style Guide 5.2 via CEP-1057)"
+        run: echo "The missing_docs lint is not yet denied: 630 of 893 public items lack doc comments (doc/tickets.md CEP-1057). The broken-link and doc-test gates above are active."
+
   rust:
     name: rust (fmt, clippy -D warnings, tests debug+release, ignored-expensive)
     runs-on: ubuntu-latest

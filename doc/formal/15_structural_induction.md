@@ -1,12 +1,18 @@
 # Formal Spec 15: Automated Induction (Structural and Well-Founded Schemes)
 
-## 1. Scope and deliverable
+## Abstract
+
+This specification is normative for `hot/induction/` (revised build order Phase 4); every `CEP:HPC-PASS-LEGALITY` comment in that module cites a definition or theorem here. It defines the declaration contract for freely-generated datatype shapes, the structural and well-founded induction schemes as two-clause clausifications per occurring unary predicate, their soundness theorems, the bounds of the bounded deterministic generator, and the proof-recording presentation. Inputs are an `InductionDeclaration` validated at the trust boundary and the input clause set; outputs are installed scheme clause pairs with `InductionStats` and their TSTP axiom presentation. The zero-ML rule holds absolutely: no statistics, no learned weights, no symbol-name heuristics, no hidden state.
+
+## Formal Definitions
+
+### 1. Scope and deliverable
 
 This specification is normative for `hot/induction/` (revised build order Phase 4). Every `CEP:HPC-PASS-LEGALITY` comment in that module cites a definition or theorem here. The deliverable is the bounded, deterministic, clausal induction-scheme generator: for a **declared** freely-generated datatype shape, every occurring unary predicate receives the two-clause clausification of its induction-axiom instance (structural scheme), and when a well-order is declared additionally the two-clause clausification of its strong-induction instance (well-founded scheme).
 
-The zero-ML rule holds absolutely: no statistics, no learned weights, no symbol-name heuristics, no hidden state. The datatype is never guessed; it is **declared** by the CEP-1 driver and validated mechanically (section 2).
+The datatype is never guessed; it is **declared** by the CEP-1 driver and validated mechanically (section 2).
 
-## 2. The declaration contract
+### 2. The declaration contract
 
 An `InductionDeclaration` carries:
 
@@ -21,9 +27,9 @@ The skolem-absence proof is the input-signature scan (section 2.1): one walk ove
 
 **Design rationale (why declaration, not detection).** E's `induction.ax` and Vampire's induction mode identify datatypes by symbol shape or name, and both document the unsoundness risk: symbols merely *named* `zero`/`succ` with axioms that contradict freeness produce scheme instances that are not valid in the intended semantics. MAPT removes the guesswork: the declaration is the trust boundary, its validation is mechanical, and the semantic obligation (the constructor family really is a freely generated datatype) rests with the declaring driver, exactly as TPTP's inductive-datatype convention rests with the problem author.
 
-## 3. The structural scheme
+### 3. The structural scheme
 
-### 3.1 Soundness theorem (initial-algebra convention)
+#### 3.1 Soundness theorem (initial-algebra convention)
 
 **Theorem.** Let `D` be a freely generated datatype with base constructor `z : D` and step constructor `s : D -> D` (the two-constructor Peano shape; the untyped engine's only unambiguous free shape). For every formula `phi(x)` over the signature, the induction-axiom instance
 
@@ -35,7 +41,7 @@ is valid in the initial (term) algebra of `D`.
 
 MAPT instantiates `phi` at **goal predicates**, not arbitrary formulas — the same restriction as E's `induction.ax`: `phi(x) := p(x)` for each occurring unary predicate `p`. The instance is first-order because the predicate symbol is fixed.
 
-### 3.2 Clausal derivation (the generator's shape)
+#### 3.2 Clausal derivation (the generator's shape)
 
 Clausifying `IA(p)` (negate the antecedent, skolemize the existential witness of the negated inner universally quantified disjunction — one witness constant `a` for the whole instance; MAPT uses the declaration's skolem symbol, whose freshness the scan proved):
 
@@ -50,9 +56,9 @@ with `X` variable index 0 (the numbering is fixed by this spec; the builders in 
 
 **Pair atomicity.** S1 and S2 jointly clausify one valid formula; **neither clause alone is valid** (each is only one disjunct branch of the clausification). The installer therefore adds them as an inseparable pair: the attempts budget (`kMaxInductionAttempts`, injectable; production default in `config/limits.rs`) is checked against the **pair** (`kInductionSchemeClauses = 2`), and a budget that cannot fit a whole pair adds nothing and counts the predicate as skipped (Law 4).
 
-## 4. The well-founded (strong) scheme
+### 4. The well-founded (strong) scheme
 
-### 4.1 Soundness theorem
+#### 4.1 Soundness theorem
 
 **Theorem.** Let `lt` be a well-founded strict order on `D` (well-foundedness is the declaring driver's semantic obligation; the standard justification — and the reason the feature exists — is that `lt` is defined recursively over the constructors, e.g. `lt(z, s(x))` and `lt(x, y) -> lt(x, s(y))`, whence well-foundedness follows by structural induction on the second argument, the standard TPTP less-than definition). For every unary predicate `p`:
 
@@ -62,14 +68,14 @@ is valid (over the well-founded structure).
 
 *Proof.* Contrapositive: if `~p(c)` for some `c`, the antecedent's failure at `c` gives a witness `c'` with `lt(c', c)` and `~p(c')`; iterating builds an infinite descending `lt`-chain, contradicting well-foundedness. ∎
 
-### 4.2 Clausal derivation
+#### 4.2 Clausal derivation
 
 `~WFI(p)` = `EXISTS x. ((ALL y. (~lt(y, x) OR p(y))) AND ~p(x)) OR ALL x. p(x)`; skolemize the existential (witness `c` — the same declaration skolem, sound because each scheme instance is independently valid regardless of the constant's interpretation):
 
 - **W1** = `{ ~lt(Y, c), p(Y), p(X) }`  (Y = variable 0, X = variable 1)
 - **W2** = `{ ~p(c), p(X) }`  (X = variable 0)
 
-## 5. Bounds
+### 5. Bounds
 
 | Bound | Constant | Semantics |
 |---|---|---|
@@ -80,7 +86,22 @@ is valid (over the well-founded structure).
 
 Static and runtime assertions (the latter mirrored in `unit/config/limits_test.rs::phase4_revised_invariants`) fix every cross-constant relation, including `kInductionMaxPredicates * kInductionSchemeClauses >= kMaxInductionAttempts`.
 
-## 6. The worked refutation (the feature's reason to exist)
+### 7. Proof-recording presentation
+
+Scheme clauses carry `InferenceRule::StructuralInduction` / `WellFoundedInduction`, parentless, and enter the passive set through the production staging path (`add_theory_clause`). The TSTP writer emits them with the `axiom` role and the source names `structural_induction` / `well_founded_induction`; the replay checker accepts them as parentless theory-axiom introductions (existence-checked by the walk), matching the published presentation of E's `induction.ax` and Vampire's introduced theory axioms: external checkers see exactly what was assumed and can audit it by name. The internal shape is pinned by the unit tests against this spec's sections 3.2/4.2.
+
+## Algorithm
+
+The generator (`pub fn add_induction_schemes` in `hot/induction/mod.rs`) runs once per search setup:
+
+1. Validate the declaration (`pub fn validate_declaration`): field shapes per the section 2 table; any rejection adds no scheme (Law 6).
+2. Run the input-signature scan: one depth-bounded, node-budgeted walk over every input clause's atoms in clause-id and term-child order, proving skolem absence and collecting the deduplicated, ascending-sorted set of occurring unary predicates (section 2).
+3. For each collected predicate in sorted order: build the two structural literals S1, S2 of section 3.2 (`pub fn structural_scheme_literals` in `hot/induction/scheme.rs`); when a well-order is declared, build W1, W2 of section 4.2 (`pub fn well_founded_scheme_literals`).
+4. Install pairs atomically: check the attempts budget against the pair (`kInductionSchemeClauses = 2`), add both clauses through the production staging path, and count skips; overflow predicates are skipped and counted (section 5).
+
+Time is O(scan nodes + predicates x constant literal work) under the budgets; space is two clause records per installed scheme. Assumptions: the declared constructor family is a freely generated datatype and the declared `lt` is well-founded (the declaring driver's semantic obligations, sections 3.1 and 4.1).
+
+### 6. The worked refutation (the feature's reason to exist)
 
 The minimal problem whose proof **requires** the scheme: inputs `p(zero)` (base), `~p(X) OR p(succ(X))` (step), `~p(a)` (negated conjecture). No first-order refutation exists (the induction axiom is second-order in `p`): the plain loop saturates honestly (`unit/hot/induction_test.rs::induction_refutes_inductive_theorem` pins both outcomes). With S1, S2 installed, the refutation path (with a precedence ranking `zero` highest and the default selection):
 
@@ -93,6 +114,32 @@ The minimal problem whose proof **requires** the scheme: inputs `p(zero)` (base)
 
 The same ordered restriction blocks the unbounded ground chain `p(succ^n(a))` (the step's `~p(X)` is never maximal), which is why the scheme-augmented search stays shallow and fast — the worked example is also the determinism and cost story.
 
-## 7. Proof-recording presentation
+## Invariants
 
-Scheme clauses carry `InferenceRule::StructuralInduction` / `WellFoundedInduction`, parentless, and enter the passive set through the production staging path (`add_theory_clause`). The TSTP writer emits them with the `axiom` role and the source names `structural_induction` / `well_founded_induction`; the replay checker accepts them as parentless theory-axiom introductions (existence-checked by the walk), matching the published presentation of E's `induction.ax` and Vampire's introduced theory axioms: external checkers see exactly what was assumed and can audit it by name. The internal shape is pinned by the unit tests against this spec's sections 3.2/4.2.
+1. No partial effects: a rejected declaration installs nothing (section 2, Law 6).
+2. Pair atomicity: scheme clauses are installed only as complete two-clause pairs; a budget that cannot fit a whole pair installs nothing and counts the skip (section 3.2, Law 4).
+3. Skolem freshness: the declaration's skolem symbol is absent from every input clause, proved by the signature scan before any installation (section 2).
+4. Fixed shapes: the installed literal sets are exactly S1/S2 and W1/W2 with the spec's variable numbering (`property/induction_property_test.rs::schemes_match_hand_clausification`).
+5. Deterministic enumeration: predicates are processed in ascending symbol-id order; the scheme set is a pure function of the declaration and the input set (sections 2 and 5).
+6. Honest accounting: skips and overflow predicates are counted in `InductionStats`; nothing is dropped silently (section 5).
+
+## Integration Points
+
+Depends on:
+
+- `hot/ir/term.rs` and `hot/ir/symbol_table.rs` (`TermView::child(&self, index: u16) -> Result<TermPtr, TermError>`, `SymbolTable::info(&self, symbol_id: u32) -> Result<&SymbolInfo, SymbolError>`) for the scan walk and symbol-shape validation.
+- `hot/search/given_clause.rs` (`add_theory_clause`, the production staging path) for scheme installation.
+- `config/limits.rs` (`kMaxInductionAttempts`, `kInductionSchemeClauses`, `kInductionScanNodeBudget`, `kInductionMaxPredicates`) for every bound of section 5.
+
+Depended on by:
+
+- `hot/induction/mod.rs` (`InductionDeclaration`, `InductionError`, `InductionStats`, `add_induction_schemes`) and `hot/induction/scheme.rs` (`structural_scheme_literals`, `well_founded_scheme_literals`), the module's two units.
+- `cold/proof_output/tstp.rs`, which renders scheme clauses as named theory axioms (section 7; Spec 17).
+- `cold/kernel.rs`, whose replay accepts the parentless theory-axiom introductions (section 7).
+
+## Known Limitations
+
+- The scheme covers the two-constructor Peano shape only; TFF-sorted list/tree constructor shapes and TPTP inductive-datatype declarations are not mapped (ticket CEP-1051, section 3.1's rationale).
+- Induction instantiates goal predicates only: single-predicate conjectures; the Wand-Khasidashvili multi-literal lifting is open (ticket CEP-1053).
+- The untyped fragment makes binary free shapes ambiguous; no general constructor-arity scheme exists (section 3.1).
+- The scan's node budget is defense in depth; a scan that exhausts it rejects the declaration rather than degrading silently (section 2).

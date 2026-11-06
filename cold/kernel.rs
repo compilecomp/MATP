@@ -28,7 +28,7 @@ const kBinaryPremises: usize = 2;
 // CEP:FAILURE: none.
 // CEP:ASSUMES: AvatarOptions::min_component_size >= 1 (the documented minimum, Spec 12 section 7).
 // CEP:COST: compile-time only.
-// CEP:EVIDENCE: cited by the AvatarSplit arm and docs/formal/19_certified_kernel.md section 4.
+// CEP:EVIDENCE: cited by the AvatarSplit arm and doc/formal/19_certified_kernel.md section 4.
 // CEP:SECURITY: none.
 const kKernelSplitReplayGate: u16 = 1;
 use mapt_hot::inference::demodulation::{demodulate, unit_equation_sides};

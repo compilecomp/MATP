@@ -132,7 +132,7 @@ mapt/
 │   ├── threat_model.md
 │   ├── trust_boundaries.md
 │   └── ffi_security.md
-├── docs/
+├── doc/
 │   └── formal/
 │       ├── 01_fol_syntax_semantics.md
 │       ├── 02_substitution_unification.md
@@ -1255,7 +1255,7 @@ Each AVATAR split creates a new generation. When AVATAR backtracks, the arena is
 
 ### 23.1 Document structure
 
-The `docs/formal/` directory contains 23 specification documents. Each document defines:
+The `doc/formal/` directory contains 23 specification documents. Each document defines:
 1. Formal syntax (BNF or set-theoretic definition).
 2. Formal semantics (model-theoretic or proof-theoretic).
 3. Inference rules (as formal derivation rules with side conditions).
@@ -1270,7 +1270,7 @@ The 43 foundational papers are listed in Section 5 of the previous response. Eve
 
 ### 23.3 The rule
 
-If an implementation cannot point to a specific definition, theorem, or lemma in `docs/formal/` that justifies its behavior, it is not HPC-0 compliant. It is quarantined or exterminated per §34.1.
+If an implementation cannot point to a specific definition, theorem, or lemma in `doc/formal/` that justifies its behavior, it is not HPC-0 compliant. It is quarantined or exterminated per §34.1.
 
 ---
 
