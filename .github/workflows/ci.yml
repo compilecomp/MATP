@@ -132,3 +132,27 @@ jobs:
           # instrumentation loss); the flag is rustc's documented remedy for
           # exactly this report, and the suites under test compile sanitized.
           TSAN_OPTIONS="halt_on_error=1"           RUSTFLAGS="-Zsanitizer=thread -Cunsafe-allow-abi-mismatch=sanitizer"           cargo +nightly-2026-10-01 test -Z build-std=core,std --target x86_64-unknown-linux-gnu             --test chase_lev_test --test mpmc_pool_test --test clause_codec_test             --test concurrency_property_test --test portfolio_test
+
+  targets:
+    name: target matrix (${{ matrix.target }} cross-check, CEP-1018)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-gnu
+            config-feature: target-arm64
+          - target: riscv64gc-unknown-linux-gnu
+            config-feature: target-riscv64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          targets: ${{ matrix.target }}
+      - name: "Cross-compile check (the ISA module is cfg-gated; CEP&CC 32.5)"
+        run: cargo check --workspace --target ${{ matrix.target }}
+      - name: "Compile the config crate under each target-configuration feature (the workspace dependency edges pin the default feature, so the alternative configurations are checked per crate)"
+        run: |
+          cargo check -p mapt-config --no-default-features --features ${{ matrix.config-feature }}
+          cargo check -p mapt-config --no-default-features --features target-generic
+          cargo check -p mapt-config --no-default-features --features target-x86-64

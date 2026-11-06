@@ -1434,3 +1434,173 @@ Roughly 110 are CEP-0 hot-path, requiring full measurement, disassembly, and OPT
 ---
 
 This is MAPT. 191 certified modules. Two engines. One arena. One proof graph. Zero tolerance for unsound inference. Every component formally specified, measured, and mechanically enforced.
+---
+
+## 28. Expanded Feature Set (Design Inventory, 2026-11-07)
+
+This section extends the design with the complete feature inventory of the MAPT program: the base system of sections 1-27 plus the mathematical, tactical, higher-order, knowledge-base, and reflection subsystems. The inventory below supersedes the approximate section 27 count and is the normative module list for the expanded build; per-module delivery status is tracked by `doc/tickets.md` and the README phase tables. Rows marked **NEW** are modules added by this expansion (registered under tickets CEP-1060 through CEP-1066); unmarked rows are the base inventory of sections 1-27.
+
+MAPT is a first-order and higher-order automated theorem prover with:
+
+| Category | Features | Source systems |
+|---|---|---|
+| Core ATP | Superposition, resolution, factoring, demodulation, subsumption | E, Vampire, Zipperposition |
+| SAT integration | Native CDCL solver (watched literals, VSIDS, First-UIP, DRAT) | CaDiCaL, MapleSAT, Kissat |
+| AVATAR | Clause splitting, model-guided search, conflict-driven backtracking | Vampire |
+| Induction | Boyer-Moore waterfall, rippling, lemma speculation, destructor elimination | ACL2, IsaPlanner |
+| Theory reasoning | DPLL(T), congruence closure, Nelson-Oppen combination | Z3, CVC5, veriT |
+| Native math engines | Groebner bases, CAD, Wu's method, Fourier-Motzkin, Cooper's algorithm | Singular, Mathematica, Redlog |
+| Tactic engines | `ring`, `linarith`, `omega`, `norm_num`, `abel`, `field_simp`, `positivity` | Lean, Coq, Isabelle |
+| Higher-order | Lambda-free HOL, SKIBC combinators, defunctionalization, extensionality | Zipperposition, Leo-III, Satallax |
+| Knowledge base | Symbolic relevance flow, offline corpus distillation, dependency-aware premise selection | SInE, MePo, ReProver |
+| Proof production | TSTP, DRAT/LRAT, internal verification, proof compression | All major ATPs |
+| Concurrency | Portfolio search, lock-free clause sharing, work-stealing, NUMA-aware placement | E, Vampire, Paradox |
+| Computational reflection | Native evaluator, SAT-circuit certification, verified computation | Coq, Lean, HOL4 |
+| Model building | Finite model finding, Herbrand models, counterexample generation | iProver, Paradox, Nitpick |
+| Redundancy elimination | Global subsumption, contextual literal cut, clause coloring, interpolation | Vampire, E, iProver |
+| Search control | Multiple selection strategies, adaptive switching, time-slice scheduling | E, Vampire, iProver |
+
+### 28.1 Input layer (11 modules)
+
+TPTP parser (FOF/CNF/TFF/THF); SMT-LIB 2.x parser; DIMACS parser; API interface; lexer (zero-allocation); AST builder; sort checker; arity validator; IR constructor; hash-consing integration; parse error reporter. Delivered 2026-11-07 under CEP-1006 (narrowed): the DIMACS CNF front end and the TPTP CNF/FOF front end with include resolution and the full design 6.3 bound set (`cold/parsing/`); SMT-LIB 2.x and TFF/THF remain open under CEP-1006.
+
+### 28.2 Preprocessing pipeline (17 modules)
+
+Negation of conjecture; NNF conversion; miniscoping; flattening; definitional CNF (Tseitin); Skolemization; variable standardization; predicate elimination; SinE relevance filtering; simplification (tautology, duplicate removal); pre-search subsumption. NEW: **tactic normalization** (apply `ring`/`linarith` normalization to arithmetic atoms before search); **destructor elimination** (for induction: replace datatype destructors by case analysis); **defunctionalization** (for higher-order input: encode closures as first-order state machines); **extensionality axiom injection** (lazy: inject function and predicate extensionality axioms only when the search blocks on them); **theory-aware simplification** (congruence-closure-driven simplification of equality atoms); **computational reflection pre-check** (detect goals whose shape matches the native evaluator's fragment before search).
+
+### 28.3 Unified IR (14 modules)
+
+Term representation (hash-consed); literal representation; clause representation (inline for up to 8 literals); substitution representation (flat array); symbol table; derivation step; proof DAG; arena allocator; generation counters; hash-consing table; term ordering (KBO/LPO); clause weight computation; clause age tracking; IR verifier.
+
+### 28.4 ATP engine (22 modules)
+
+Binary resolution; ordered resolution; superposition; factoring; equality factoring; demodulation (rewriting); forward subsumption; backward subsumption; subsumption resolution (CEP-1034); tautology deletion; condensation (CEP-1034); equality resolution. NEW: **induction inference** (scheme-driven case hypotheses as premises); **rippling engine** (skeleton/wavefront annotation of goal terms with bounded wave-rule rewriting); **lemma speculation** (candidate lemmas from failed induction branches, validated by the bounded filter); **waterfall controller** (the ordered suggestion list of the Boyer-Moore waterfall with per-stage budgets); **destructor application** (case-split expansion of datatype goals inside induction attempts); **cross-fertilization** (reuse of terms from induction hypotheses in conclusion generalization); **generalization** (replace common subterms of goal and IH by fresh variables with occurrence guards); **wavefront tracking** (per-position annotation of measured/measurable subterms through rewrites); **induction schema selector** (rank structural vs well-founded schemes by constructor shape and measure availability); **measure inference** (derive a well-founded measure argument for recursive function definitions over the declared well-order).
+
+### 28.5 SAT engine (47 modules)
+
+Boolean variable representation; literal representation (packed u32); clause representation (watched literals); clause database; trail (assignment stack); watch lists; VSIDS heap; phase saving table; BCP engine (OPT-0); watch literal maintenance (OPT-0); propagation queue; VSIDS decision heuristic; activity decay/update; phase selection; decision level tracking; restart strategy (Luby/geometric); phase saving/reset; conflict detection; First-UIP computation (OPT-0); learnt clause minimization; learnt clause addition; backjump; LBD tracking; clause activity update; clause deletion/GC; clause reduction policy; clause compaction; binary/ternary clause storage; clause locking; self-subsuming resolution; blocked clause elimination; bounded variable elimination; tautology removal; duplicate removal; failed literal probing; vivification; hyper-binary resolution; assumption-based solving; incremental solve interface; model extraction; DRAT/LRAT emission; proof step recording; proof verification; AVATAR component registration; SAT-to-ATP clause learning; shared clause bridge; SAT-model-to-ATP-assignment.
+
+### 28.6 Mathematical engines (18 modules, NEW)
+
+1. **Groebner bases (Buchberger).** Polynomial ideals over Q for equality reasoning: S-polynomial generation, the Buchberger criteria (gcd divisibility, disjoint leading monomials) to prune pairs, and a graded term order. Inputs are polynomial equations over the original signature; outputs are either a refutation (0 in the ideal) or a reduced Groebner basis published as demodulators. Bounds: kMaxPolynomialTerms, kMaxPolynomialDegree, kMaxGroebnerPairs. CEP-0.
+2. **Groebner bases (F4/F5).** The same ideal membership decision with incremental Groebner bases: F5's signature-based criterion prevents redundant reductions; linear-algebra core over dense rows. CEP-0; the F4 reduction matrix construction is the measured hot loop.
+3. **Cylindrical algebraic decomposition.** Quantifier elimination for real closed fields: projection (McCallum's operator), cell decomposition by root isolation, and sample-point evaluation. Bounded by kMaxCadVariables (small, non-linear core only); aborts to GaveUp past the bound.
+4. **Wu's method.** Geometry theorem proving by characteristic sets: pseudo-division, Wu-Ritt characteristic set construction, and the remander test on the hypothesis chain. Sound for the equality consequences of the hypothesis ideal's radical membership.
+5. **Fourier-Motzkin elimination.** Variable elimination for linear real inequalities: pair each upper with each lower bound, emit the combined inequality, and prune syntactically dominated inequalities each round. Bounds: kMaxLinearAtoms, kMaxFmRounds.
+6. **Farkas' lemma certificates.** For LRA refutations: emit the non-negative combination of the input inequalities that yields the contradiction, as a checkable certificate (the certificate is replayed by the internal checker like any recorded step).
+7. **Cooper's algorithm.** Presburger quantifier elimination: the dark-and-pale-shadow split for the divisibility cases. Bounds: kMaxCooperCoefficients.
+8. **Omega test.** Integer feasibility by the Omega projection with the exact-integer shadow; complements branch-and-bound on the integer fragment.
+9. **Congruence closure.** E-graph over the term store: union-find classes over hash-consed terms with congruence closure by class-signature merging (the DT algorithm shape: pending merges with signature lookup). Inputs are equality atoms from the search; outputs are class representatives and merge proofs (proof-producing union-find for the checker).
+10. **Union-find for equality reasoning.** The union-find core: path-halving find, union by class rank, dense arena-backed class tables; shared by congruence closure, array reasoning, and datatype reasoning.
+11. **Nelson-Oppen combination.** Theory combination by shared-variable equality exchange: purify to theory fragments, propagate equalities between the congruence closure core and each arithmetic theory to a fixed point under the stated assumptions (convex theories).
+12. **Simplex for LIA/LRA.** The general simplex over Bland's rule for termination; tableau over the arena; the Farkas certificate extraction shares stage 6's checker arm.
+13. **Branch-and-bound for integer constraints.** Bound tightening rounds between simplex calls; branch variables chosen by the largest fractional part; node budget kMaxBnbNodes.
+14. **Bit-blasting for bitvectors.** BV operations to a CNF encoding over fresh propositional variables: bitwise connectives as gates, addition as a ripple-carry circuit, comparison as subtract-and-test; the encoding is certificate-preserving (the SAT model maps back to a bitvector model).
+15. **Array reasoning.** The read-over-write axioms as lemmas with Leibniz instantiate-on-demand; congruence closure carries the equality reasoning.
+16. **Algebraic datatype reasoning.** Constructor/discriminator/disstructor axioms with occurrence-typing; acyclicity via depth bounds; the induction module consumes the declarations (Spec 15).
+17. **Polynomial normalizer (`ring` tactic).** Horner-form normalization over a commutative ring presentation: distribute, sort monomials, cancel; the certificate is the normalization identity the checker replays.
+18. **Abelian group normalizer (`abel` tactic).** Normalization over abelian groups: collect coefficients per generator, cancel inverses; same certificate discipline as the ring normalizer.
+
+### 28.7 Tactic engines (13 modules, NEW)
+
+`ring` (28.6 item 17); `linarith` (simplex-based linear arithmetic closure over hypothesis inequalities); `omega` (Cooper/Omega decision for Presburger goals); `norm_num` (numeral normalization: literal arithmetic on the encoded numerals); `abel` (28.6 item 18); `field_simp` (clear denominators by multiplying through the non-zero hypothesis products); `positivity` (non-negativity closure by the positivity of squares/products presentation); `mono` (monotonicity side-condition discharge for arithmetic predicates); `rel` (relation algebra normalizer for the order lemmas); `zify` (int-to-nat and nat-to-int coercion normalization); `push_cast` (cast reassociation through the arithmetic lattice); `decide` (the computational reflection entry: evaluate a ground decidable goal by the native evaluator, 28.9); **tactic composition engine** (an ordered tactic pipeline with per-tactic budgets and an all-or-nothing failure contract: a failing tactic leaves the clause unchanged and is counted, never half-applied). Every tactic is a verified simplifier: its certificate is replayed by the certified kernel before its conclusion enters the search (CVC5-style verified simplification).
+
+### 28.8 Higher-order extensions (9 modules)
+
+Lambda-free HOL support (base). NEW: **full lambda calculus** (Lambda and Application term tags promoted from the Phase 1 shapes); **beta-reduction** (normal-order reduction with depth and substitution budgets); **eta-conversion** (directed eta with the occurs check); **alpha-equivalence** (de Bruijn comparison over the hash-consing table); **SKIBC combinators** (the S/K/I/B/C combinator translation of typed lambda terms; combinator completeness per the standard bracket abstraction); **defunctionalization** (closure-to-state-machine encoding with an apply function per function space); **function extensionality** (the equality-of-functions axiom as a lazy inject); **predicate extensionality** (the same for predicates). Higher-order unification is restricted to the lambda-free pattern fragment (Spec 07 section 6 note; CEP-1033).
+
+### 28.9 Knowledge base (8 modules, NEW)
+
+**Offline corpus distiller (Python, CEP-2)**: reads TPTP/Maple/Lean corpora, extracts formulas with their dependency edges, and emits the `.maptlib` file; **`.maptlib` binary format**: a versioned, checksummed container (header, symbol dictionary, sorted lemma table, adjacency lists) with kMaptlibVersion pinning; **memory-mapped library loader**: maps the container read-only and validates the checksum before exposing views (zero-copy, no runtime parsing); **symbolic relevance flow (MePo)**: symbol-weight propagation from the conjecture through the dependency graph for a bounded number of rounds; **dependency graph traversal**: transitive dependency closure with depth bound kMaxKbDependencyDepth; **TF-IDF symbol scoring**: term-frequency inverse-document-frequency over the lemma table's symbol vectors; **threshold-based axiom selection**: the top-k lemmas under the relevance score with kMaxSelectedAxioms; **lemma application engine**: matches selected lemmas against goal shapes through the discrimination tree and asserts instantiations as theory lemmas (the kernel verifies each application). Zero runtime dependencies: the loader reads the container with the standard library only.
+
+### 28.10 Search control (12 modules)
+
+Given-clause loop; age-weight ratio selection; conjecture-distance selection (CEP-1035); weight-only selection; age-only selection; SOS set-of-support (CEP-1035); clause weight function; time-slice scheduling; adaptive strategy switching (CEP-1035). NEW: **induction-aware selection** (prioritize clauses produced by induction attempts whose measures made progress); **tactic-first selection** (route clauses to the tactic pipeline before generation when the goal shape matches a tactic's fragment); **knowledge-base-guided selection** (bias selection by lemma-application potential from the KB scorer).
+
+### 28.11 Advanced redundancy (8 modules)
+
+Global subsumption; subsumption demodulation; contextual literal cut; clause coloring; interpolation-based redundancy; redundant literal elimination; equality blocking; global redundancy criterion (base inventory, CEP-1034's neighborhood).
+
+### 28.12 Model building (6 modules)
+
+Term algebra model; SAT-based model finding; counterexample generation; model-guided search. NEW: **finite model finding (iProver-style)**: instance generation over a finite domain with the model-evolution loop (domain size schedule under kMaxModelDomain); **Herbrand universe construction**: the term-algebra enumeration for the model builder's candidate set, depth-bounded.
+
+### 28.13 Proof production (9 modules)
+
+Proof recording; proof reconstruction; proof compression; proof verification; DRAT/LRAT output; TSTP output; SMT-LIB model output. NEW: **natural language generation** (a deterministic template renderer over the derivation DAG: rule names, premises, instantiations; CEP-2 tool output, not part of the certification chain); **proof visualization** (the same DAG exported as a graph description for offline rendering).
+
+### 28.14 Computational reflection (4 modules, NEW)
+
+**Native evaluator**: an interpreter over a whitelisted ground fragment (numerals, the ring/abel normalizers, boolean connectives, datatype discriminators) with a step budget kMaxReflectionSteps; **execution trace logging**: a bounded, deterministic trace of every evaluated term (the trace is the certificate's fact witness); **SAT-circuit certification**: the bit-blaster's circuits are recorded and re-checked by replaying the gate semantics over the SAT model; **reflection proof checker**: the kernel arm that replays an evaluator trace and accepts the reflected step exactly when the trace re-evaluates to the claimed value.
+
+### 28.15 Concurrency / portfolio (8 modules)
+
+Portfolio manager; lock-free clause sharing pool; work-stealing deque (Chase-Lev); thread pinning/topology (CEP-1037); resource budgeter; result aggregation; graceful shutdown; NUMA-aware memory placement (CEP-1037).
+
+### 28.16 Configuration / strategy (6 modules)
+
+Strategy definition; schedule generation; feature-based strategy selection; adaptive parameter tuning. NEW: **induction strategy selection** (when the problem carries datatype declarations, prepend the induction-heavy schedule); **tactic strategy selection** (when the signature is arithmetic-dense, prepend the tactic-normalization stages).
+
+### 28.17 Infrastructure (10 modules)
+
+Arena allocator; resource limits; budget enforcement; safe-state transition; build system (Cargo + CMake); CI/CD pipeline; benchmark harness; fuzz testing; security policy; CEP lint enforcement.
+
+### 28.18 Integration bridge (6 modules)
+
+AVATAR splitter; SAT-ATP clause bridge; shared arena bridge; proof graph unification; resource budget sharing; model truth assignment.
+
+### 28.19 Counted totals
+
+Counting the rows above: 228 module rows, of which 77 are marked NEW (added by this expansion and registered under CEP-1060 to CEP-1066). The section 27 count (~191) was the pre-expansion view; where a subsystem's granularity differs between section 27 and this section, this section is the finer-grained authority.
+
+---
+
+## 29. Expanded Execution Plan (Solo Builder)
+
+The base phases of section 26 remain the completed foundation (Phases 1-4 and the revised-build-order induction/conjecture/proof-recording phase are delivered per the README). The expansion adds:
+
+| Window | Work | Milestone |
+|---|---|---|
+| Months 1-6 | (delivered) Arena, IR, superposition + resolution, CDCL, indexing, subsumption, demodulation, AVATAR, parsers (CEP-1006 narrowed) | Solved-problem coverage on easy TPTP FOF/CNF |
+| Months 7-9 | Polynomial normalizer (`ring`), linear arithmetic (`linarith`), congruence closure, structural induction (delivered) | Basic algebra and Peano arithmetic problems |
+| Months 10-12 | Groebner bases (Buchberger, then F4/F5), CAD (bounded), Wu's method, rippling and lemma speculation (CEP-1060, CEP-1065) | Non-linear algebra and geometry targets |
+| Months 13-15 | Offline distiller, `.maptlib` format, MePo-style relevance flow, lemma application engine (CEP-1063) | Reasoning over 10,000+ axiom libraries |
+| Months 16-18 | Full lambda calculus, defunctionalization, computational reflection, tactic composition (CEP-1062, CEP-1064, CEP-1061) | Higher-order and computational targets |
+| Months 19-21 | Portfolio concurrency (delivered), NUMA placement (CEP-1037), CEP-0 optimization pass | Benchmark speedup pass |
+| Months 22-24 | Proof production polish (NL generation, visualization), benchmark suite validation, CASC preparation | Competition readiness |
+
+Each window closes only when its modules pass the standard gates (cep_lint, fmt, clippy, tests, docs, benches, sanitizers, determinism) and their CEP:EVIDENCE chains resolve.
+
+---
+
+## 30. Source-System Feature Adoption Map
+
+The expansion adopts, by design, the following features from the named systems; every adopted feature lands as a first-party Rust module under the CEP&CC discipline (no third-party solver dependencies):
+
+| System | Features adopted into the MAPT design |
+|---|---|
+| Vampire | AVATAR splitting, model-based theorem proving, saturation with advanced redundancy elimination, clause coloring, interpolation-based redundancy |
+| E | Discrimination trees, feature vector indices, LPO/KBO orderings, given-clause with multiple selection strategies, adaptive strategy switching, global subsumption |
+| Zipperposition | Inductive type support, higher-order extensions, theory reasoning, lambda-free HOL, defunctionalization |
+| iProver | Inst-gen (instance generation), model evolution, finite model finding, Herbrand models, first-order saturation with model guidance |
+| ACL2 | Boyer-Moore waterfall, rippling, lemma speculation, destructor elimination, cross-fertilization, generalization, induction schema inference |
+| IsaPlanner | Rippling extensions, wavefront tracking, proof planning for induction |
+| Z3 | DPLL(T) architecture, congruence closure, Nelson-Oppen combination, simplex for LIA/LRA, branch-and-bound, bit-blasting, array reasoning |
+| CVC5 | Theory combination, algebraic datatypes, computational reflection, verified simplifiers |
+| veriT | Proof production, theory lemma generation, SMT-LIB output |
+| CaDiCaL | Watched literals, VSIDS, First-UIP conflict analysis, LBD-based clause deletion, vivification, bounded variable elimination |
+| MapleSAT | Restart strategies, phase saving, activity decay |
+| Kissat | Clause compaction, binary/ternary clause storage, failed literal probing |
+| Singular | Groebner bases (Buchberger, F4, F5), polynomial ideal membership |
+| Mathematica | Cylindrical algebraic decomposition, quantifier elimination for real arithmetic |
+| Redlog | Wu's method for geometry, quantifier elimination |
+| Lean 4 | The `ring`, `linarith`, `omega`, `norm_num`, `abel`, `field_simp`, `positivity`, `mono`, `rel`, `zify`, `push_cast`, `decide` tactic set |
+| Coq | Computational reflection, tactic composition |
+| Isabelle | Sledgehammer-style premise selection, SInE integration, MePo algorithm |
+| ReProver | TF-IDF-based premise selection, symbol overlap scoring |
+| Leo-III | Higher-order unification, extensionality reasoning, combinator completeness |
+| Satallax | Higher-order theorem proving, model finding for HOL |
+| Paradox | Finite model building, model-guided search |
+| Nitpick | Counterexample generation, model extraction |
+
+Adoption means the algorithm and its certification obligations (formal spec, bounds, evidence chain), not the source implementation.

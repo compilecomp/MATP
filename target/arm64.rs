@@ -32,14 +32,14 @@ pub fn read_cycle_counter() -> u64 {
     counter
 }
 
-// CEP:WHAT: Reports that the arm64 counter is a real hardware counter.
-// CEP:WHY: Benches gate cycle claims on this flag.
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: none.
-// CEP:COST: constant.
-// CEP:EVIDENCE: CI aarch64 job.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Reports that the arm64 counter is a real hardware counter.
+/// CEP:WHY: Benches gate cycle claims on this flag.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: none.
+/// CEP:COST: constant.
+/// CEP:EVIDENCE: CI aarch64 job.
+/// CEP:SECURITY: none.
 pub fn cycle_counter_is_accurate() -> bool {
     true
 }

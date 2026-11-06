@@ -38,6 +38,8 @@ pub mod arena_host;
 pub mod debug_printer;
 /// The certified proof kernel: bounded replay and per-rule verification of recorded derivations (Spec 19).
 pub mod kernel;
+/// The input-parsing module: the shared parse vocabulary and the DIMACS and TPTP front ends (design 6).
+pub mod parsing;
 /// The portfolio manager: scoped worker threads, wall-clock slices, first-to-finish, and sharing.
 pub mod portfolio;
 /// Proof output: the DRAT writer, the internal DRAT checker, and the TSTP reconstruction.

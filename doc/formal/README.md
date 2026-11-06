@@ -25,6 +25,7 @@ Each component document follows the Documentation Style Guide (`doc standard.md`
 | 17 | `17_proof_recording.md` | Proof recording for the new rules: id-translation invariants, the mechanical reductio check, the engine corrections, the evidence map | Complete (Phase 4 revised scope) |
 | 18 | `18_fol_clause_learning.md` | Bidirectional FOL clause learning over AVATAR: assertion-atom reservation, conflict lemma staging, learnt transfers, budgets, kernel SatLearn arm | Complete (Phase 5 scope) |
 | 19 | `19_certified_kernel.md` | The certified proof kernel: verdict vocabulary, bounded walk and replay budget, the exhaustive production-replaying arms (CEP-1054 rename-apart repair, CEP-1036 exact demodulation), integration | Complete (Phase 5 scope) |
-| 20+ | reserved | DPLL(T), theory reasoning, benchmark suite — later phases | Not started |
+| 20 | `20_input_parsers.md` | The input parsers: DIMACS CNF and TPTP CNF/FOF with includes, the design 6.3 bound set, the True/False semantics, the injectable limits (CEP-1006 narrowed) | Complete (narrowed scope; SMT-LIB and TFF/THF remain under CEP-1006) |
+| 21+ | reserved | DPLL(T), theory reasoning, benchmark suite — later phases | Not started |
 
 Numbering follows the design document's plan as re-sequenced by the revised build order (Phase 4 = induction, conjecture generation, proof recording); gaps are reserved for their future owners as listed in `doc/tickets.md` (18 onward: DPLL(T) integration, theory reasoning, benchmark suite).

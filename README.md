@@ -1,6 +1,6 @@
 # MAPT
 
-MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-4 plus the revised-build-order Phase 4: Foundations, Core Engines, Search Loops, Integration, and Automated Induction / Conjecture Generation / Proof Recording**, built to the letter of the **CEP&CC 0.4** coding standard (`standard.md`). Documentation follows the Documentation Style Guide (`doc standard.md`): every component document in `doc/` carries its section 3 structure (Abstract, Formal Definitions, Algorithm, Invariants, Integration Points, Known Limitations), and its section 5 CI gates run in the `docs` job.
+MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-4 plus the revised-build-order Phase 4: Foundations, Core Engines, Search Loops, Integration, and Automated Induction / Conjecture Generation / Proof Recording**, together with the input-parsing layer (DIMACS CNF and TPTP CNF/FOF, `cold/parsing/`, Spec 20), built to the letter of the **CEP&CC 0.4** coding standard (`standard.md`). Documentation follows the Documentation Style Guide (`doc standard.md`): every component document in `doc/` carries its section 3 structure (Abstract, Formal Definitions, Algorithm, Invariants, Integration Points, Known Limitations), and its section 5 CI gates run in the `docs` job.
 
 ## Revised-build-order Phase 4 contents (automated induction, conjecture generation, proof recording)
 
@@ -44,6 +44,7 @@ MAPT is a first-order automated theorem prover with an integrated CDCL SAT solve
 | SAT: incremental solving + assumptions with failed cores | complete | `hot/sat/solver.rs`, `hot/sat/cdcl.rs` |
 | SAT: DRAT proof recording, writer, internal RUP/RAT checker | complete | `hot/sat/proof.rs`, `cold/proof_output/` |
 | Formal specs 07-11 (rules, loop, preprocessing, assumptions, DRAT) | complete | `doc/formal/` |
+| Input parsers: DIMACS CNF and TPTP CNF/FOF with includes and the full design 6.3 bound set (CEP-1006 narrowed; SMT-LIB/TFF/THF open) | complete (narrowed) | `cold/parsing/` |
 
 ## Phase 1-2 contents (design section 26)
 

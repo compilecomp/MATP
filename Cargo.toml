@@ -213,6 +213,14 @@ name = "limits_test"
 path = "tests/unit/config/limits_test.rs"
 
 [[test]]
+name = "dimacs_parser_test"
+path = "tests/unit/cold/dimacs_parser_test.rs"
+
+[[test]]
+name = "tptp_parser_test"
+path = "tests/unit/cold/tptp_parser_test.rs"
+
+[[test]]
 name = "symbol_table_builder_test"
 path = "tests/unit/cold/symbol_table_builder_test.rs"
 
