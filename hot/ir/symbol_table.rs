@@ -236,14 +236,14 @@ pub struct SymbolTable<'a> {
 }
 
 impl<'a> SymbolTable<'a> {
-    // CEP:WHAT: Freezes a symbol table view over arena ranges written by the CEP-1 builder.
-    // CEP:WHY: Freeze is the trust boundary: every invariant that CEP-0 relies on is validated once here (CEP&CC 22.3, Law 3) so the hot path never re-validates structure, only IDs.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns SymbolError::InvalidTable when the entry count exceeds kMaxSymbolCount, the sort pool is misaligned or oversized, an entry's signature is out of pool, a signature length disagrees with the kind, the arity exceeds kMaxSymbolArity, the weight is zero for KBO use, or reserved bytes are nonzero.
-    // CEP:ASSUMES: the builder wrote SymbolInfo entries and a SortId pool into the given ranges of the given arena.
-    // CEP:COST: O(n) one-time validation at freeze; no allocation.
-    // CEP:EVIDENCE: unit/hot/symbol_table_test.rs::freeze_rejects_bad_tables; unit/hot/symbol_table_test.rs.
-    // CEP:SECURITY: full structural validation of builder output before hot use.
+    /// CEP:WHAT: Freezes a symbol table view over arena ranges written by the CEP-1 builder.
+    /// CEP:WHY: Freeze is the trust boundary: every invariant that CEP-0 relies on is validated once here (CEP&CC 22.3, Law 3) so the hot path never re-validates structure, only IDs.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns SymbolError::InvalidTable when the entry count exceeds kMaxSymbolCount, the sort pool is misaligned or oversized, an entry's signature is out of pool, a signature length disagrees with the kind, the arity exceeds kMaxSymbolArity, the weight is zero for KBO use, or reserved bytes are nonzero.
+    /// CEP:ASSUMES: the builder wrote SymbolInfo entries and a SortId pool into the given ranges of the given arena.
+    /// CEP:COST: O(n) one-time validation at freeze; no allocation.
+    /// CEP:EVIDENCE: unit/hot/symbol_table_test.rs::freeze_rejects_bad_tables; unit/hot/symbol_table_test.rs.
+    /// CEP:SECURITY: full structural validation of builder output before hot use.
     pub fn freeze(
         arena: &'a Arena,
         entries_range: ArenaRange,
@@ -291,28 +291,28 @@ impl<'a> SymbolTable<'a> {
         Ok(SymbolTable { entries, sort_pool })
     }
 
-    // CEP:WHAT: Returns the number of frozen symbols.
-    // CEP:WHY: Bounds for ID validation and diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/symbol_table_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of frozen symbols.
+    /// CEP:WHY: Bounds for ID validation and diagnostics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/symbol_table_test.rs.
+    /// CEP:SECURITY: none.
     pub fn symbol_count(&self) -> u32 {
         self.entries.len() as u32
     }
 
-    // CEP:WHAT: Returns the frozen entry for a symbol ID.
-    // CEP:WHY: The single hot-path lookup every term-construction site uses; one bounds check plus one load.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns SymbolError::UnknownSymbol when symbol_id >= symbol_count.
-    // CEP:ASSUMES: table was validated at freeze.
-    // CEP:COST: 2.95 cycles median on x86-64 (Intel Xeon, virtualized), bench CEP-BENCH-0002.
-    // CEP:EVIDENCE: bench CEP-BENCH-0002; security/symbol_bounds_test.rs::unknown_id_rejected.
-    // CEP:SECURITY: bounds check retained in release for untrusted IDs (CEP&CC 23.7).
-    // CEP:OPTIMAL: target-optimal
-    // CEP:OPTPROOF: a dense-array lookup with a bounds check is the minimum work for safe indexed access; measured 2.95 cycles median (bench CEP-BENCH-0002); the inlined sequence appears in artifact disasm_term.txt.
+    /// CEP:WHAT: Returns the frozen entry for a symbol ID.
+    /// CEP:WHY: The single hot-path lookup every term-construction site uses; one bounds check plus one load.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns SymbolError::UnknownSymbol when symbol_id >= symbol_count.
+    /// CEP:ASSUMES: table was validated at freeze.
+    /// CEP:COST: 2.95 cycles median on x86-64 (Intel Xeon, virtualized), bench CEP-BENCH-0002.
+    /// CEP:EVIDENCE: bench CEP-BENCH-0002; security/symbol_bounds_test.rs::unknown_id_rejected.
+    /// CEP:SECURITY: bounds check retained in release for untrusted IDs (CEP&CC 23.7).
+    /// CEP:OPTIMAL: target-optimal
+    /// CEP:OPTPROOF: a dense-array lookup with a bounds check is the minimum work for safe indexed access; measured 2.95 cycles median (bench CEP-BENCH-0002); the inlined sequence appears in artifact disasm_term.txt.
     pub fn info(&self, symbol_id: u32) -> Result<&SymbolInfo, SymbolError> {
         if symbol_id as usize >= self.entries.len() {
             return Err(SymbolError::UnknownSymbol);
@@ -320,14 +320,14 @@ impl<'a> SymbolTable<'a> {
         Ok(&self.entries[symbol_id as usize])
     }
 
-    // CEP:WHAT: Returns the sort signature (argument sorts then return sort) of a symbol.
-    // CEP:WHY: Sort-correctness checks in term construction read signatures; out-of-line storage keeps them cheap.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns SymbolError::UnknownSymbol for bad IDs and SymbolError::InvalidSignature for pool inconsistencies (impossible after freeze; retained as defense in depth).
-    // CEP:ASSUMES: freeze validated the pool.
-    // CEP:COST: bounds check plus slice construction.
-    // CEP:EVIDENCE: unit/hot/symbol_table_test.rs::signature_slice.
-    // CEP:SECURITY: bounds check retained in release.
+    /// CEP:WHAT: Returns the sort signature (argument sorts then return sort) of a symbol.
+    /// CEP:WHY: Sort-correctness checks in term construction read signatures; out-of-line storage keeps them cheap.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns SymbolError::UnknownSymbol for bad IDs and SymbolError::InvalidSignature for pool inconsistencies (impossible after freeze; retained as defense in depth).
+    /// CEP:ASSUMES: freeze validated the pool.
+    /// CEP:COST: bounds check plus slice construction.
+    /// CEP:EVIDENCE: unit/hot/symbol_table_test.rs::signature_slice.
+    /// CEP:SECURITY: bounds check retained in release.
     pub fn sort_signature(&self, symbol_id: u32) -> Result<&[SortId], SymbolError> {
         let entry = self.info(symbol_id)?;
         let start = entry.sort_signature as usize;
@@ -338,14 +338,14 @@ impl<'a> SymbolTable<'a> {
         Ok(&self.sort_pool[start..start + len])
     }
 
-    // CEP:WHAT: Returns the default weight contributed by this symbol to clause weight.
-    // CEP:WHY: Term weight accumulation (design 15.3) reads per-symbol weights; the helper centralizes the fallback rule.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates UnknownSymbol.
-    // CEP:ASSUMES: entry weights are >= 1 (validated at freeze).
-    // CEP:COST: same as info().
-    // CEP:EVIDENCE: unit/hot/term_test.rs::weight_accumulation.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the default weight contributed by this symbol to clause weight.
+    /// CEP:WHY: Term weight accumulation (design 15.3) reads per-symbol weights; the helper centralizes the fallback rule.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates UnknownSymbol.
+    /// CEP:ASSUMES: entry weights are >= 1 (validated at freeze).
+    /// CEP:COST: same as info().
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::weight_accumulation.
+    /// CEP:SECURITY: none.
     pub fn symbol_weight(&self, symbol_id: u32) -> Result<u32, SymbolError> {
         let entry = self.info(symbol_id)?;
         if entry.weight == 0 {

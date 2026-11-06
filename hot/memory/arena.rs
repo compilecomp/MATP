@@ -85,14 +85,14 @@ pub struct ArenaRange {
 const _: () = assert!(core::mem::size_of::<ArenaRange>() == 8);
 
 impl ArenaRange {
-    // CEP:WHAT: Validates and constructs a byte range.
-    // CEP:WHY: Every range-producing path must enforce the same invariant; centralizing the check makes the bound provable (CEP&CC Law 3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::OutOfRange when start > end or end exceeds kArenaCapacityBytes.
-    // CEP:ASSUMES: kArenaCapacityBytes fits u32; enforced by static assertion in config/limits.rs.
-    // CEP:COST: 2 compares; no allocation.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::range_validation.
-    // CEP:SECURITY: bounds enforcement.
+    /// CEP:WHAT: Validates and constructs a byte range.
+    /// CEP:WHY: Every range-producing path must enforce the same invariant; centralizing the check makes the bound provable (CEP&CC Law 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::OutOfRange when start > end or end exceeds kArenaCapacityBytes.
+    /// CEP:ASSUMES: kArenaCapacityBytes fits u32; enforced by static assertion in config/limits.rs.
+    /// CEP:COST: 2 compares; no allocation.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::range_validation.
+    /// CEP:SECURITY: bounds enforcement.
     pub fn new(start: u32, end: u32) -> Result<ArenaRange, ArenaError> {
         if end < start || end > kArenaCapacityBytes {
             return Err(ArenaError::OutOfRange);
@@ -100,26 +100,26 @@ impl ArenaRange {
         Ok(ArenaRange { start, end })
     }
 
-    // CEP:WHAT: Returns the range length in bytes.
-    // CEP:WHY: Half-open interval subtraction is overflow-free by construction (start <= end).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: invariant start <= end enforced by new().
-    // CEP:COST: 1 subtract.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::range_validation.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the range length in bytes.
+    /// CEP:WHY: Half-open interval subtraction is overflow-free by construction (start <= end).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: invariant start <= end enforced by new().
+    /// CEP:COST: 1 subtract.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::range_validation.
+    /// CEP:SECURITY: none.
     pub fn len(&self) -> u32 {
         self.end - self.start
     }
 
-    // CEP:WHAT: Returns true when the range covers zero bytes.
-    // CEP:WHY: Zero-length allocations are legal but must be recognizable by callers that skip typed access.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 compare.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::zero_size_allocation_is_empty_range.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when the range covers zero bytes.
+    /// CEP:WHY: Zero-length allocations are legal but must be recognizable by callers that skip typed access.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 compare.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::zero_size_allocation_is_empty_range.
+    /// CEP:SECURITY: none.
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
@@ -227,15 +227,15 @@ const _: () = assert!(kArenaCapacityBytes + kMaxAlignment < u32::MAX);
 const _: () = assert!(kInvalidSubstitutionOffset > kArenaCapacityBytes);
 
 impl Arena {
-    // CEP:WHAT: Constructs an arena over a caller-provided, kMaxAlignment-aligned region.
-    // CEP:WHY: CEP-1 host code owns all real allocation (design 8.1 lifecycle step 1); the arena itself stays allocation-free, so this is the only place a pointer enters the system.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::EmptyRegion for zero-length regions, ArenaError::Misaligned when the base is not kMaxAlignment-aligned or the length exceeds kArenaCapacityBytes.
-    // CEP:ASSUMES: The region is 'static (leaked or static), exclusively owned, and not modified by anyone else; the 'static bound enforces lifetime, ownership is a documented caller contract covered by tests.
-    // CEP:COST: constant-time init; 3 compares.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::construction_validates_alignment and neighbors.
-    // CEP:SECURITY: rejects misaligned or oversized regions before any pointer arithmetic happens.
-    // CEP:UNSAFE: takes a raw pointer out of the region; safe because the 'static bound guarantees the region outlives every arena use and the pointer is only used with offsets bounded by the validated capacity.
+    /// CEP:WHAT: Constructs an arena over a caller-provided, kMaxAlignment-aligned region.
+    /// CEP:WHY: CEP-1 host code owns all real allocation (design 8.1 lifecycle step 1); the arena itself stays allocation-free, so this is the only place a pointer enters the system.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::EmptyRegion for zero-length regions, ArenaError::Misaligned when the base is not kMaxAlignment-aligned or the length exceeds kArenaCapacityBytes.
+    /// CEP:ASSUMES: The region is 'static (leaked or static), exclusively owned, and not modified by anyone else; the 'static bound enforces lifetime, ownership is a documented caller contract covered by tests.
+    /// CEP:COST: constant-time init; 3 compares.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::construction_validates_alignment and neighbors.
+    /// CEP:SECURITY: rejects misaligned or oversized regions before any pointer arithmetic happens.
+    /// CEP:UNSAFE: takes a raw pointer out of the region; safe because the 'static bound guarantees the region outlives every arena use and the pointer is only used with offsets bounded by the validated capacity.
     pub fn new(region: &'static mut [u8]) -> Result<Arena, ArenaError> {
         if region.is_empty() {
             return Err(ArenaError::EmptyRegion);
@@ -257,16 +257,16 @@ impl Arena {
         })
     }
 
-    // CEP:WHAT: Allocates size bytes aligned to align, returning the byte range.
-    // CEP:WHY: O(1) bump allocation is the whole point of the arena (design 8.1); zero-size requests return an empty range without moving the cursor so callers can allocate empty child arrays uniformly.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::Misaligned when align is zero, not a power of two, or above kMaxAlignment; ArenaError::Exhausted when the aligned request does not fit.
-    // CEP:ASSUMES: front <= capacity (invariant), kArenaCapacityBytes + kMaxAlignment < u32::MAX (static assertion above) so align_up cannot overflow.
-    // CEP:COST: 9.99 cycles median including measurement-loop overhead (allocation sequence: align+add+compare+store); worst case adds a mispredicted branch; measured on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, bench CEP-BENCH-0001, artifact benches/artifacts/arena_alloc_bytes.json.
-    // CEP:EVIDENCE: bench CEP-BENCH-0001; unit/hot/arena_test.rs::allocate_returns_distinct_regions; property/arena_property_test.rs.
-    // CEP:SECURITY: alignment and capacity are validated on every call; untrusted sizes cannot overflow the arithmetic.
-    // CEP:OPTIMAL: target-optimal
-    // CEP:OPTPROOF: the function must validate alignment (2 compares), align the cursor (add, and), bounds-check (compare), and bump the cursor (store); the bench-main disassembly (artifact disasm_arena.txt) contains this inlined sequence; the 9.99-cycle median includes the surrounding measurement loop.
+    /// CEP:WHAT: Allocates size bytes aligned to align, returning the byte range.
+    /// CEP:WHY: O(1) bump allocation is the whole point of the arena (design 8.1); zero-size requests return an empty range without moving the cursor so callers can allocate empty child arrays uniformly.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::Misaligned when align is zero, not a power of two, or above kMaxAlignment; ArenaError::Exhausted when the aligned request does not fit.
+    /// CEP:ASSUMES: front <= capacity (invariant), kArenaCapacityBytes + kMaxAlignment < u32::MAX (static assertion above) so align_up cannot overflow.
+    /// CEP:COST: 9.99 cycles median including measurement-loop overhead (allocation sequence: align+add+compare+store); worst case adds a mispredicted branch; measured on x86-64 (Intel Xeon, virtualized), rustc 1.99.0 -O, bench CEP-BENCH-0001, artifact benches/artifacts/arena_alloc_bytes.json.
+    /// CEP:EVIDENCE: bench CEP-BENCH-0001; unit/hot/arena_test.rs::allocate_returns_distinct_regions; property/arena_property_test.rs.
+    /// CEP:SECURITY: alignment and capacity are validated on every call; untrusted sizes cannot overflow the arithmetic.
+    /// CEP:OPTIMAL: target-optimal
+    /// CEP:OPTPROOF: the function must validate alignment (2 compares), align the cursor (add, and), bounds-check (compare), and bump the cursor (store); the bench-main disassembly (artifact disasm_arena.txt) contains this inlined sequence; the 9.99-cycle median includes the surrounding measurement loop.
     pub fn alloc_bytes(&self, size: u32, align: u32) -> Result<ArenaRange, ArenaError> {
         if align == 0 || align > kMaxAlignment || align & (align - 1) != 0 {
             return Err(ArenaError::Misaligned);
@@ -291,14 +291,14 @@ impl Arena {
         Ok(range)
     }
 
-    // CEP:WHAT: Allocates an array of count elements of type Element, layout-aligned.
-    // CEP:WHY: Typed arrays (term headers, clauses, literals, watch heads) are the arena's main product; aligning to align_of::<Element>() keeps every consumer layout-correct without per-caller alignment knowledge.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::TypeMismatch for zero-sized element types; propagates ArenaError::Exhausted and ArenaError::Misaligned (the latter cannot occur for Rust-native alignments, which are powers of two <= kMaxAlignment; the check is retained as defense in depth).
-    // CEP:ASSUMES: size_of::<Element>() * count fits u32 after u64Checked multiplication.
-    // CEP:COST: constant overhead over alloc_bytes; 2 extra multiplies/compares.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
-    // CEP:SECURITY: element count is u64-checked before multiplication (CEP&CC 22.6 unchecked multiplication ban).
+    /// CEP:WHAT: Allocates an array of count elements of type Element, layout-aligned.
+    /// CEP:WHY: Typed arrays (term headers, clauses, literals, watch heads) are the arena's main product; aligning to align_of::<Element>() keeps every consumer layout-correct without per-caller alignment knowledge.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::TypeMismatch for zero-sized element types; propagates ArenaError::Exhausted and ArenaError::Misaligned (the latter cannot occur for Rust-native alignments, which are powers of two <= kMaxAlignment; the check is retained as defense in depth).
+    /// CEP:ASSUMES: size_of::<Element>() * count fits u32 after u64Checked multiplication.
+    /// CEP:COST: constant overhead over alloc_bytes; 2 extra multiplies/compares.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
+    /// CEP:SECURITY: element count is u64-checked before multiplication (CEP&CC 22.6 unchecked multiplication ban).
     pub fn alloc_array<Element>(&self, count: u32) -> Result<ArenaRange, ArenaError> {
         let element_size = core::mem::size_of::<Element>() as u64;
         if element_size == 0 {
@@ -312,15 +312,15 @@ impl Arena {
         self.alloc_bytes(total_bytes as u32, align)
     }
 
-    // CEP:WHAT: Returns the byte slice of a validated range.
-    // CEP:WHY: Safe read access with the bounds check retained as required security cost (CEP&CC 23.7).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::OutOfRange when the range exceeds capacity.
-    // CEP:ASSUMES: range came from this arena (or ArenaRange::new); the debug assertion additionally catches ranges allocated before the last reset in the same region.
-    // CEP:COST: 2 compares plus slice construction.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip; fuzz/arena_fuzz_test.rs.
-    // CEP:SECURITY: bounds check retained in release; unsafe pointer construction only after the check.
-    // CEP:UNSAFE: constructs a slice from (base, range) after checking range.end <= capacity; safe because base..base+capacity describes exactly the region handed to new().
+    /// CEP:WHAT: Returns the byte slice of a validated range.
+    /// CEP:WHY: Safe read access with the bounds check retained as required security cost (CEP&CC 23.7).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::OutOfRange when the range exceeds capacity.
+    /// CEP:ASSUMES: range came from this arena (or ArenaRange::new); the debug assertion additionally catches ranges allocated before the last reset in the same region.
+    /// CEP:COST: 2 compares plus slice construction.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip; fuzz/arena_fuzz_test.rs.
+    /// CEP:SECURITY: bounds check retained in release; unsafe pointer construction only after the check.
+    /// CEP:UNSAFE: constructs a slice from (base, range) after checking range.end <= capacity; safe because base..base+capacity describes exactly the region handed to new().
     pub fn bytes(&self, range: ArenaRange) -> Result<&[u8], ArenaError> {
         if range.end > self.capacity {
             return Err(ArenaError::OutOfRange);
@@ -334,15 +334,15 @@ impl Arena {
         }
     }
 
-    // CEP:WHAT: Returns the mutable byte slice of a validated range.
-    // CEP:WHY: Writers (term construction, clause construction) need mutable access; ranges are unique by construction (monotonic bump within a generation), so no two live ranges overlap.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::OutOfRange when the range exceeds capacity.
-    // CEP:ASSUMES: the caller holds no other reference into the same range (guaranteed by the bump discipline: every range is handed out exactly once per generation); a reset invalidates all earlier ranges and callers must drop them (documented caller contract, tested by unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection).
-    // CEP:COST: 2 compares plus slice construction.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
-    // CEP:SECURITY: bounds check retained in release.
-    // CEP:UNSAFE: constructs a &mut slice from (base, range) after the bounds check; uniqueness is guaranteed by the documented bump discipline above.
+    /// CEP:WHAT: Returns the mutable byte slice of a validated range.
+    /// CEP:WHY: Writers (term construction, clause construction) need mutable access; ranges are unique by construction (monotonic bump within a generation), so no two live ranges overlap.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::OutOfRange when the range exceeds capacity.
+    /// CEP:ASSUMES: the caller holds no other reference into the same range (guaranteed by the bump discipline: every range is handed out exactly once per generation); a reset invalidates all earlier ranges and callers must drop them (documented caller contract, tested by unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection).
+    /// CEP:COST: 2 compares plus slice construction.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
+    /// CEP:SECURITY: bounds check retained in release.
+    /// CEP:UNSAFE: constructs a &mut slice from (base, range) after the bounds check; uniqueness is guaranteed by the documented bump discipline above.
     #[allow(clippy::mut_from_ref)]
     pub fn bytes_mut(&self, range: ArenaRange) -> Result<&mut [u8], ArenaError> {
         if range.end > self.capacity {
@@ -357,14 +357,14 @@ impl Arena {
         }
     }
 
-    // CEP:WHAT: Returns the range as a typed element slice.
-    // CEP:WHY: Hot structures read arrays of headers, literals, and offsets; typed access validates alignment and element divisibility so no caller repeats the proof.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::TypeMismatch when the range is not aligned to Element or its length is not a multiple of size_of::<Element>(); ArenaError::OutOfRange when beyond capacity.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 3 compares plus slice construction.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
-    // CEP:SECURITY: alignment and bounds checks retained in release.
+    /// CEP:WHAT: Returns the range as a typed element slice.
+    /// CEP:WHY: Hot structures read arrays of headers, literals, and offsets; typed access validates alignment and element divisibility so no caller repeats the proof.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::TypeMismatch when the range is not aligned to Element or its length is not a multiple of size_of::<Element>(); ArenaError::OutOfRange when beyond capacity.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 3 compares plus slice construction.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
+    /// CEP:SECURITY: alignment and bounds checks retained in release.
     pub fn array<Element>(&self, range: ArenaRange) -> Result<&[Element], ArenaError> {
         let align = core::mem::align_of::<Element>();
         let size = core::mem::size_of::<Element>();
@@ -388,15 +388,15 @@ impl Arena {
         }
     }
 
-    // CEP:WHAT: Returns the range as a mutable typed element slice.
-    // CEP:WHY: Writers need typed mutable access with the same uniqueness discipline as bytes_mut.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: same conditions as array(), plus OutOfRange.
-    // CEP:ASSUMES: same uniqueness contract as bytes_mut.
-    // CEP:COST: 3 compares plus slice construction.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
-    // CEP:SECURITY: alignment and bounds checks retained in release.
-    // CEP:UNSAFE: mutable slice construction from (base, checked range); uniqueness guaranteed by the bump discipline.
+    /// CEP:WHAT: Returns the range as a mutable typed element slice.
+    /// CEP:WHY: Writers need typed mutable access with the same uniqueness discipline as bytes_mut.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: same conditions as array(), plus OutOfRange.
+    /// CEP:ASSUMES: same uniqueness contract as bytes_mut.
+    /// CEP:COST: 3 compares plus slice construction.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
+    /// CEP:SECURITY: alignment and bounds checks retained in release.
+    /// CEP:UNSAFE: mutable slice construction from (base, checked range); uniqueness guaranteed by the bump discipline.
     #[allow(clippy::mut_from_ref)]
     pub fn array_mut<Element>(&self, range: ArenaRange) -> Result<&mut [Element], ArenaError> {
         let align = core::mem::align_of::<Element>();
@@ -421,14 +421,14 @@ impl Arena {
         }
     }
 
-    // CEP:WHAT: Saves the current cursor and generation as a checkpoint.
-    // CEP:WHY: Design 8.1 lifecycle step 3: branch pruning resets to a checkpoint in O(1).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 2 loads; no allocation.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Saves the current cursor and generation as a checkpoint.
+    /// CEP:WHY: Design 8.1 lifecycle step 3: branch pruning resets to a checkpoint in O(1).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 2 loads; no allocation.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection.
+    /// CEP:SECURITY: none.
     pub fn checkpoint(&self) -> ArenaCheckpoint {
         ArenaCheckpoint {
             front: self.front.get(),
@@ -436,14 +436,14 @@ impl Arena {
         }
     }
 
-    // CEP:WHAT: Resets the cursor to a checkpoint, starting a new generation.
-    // CEP:WHY: O(1) bulk reclamation of every allocation after the checkpoint (design 8.1); the generation bump invalidates older checkpoints so a stale reset is refused instead of silently corrupting live data.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaError::StaleCheckpoint when the checkpoint's generation differs from the current generation.
-    // CEP:ASSUMES: callers drop all slices obtained after the checkpoint before calling reset_to (documented caller contract; the debug assertion in bytes()/bytes_mut() catches violations that fall in the reused region).
-    // CEP:COST: 2 loads, 1 compare, 2 stores; no allocation.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection; property/arena_property_test.rs::reset_then_allocate_reuses_region.
-    // CEP:SECURITY: epoch validation prevents cross-generation data confusion.
+    /// CEP:WHAT: Resets the cursor to a checkpoint, starting a new generation.
+    /// CEP:WHY: O(1) bulk reclamation of every allocation after the checkpoint (design 8.1); the generation bump invalidates older checkpoints so a stale reset is refused instead of silently corrupting live data.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaError::StaleCheckpoint when the checkpoint's generation differs from the current generation.
+    /// CEP:ASSUMES: callers drop all slices obtained after the checkpoint before calling reset_to (documented caller contract; the debug assertion in bytes()/bytes_mut() catches violations that fall in the reused region).
+    /// CEP:COST: 2 loads, 1 compare, 2 stores; no allocation.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection; property/arena_property_test.rs::reset_then_allocate_reuses_region.
+    /// CEP:SECURITY: epoch validation prevents cross-generation data confusion.
     pub fn reset_to(&self, checkpoint: ArenaCheckpoint) -> Result<(), ArenaError> {
         if checkpoint.generation != self.generation.get() {
             return Err(ArenaError::StaleCheckpoint);
@@ -456,38 +456,38 @@ impl Arena {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the number of allocated bytes in the current generation.
-    // CEP:WHY: Resource accounting for diagnostics and budget enforcement (design 20.2 memory check).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::used_bytes_tracks_allocations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of allocated bytes in the current generation.
+    /// CEP:WHY: Resource accounting for diagnostics and budget enforcement (design 20.2 memory check).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::used_bytes_tracks_allocations.
+    /// CEP:SECURITY: none.
     pub fn used_bytes(&self) -> u32 {
         self.front.get()
     }
 
-    // CEP:WHAT: Returns the arena capacity in bytes.
-    // CEP:WHY: Diagnostics and budget accounting.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::used_bytes_tracks_allocations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the arena capacity in bytes.
+    /// CEP:WHY: Diagnostics and budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::used_bytes_tracks_allocations.
+    /// CEP:SECURITY: none.
     pub fn capacity_bytes(&self) -> u32 {
         self.capacity
     }
 
-    // CEP:WHAT: Returns the current generation ID.
-    // CEP:WHY: Debug output and epoch-sensitive callers (AVATAR, Phase 4) need the epoch identity.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the current generation ID.
+    /// CEP:WHY: Debug output and epoch-sensitive callers (AVATAR, Phase 4) need the epoch identity.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/arena_test.rs::checkpoint_reset_and_stale_detection.
+    /// CEP:SECURITY: none.
     pub fn generation(&self) -> u32 {
         self.generation.get()
     }

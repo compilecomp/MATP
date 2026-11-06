@@ -146,14 +146,14 @@ fn unpack_node(word: u64) -> (u64, u64, u64) {
     (tag, symbol, children)
 }
 
-// CEP:WHAT: Encodes one clause into out; returns the word count.
-// CEP:WHY: Spec 13 section 4: word 0 = [total words:16][literal count:16][reserved:32]; then per literal one polarity word ([polarity:1][reserved:63]) followed by the atom's prefix node words (children before parents is wrong - the prefix order is parent first, then each child subtree left to right; the decoder rebuilds bottom-up through its frame stack); the explicit DFS stack keeps the walk non-recursive; the budget check on every word keeps the record bounded.
-// CEP:STATUS: complete
-// CEP:FAILURE: returns TooLarge when the words exceed kSharedClauseMaxWords (the exporter skips and counts).
-// CEP:ASSUMES: literals.len() <= kMaxClauseLiterals; atoms interned by the given store.
-// CEP:COST: O(term tree nodes); bench CEP-BENCH-0035.
-// CEP:EVIDENCE: unit/hot/clause_codec_test.rs::{roundtrip_preserves_literals, word_bound_enforced, header_layout_pinned}; property/concurrency_property_test.rs::codec_roundtrip_property.
-// CEP:SECURITY: node budget enforced per word.
+/// CEP:WHAT: Encodes one clause into out; returns the word count.
+/// CEP:WHY: Spec 13 section 4: word 0 = [total words:16][literal count:16][reserved:32]; then per literal one polarity word ([polarity:1][reserved:63]) followed by the atom's prefix node words (children before parents is wrong - the prefix order is parent first, then each child subtree left to right; the decoder rebuilds bottom-up through its frame stack); the explicit DFS stack keeps the walk non-recursive; the budget check on every word keeps the record bounded.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: returns TooLarge when the words exceed kSharedClauseMaxWords (the exporter skips and counts).
+/// CEP:ASSUMES: literals.len() <= kMaxClauseLiterals; atoms interned by the given store.
+/// CEP:COST: O(term tree nodes); bench CEP-BENCH-0035.
+/// CEP:EVIDENCE: unit/hot/clause_codec_test.rs::{roundtrip_preserves_literals, word_bound_enforced, header_layout_pinned}; property/concurrency_property_test.rs::codec_roundtrip_property.
+/// CEP:SECURITY: node budget enforced per word.
 pub fn encode_clause(
     terms: &TermStore,
     literals: &[Literal],
@@ -270,14 +270,14 @@ struct DecodeFrame {
     filled: u16,
 }
 
-// CEP:WHAT: Decodes one record into interned literals; returns the literal count.
-// CEP:WHY: Spec 13 section 4 decode: validate the header (word count, literal count), then per literal read the polarity word and rebuild the atom through the frame stack (children first: a leaf interns immediately and fills its parent's slot; a completed parent interns through the store's hash-consing, restoring sharing); every tag, child count, symbol id, and variable id is validated before use - a forged record fails loudly, never decodes to a corrupt clause.
-// CEP:STATUS: complete
-// CEP:FAILURE: returns Truncated/TooDeep/UnknownTag/UnsupportedTag/Malformed on bad records; the receiving store's intern errors map to Malformed.
-// CEP:ASSUMES: the receiving symbol table matches the encoder's symbol list order (the portfolio contract); out_literals has at least kMaxClauseLiterals slots.
-// CEP:COST: O(nodes) with one intern per node; bench CEP-BENCH-0035.
-// CEP:EVIDENCE: unit/hot/clause_codec_test.rs::{roundtrip_preserves_literals, rejects_truncated_record, rejects_unknown_tag, rejects_lambda_terms}; property/concurrency_property_test.rs::codec_roundtrip_property.
-// CEP:SECURITY: untrusted-record validation at every field.
+/// CEP:WHAT: Decodes one record into interned literals; returns the literal count.
+/// CEP:WHY: Spec 13 section 4 decode: validate the header (word count, literal count), then per literal read the polarity word and rebuild the atom through the frame stack (children first: a leaf interns immediately and fills its parent's slot; a completed parent interns through the store's hash-consing, restoring sharing); every tag, child count, symbol id, and variable id is validated before use - a forged record fails loudly, never decodes to a corrupt clause.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: returns Truncated/TooDeep/UnknownTag/UnsupportedTag/Malformed on bad records; the receiving store's intern errors map to Malformed.
+/// CEP:ASSUMES: the receiving symbol table matches the encoder's symbol list order (the portfolio contract); out_literals has at least kMaxClauseLiterals slots.
+/// CEP:COST: O(nodes) with one intern per node; bench CEP-BENCH-0035.
+/// CEP:EVIDENCE: unit/hot/clause_codec_test.rs::{roundtrip_preserves_literals, rejects_truncated_record, rejects_unknown_tag, rejects_lambda_terms}; property/concurrency_property_test.rs::codec_roundtrip_property.
+/// CEP:SECURITY: untrusted-record validation at every field.
 pub fn decode_clause(
     record: &[u64],
     terms: &TermStore,

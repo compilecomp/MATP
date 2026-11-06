@@ -183,14 +183,14 @@ pub struct SatCore<'a> {
 }
 
 impl<'a> SatCore<'a> {
-    // CEP:WHAT: Initializes the SAT core: validates the variable count, allocates and clears all state arrays.
-    // CEP:WHY: Design 19.4 discipline: every thread-visible structure is fully built before the hot path; clearing gives provable initial invariants (all unassigned, all lists empty).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns SatCoreError::Assignment(AssignmentError::VariableOutOfRange) for zero or oversize variable counts and ArenaFull-mapped errors when arrays do not fit.
-    // CEP:ASSUMES: 0 < variables <= kMaxSatVariables.
-    // CEP:COST: O(variables + trail capacity) one-time.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::core_initializes.
-    // CEP:SECURITY: variable count validated before any allocation.
+    /// CEP:WHAT: Initializes the SAT core: validates the variable count, allocates and clears all state arrays.
+    /// CEP:WHY: Design 19.4 discipline: every thread-visible structure is fully built before the hot path; clearing gives provable initial invariants (all unassigned, all lists empty).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns SatCoreError::Assignment(AssignmentError::VariableOutOfRange) for zero or oversize variable counts and ArenaFull-mapped errors when arrays do not fit.
+    /// CEP:ASSUMES: 0 < variables <= kMaxSatVariables.
+    /// CEP:COST: O(variables + trail capacity) one-time.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::core_initializes.
+    /// CEP:SECURITY: variable count validated before any allocation.
     pub fn new(arena: &'a Arena, variables: u32) -> Result<SatCore<'a>, SatCoreError> {
         if variables == 0 || variables > kMaxSatVariables {
             return Err(SatCoreError::Assignment(
@@ -233,26 +233,26 @@ impl<'a> SatCore<'a> {
         })
     }
 
-    // CEP:WHAT: Returns the declared variable count.
-    // CEP:WHY: Bounds documentation and the verifier.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::core_initializes.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the declared variable count.
+    /// CEP:WHY: Bounds documentation and the verifier.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::core_initializes.
+    /// CEP:SECURITY: none.
     pub fn variable_count(&self) -> u32 {
         self.variables
     }
 
-    // CEP:WHAT: Returns the three-valued value of a literal under the current assignment.
-    // CEP:WHY: The single value-evaluation entry point shared by BCP, attach, and decisions; polarity-aware so callers never re-derive it.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (out-of-range variables read as Unassigned by the store).
-    // CEP:ASSUMES: literal variables are below the declared count.
-    // CEP:COST: 1 load + 2 compares.
-    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::value_evaluation.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the three-valued value of a literal under the current assignment.
+    /// CEP:WHY: The single value-evaluation entry point shared by BCP, attach, and decisions; polarity-aware so callers never re-derive it.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (out-of-range variables read as Unassigned by the store).
+    /// CEP:ASSUMES: literal variables are below the declared count.
+    /// CEP:COST: 1 load + 2 compares.
+    /// CEP:EVIDENCE: unit/hot/sat_literal_test.rs::value_evaluation.
+    /// CEP:SECURITY: none.
     pub fn value_of_literal(&self, literal: SatLiteral) -> SatValue {
         let value = self.assignments.value(SatVarRaw(literal.variable().0));
         match value {
@@ -274,26 +274,26 @@ impl<'a> SatCore<'a> {
         }
     }
 
-    // CEP:WHAT: Assigns a literal true at the current level (trail push plus value write) with no antecedent clause.
-    // CEP:WHY: The only sanctioned assignment path, so trail and values can never diverge (design 11.1 S5 invariant); the reasonless form serves decisions, root (level-0) assignments, and asserting literals of learnt unit clauses, all of which have no propagating clause.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvariantViolation when the literal is already false (caller bug surfaced loudly); propagates TrailFull and Assignment errors.
-    // CEP:ASSUMES: callers assign only unassigned or true literals (BCP checks before calling; property-tested).
-    // CEP:COST: 1 compare + 2 stores + trail push.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::propagation_drains_queue; unit/hot/sat_cdcl_test.rs::root_assignment_has_no_reason.
-    // CEP:SECURITY: defensive invariant check retained in release.
+    /// CEP:WHAT: Assigns a literal true at the current level (trail push plus value write) with no antecedent clause.
+    /// CEP:WHY: The only sanctioned assignment path, so trail and values can never diverge (design 11.1 S5 invariant); the reasonless form serves decisions, root (level-0) assignments, and asserting literals of learnt unit clauses, all of which have no propagating clause.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvariantViolation when the literal is already false (caller bug surfaced loudly); propagates TrailFull and Assignment errors.
+    /// CEP:ASSUMES: callers assign only unassigned or true literals (BCP checks before calling; property-tested).
+    /// CEP:COST: 1 compare + 2 stores + trail push.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::propagation_drains_queue; unit/hot/sat_cdcl_test.rs::root_assignment_has_no_reason.
+    /// CEP:SECURITY: defensive invariant check retained in release.
     pub fn assign(&self, literal: SatLiteral) -> Result<(), SatCoreError> {
         self.assign_with_reason(literal, kInvalidClauseOffset)
     }
 
-    // CEP:WHAT: Assigns a literal true at the current level, recording the antecedent clause for conflict analysis.
-    // CEP:WHY: Design 11.1 S18/S19: the implication graph is walked through per-variable reason clauses; BCP records the propagating clause here, and learnt-clause assertion records the learnt clause, which is what makes first-UIP resolution sound (Formal Spec 06).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as assign(); the reason offset is stored unvalidated (validated when read by analysis).
-    // CEP:ASSUMES: reason is a clause offset of this core's storage or kInvalidClauseOffset.
-    // CEP:COST: as assign() plus 2 stores (level, reason).
-    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::reasons_recorded.
-    // CEP:SECURITY: index bounds-checked.
+    /// CEP:WHAT: Assigns a literal true at the current level, recording the antecedent clause for conflict analysis.
+    /// CEP:WHY: Design 11.1 S18/S19: the implication graph is walked through per-variable reason clauses; BCP records the propagating clause here, and learnt-clause assertion records the learnt clause, which is what makes first-UIP resolution sound (Formal Spec 06).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as assign(); the reason offset is stored unvalidated (validated when read by analysis).
+    /// CEP:ASSUMES: reason is a clause offset of this core's storage or kInvalidClauseOffset.
+    /// CEP:COST: as assign() plus 2 stores (level, reason).
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::reasons_recorded.
+    /// CEP:SECURITY: index bounds-checked.
     pub fn assign_with_reason(&self, literal: SatLiteral, reason: u32) -> Result<(), SatCoreError> {
         let variable = literal.variable().0 as usize;
         if variable >= self.levels.len() {
@@ -320,14 +320,14 @@ impl<'a> SatCore<'a> {
         }
     }
 
-    // CEP:WHAT: Returns the decision level at which a variable was assigned (0 when unassigned or root).
-    // CEP:WHY: Conflict analysis and the learnt-clause backjump computation read the level of every literal (design 11.1 S15, S22).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; out-of-range variables read as 0 (clamped, deterministic).
-    // CEP:ASSUMES: variable below the declared count.
-    // CEP:COST: 1 bounds check + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::reasons_recorded.
-    // CEP:SECURITY: clamped read, no out-of-range access.
+    /// CEP:WHAT: Returns the decision level at which a variable was assigned (0 when unassigned or root).
+    /// CEP:WHY: Conflict analysis and the learnt-clause backjump computation read the level of every literal (design 11.1 S15, S22).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; out-of-range variables read as 0 (clamped, deterministic).
+    /// CEP:ASSUMES: variable below the declared count.
+    /// CEP:COST: 1 bounds check + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::reasons_recorded.
+    /// CEP:SECURITY: clamped read, no out-of-range access.
     pub fn level_of(&self, variable: u32) -> u32 {
         let index = variable as usize;
         if index >= self.levels.len() {
@@ -336,14 +336,14 @@ impl<'a> SatCore<'a> {
         self.levels[index].get()
     }
 
-    // CEP:WHAT: Returns the antecedent clause offset of a variable (kInvalidClauseOffset for decisions and root assignments).
-    // CEP:WHY: Conflict analysis resolves propagated literals against their reasons (design 11.1 S19).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; out-of-range variables read as no-reason (clamped, deterministic).
-    // CEP:ASSUMES: variable below the declared count.
-    // CEP:COST: 1 bounds check + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{reasons_recorded, root_assignment_has_no_reason}.
-    // CEP:SECURITY: clamped read.
+    /// CEP:WHAT: Returns the antecedent clause offset of a variable (kInvalidClauseOffset for decisions and root assignments).
+    /// CEP:WHY: Conflict analysis resolves propagated literals against their reasons (design 11.1 S19).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; out-of-range variables read as no-reason (clamped, deterministic).
+    /// CEP:ASSUMES: variable below the declared count.
+    /// CEP:COST: 1 bounds check + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{reasons_recorded, root_assignment_has_no_reason}.
+    /// CEP:SECURITY: clamped read.
     pub fn reason_of(&self, variable: u32) -> u32 {
         let index = variable as usize;
         if index >= self.reasons.len() {
@@ -352,14 +352,14 @@ impl<'a> SatCore<'a> {
         self.reasons[index].get()
     }
 
-    // CEP:WHAT: Opens a new decision level and assigns the decision literal.
-    // CEP:WHY: Decision heuristics (Phase 2, S12) need the level structure now so BCP's level-relative behavior is testable.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as assign(), plus TooManyLevels.
-    // CEP:ASSUMES: literal is unassigned.
-    // CEP:COST: as assign() plus level push.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Opens a new decision level and assigns the decision literal.
+    /// CEP:WHY: Decision heuristics (Phase 2, S12) need the level structure now so BCP's level-relative behavior is testable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as assign(), plus TooManyLevels.
+    /// CEP:ASSUMES: literal is unassigned.
+    /// CEP:COST: as assign() plus level push.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
+    /// CEP:SECURITY: none.
     pub fn decide(&self, literal: SatLiteral) -> Result<(), SatCoreError> {
         if self.value_of_literal(literal) == SatValue::False {
             return Err(SatCoreError::InvariantViolation);
@@ -386,27 +386,27 @@ impl<'a> SatCore<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Adds a clause and attaches it (watches for length >= 2, immediate enqueue for units).
-    // CEP:WHY: Design 11.1 S3/S4/S6: one entry point keeps creation and attachment atomic so no unwatched clause can ever be observed by BCP.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates storage and assignment errors; returns AttachOutcome::Conflict for falsified units without error (a legitimate SAT outcome).
-    // CEP:ASSUMES: literals are non-empty; duplicates and tautologies stored verbatim (sanitization is Phase 3).
-    // CEP:COST: O(length).
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::{unit_clause_enqueues, falsified_unit_conflicts}; unit/hot/sat_watch_test.rs::attach_and_traverse.
-    // CEP:SECURITY: length and variable bounds validated.
+    /// CEP:WHAT: Adds a clause and attaches it (watches for length >= 2, immediate enqueue for units).
+    /// CEP:WHY: Design 11.1 S3/S4/S6: one entry point keeps creation and attachment atomic so no unwatched clause can ever be observed by BCP.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates storage and assignment errors; returns AttachOutcome::Conflict for falsified units without error (a legitimate SAT outcome).
+    /// CEP:ASSUMES: literals are non-empty; duplicates and tautologies stored verbatim (sanitization is Phase 3).
+    /// CEP:COST: O(length).
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::{unit_clause_enqueues, falsified_unit_conflicts}; unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:SECURITY: length and variable bounds validated.
     pub fn add_clause(&self, literals: &[SatLiteral]) -> Result<AttachOutcome, SatCoreError> {
         let offset = self.clauses.new_clause(literals, false, 0)?;
         self.attach_clause(offset)
     }
 
-    // CEP:WHAT: Adds a learnt clause and attaches it.
-    // CEP:WHY: Design 11.1 S21: learnt clauses enter the same database with the learnt flag; the LBD is recorded for the future deletion policy (S23-S26).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as add_clause, plus LearntBudgetExceeded.
-    // CEP:ASSUMES: Phase 2 conflict analysis produces the literals and LBD; Phase 1 exercises the path for budget enforcement.
-    // CEP:COST: as add_clause.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::learnt_budget_enforced.
-    // CEP:SECURITY: learnt budget bounded.
+    /// CEP:WHAT: Adds a learnt clause and attaches it.
+    /// CEP:WHY: Design 11.1 S21: learnt clauses enter the same database with the learnt flag; the LBD is recorded for the future deletion policy (S23-S26).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as add_clause, plus LearntBudgetExceeded.
+    /// CEP:ASSUMES: Phase 2 conflict analysis produces the literals and LBD; Phase 1 exercises the path for budget enforcement.
+    /// CEP:COST: as add_clause.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::learnt_budget_enforced.
+    /// CEP:SECURITY: learnt budget bounded.
     pub fn add_learnt_clause(
         &self,
         literals: &[SatLiteral],
@@ -416,14 +416,14 @@ impl<'a> SatCore<'a> {
         self.attach_clause(offset)
     }
 
-    // CEP:WHAT: Attaches an existing clause to the watch lists or enqueues its unit literal.
-    // CEP:WHY: Design 11.3: exactly two watches for clauses of length >= 2, none for units; attachment is push-front on both lists.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates storage and assignment errors.
-    // CEP:ASSUMES: the clause was created by this core's storage.
-    // CEP:COST: O(1) plus possible unit enqueue.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Attaches an existing clause to the watch lists or enqueues its unit literal.
+    /// CEP:WHY: Design 11.3: exactly two watches for clauses of length >= 2, none for units; attachment is push-front on both lists.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates storage and assignment errors.
+    /// CEP:ASSUMES: the clause was created by this core's storage.
+    /// CEP:COST: O(1) plus possible unit enqueue.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:SECURITY: none.
     pub fn attach_clause(&self, offset: u32) -> Result<AttachOutcome, SatCoreError> {
         let header = self.clauses.header(offset)?;
         if header.length == 1 {
@@ -448,14 +448,14 @@ impl<'a> SatCore<'a> {
         Ok(AttachOutcome::Attached(offset))
     }
 
-    // CEP:WHAT: Backtracks to a decision level, clearing the assignments of every popped literal.
-    // CEP:WHY: Design 11.1 S22: backjumping must keep trail and value array consistent; clearing by walking the popped segment guarantees exactly the popped variables are unassigned.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; target levels are clamped by the trail.
-    // CEP:ASSUMES: the trail holds each assigned variable at most once (property-tested).
-    // CEP:COST: O(popped entries).
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::cancel_restores_assignments.
-    // CEP:SECURITY: clamped level arithmetic.
+    /// CEP:WHAT: Backtracks to a decision level, clearing the assignments of every popped literal.
+    /// CEP:WHY: Design 11.1 S22: backjumping must keep trail and value array consistent; clearing by walking the popped segment guarantees exactly the popped variables are unassigned.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; target levels are clamped by the trail.
+    /// CEP:ASSUMES: the trail holds each assigned variable at most once (property-tested).
+    /// CEP:COST: O(popped entries).
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::cancel_restores_assignments.
+    /// CEP:SECURITY: clamped level arithmetic.
     pub fn cancel_until(&self, level: u32) {
         let keep = self.trail.cancel_keep_index(level);
         let mut index = self.trail.len();
@@ -476,38 +476,38 @@ impl<'a> SatCore<'a> {
         self.trail.cancel_until(level);
     }
 
-    // CEP:WHAT: Returns a reference to the trail (read access for BCP and tests).
-    // CEP:WHY: BCP drains the queue through the trail; tests inspect levels.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs.
-    // CEP:SECURITY: read-only projection.
+    /// CEP:WHAT: Returns a reference to the trail (read access for BCP and tests).
+    /// CEP:WHY: BCP drains the queue through the trail; tests inspect levels.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs.
+    /// CEP:SECURITY: read-only projection.
     pub fn trail(&self) -> &SatTrail<'a> {
         &self.trail
     }
 
-    // CEP:WHAT: Returns a reference to the clause storage (read access for tests and the verifier).
-    // CEP:WHY: Property tests verify watch invariants by reading headers and literals.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: property/bcp_property_test.rs.
-    // CEP:SECURITY: read-only projection.
+    /// CEP:WHAT: Returns a reference to the clause storage (read access for tests and the verifier).
+    /// CEP:WHY: Property tests verify watch invariants by reading headers and literals.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: property/bcp_property_test.rs.
+    /// CEP:SECURITY: read-only projection.
     pub fn clauses(&self) -> &ClauseStorage<'a> {
         &self.clauses
     }
 
-    // CEP:WHAT: Returns a reference to the watch lists (read access for BCP and tests).
-    // CEP:WHY: BCP reads heads and pushes new links through this projection, keeping the field private.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
-    // CEP:SECURITY: read-only projection of the head array.
+    /// CEP:WHAT: Returns a reference to the watch lists (read access for BCP and tests).
+    /// CEP:WHY: BCP reads heads and pushes new links through this projection, keeping the field private.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:SECURITY: read-only projection of the head array.
     pub fn watches(&self) -> &WatchLists<'a> {
         &self.watches
     }

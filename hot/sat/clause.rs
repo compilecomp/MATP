@@ -215,14 +215,14 @@ pub struct ClauseStorage<'a> {
 }
 
 impl<'a> ClauseStorage<'a> {
-    // CEP:WHAT: Initializes clause storage over the arena.
-    // CEP:WHY: Explicit variable-count validation before any record exists.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (variable-count validation happens in SatCore).
-    // CEP:ASSUMES: variable_count <= kMaxSatVariables.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Initializes clause storage over the arena.
+    /// CEP:WHY: Explicit variable-count validation before any record exists.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (variable-count validation happens in SatCore).
+    /// CEP:ASSUMES: variable_count <= kMaxSatVariables.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs.
+    /// CEP:SECURITY: none.
     pub fn new(arena: &'a Arena, variable_count: u32) -> ClauseStorage<'a> {
         ClauseStorage {
             arena,
@@ -232,38 +232,38 @@ impl<'a> ClauseStorage<'a> {
         }
     }
 
-    // CEP:WHAT: Returns the number of clauses created.
-    // CEP:WHY: Diagnostics and budget accounting.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of clauses created.
+    /// CEP:WHY: Diagnostics and budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs.
+    /// CEP:SECURITY: none.
     pub fn clause_count(&self) -> u32 {
         self.clause_count.get()
     }
 
-    // CEP:WHAT: Returns the number of learnt clauses created.
-    // CEP:WHY: Deletion-threshold accounting (design 11.6).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::learnt_budget_enforced.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of learnt clauses created.
+    /// CEP:WHY: Deletion-threshold accounting (design 11.6).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::learnt_budget_enforced.
+    /// CEP:SECURITY: none.
     pub fn learnt_count(&self) -> u32 {
         self.learnt_count.get()
     }
 
-    // CEP:WHAT: Creates a clause record: validates, allocates header plus literals, returns the offset.
-    // CEP:WHY: Design 11.1 S3: arena-backed records; validation happens exactly once at creation so propagation can trust the record (CEP&CC Law 3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns EmptyClause for zero literals, TooManyLiterals past the bound, VariableOutOfRange for bad variables, LearntBudgetExceeded for learnt clauses past the budget, ArenaFull on exhaustion.
-    // CEP:ASSUMES: literals is non-empty; duplicate literals and tautologies are stored verbatim (sanitization is Phase 3 preprocessing, design 11.1 S30-S37).
-    // CEP:COST: O(length) validation plus one allocation.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::{creation_validates_bounds, learnt_budget_enforced}; fuzz/sat_fuzz_test.rs.
-    // CEP:SECURITY: length and variable bounds enforced before any write.
+    /// CEP:WHAT: Creates a clause record: validates, allocates header plus literals, returns the offset.
+    /// CEP:WHY: Design 11.1 S3: arena-backed records; validation happens exactly once at creation so propagation can trust the record (CEP&CC Law 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns EmptyClause for zero literals, TooManyLiterals past the bound, VariableOutOfRange for bad variables, LearntBudgetExceeded for learnt clauses past the budget, ArenaFull on exhaustion.
+    /// CEP:ASSUMES: literals is non-empty; duplicate literals and tautologies are stored verbatim (sanitization is Phase 3 preprocessing, design 11.1 S30-S37).
+    /// CEP:COST: O(length) validation plus one allocation.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::{creation_validates_bounds, learnt_budget_enforced}; fuzz/sat_fuzz_test.rs.
+    /// CEP:SECURITY: length and variable bounds enforced before any write.
     pub fn new_clause(
         &self,
         literals: &[SatLiteral],
@@ -320,14 +320,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(header_range.start)
     }
 
-    // CEP:WHAT: Reads the clause header at an offset.
-    // CEP:WHY: Single validated entry point for header reads.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidClauseOffset when unreadable.
-    // CEP:ASSUMES: offset came from new_clause.
-    // CEP:COST: 2 compares + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::record_layout.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Reads the clause header at an offset.
+    /// CEP:WHY: Single validated entry point for header reads.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidClauseOffset when unreadable.
+    /// CEP:ASSUMES: offset came from new_clause.
+    /// CEP:COST: 2 compares + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::record_layout.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn header(&self, offset: u32) -> Result<SatClauseHeader, SatClauseError> {
         if offset == kInvalidClauseOffset {
             return Err(SatClauseError::InvalidClauseOffset);
@@ -350,14 +350,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(slice[0])
     }
 
-    // CEP:WHAT: Reads the i-th literal of a clause.
-    // CEP:WHY: BCP and attach read literals; positions 0 and 1 are the watched literals.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidClauseOffset for out-of-range indices or unreadable storage.
-    // CEP:ASSUMES: the header is readable.
-    // CEP:COST: 2 compares + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Reads the i-th literal of a clause.
+    /// CEP:WHY: BCP and attach read literals; positions 0 and 1 are the watched literals.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidClauseOffset for out-of-range indices or unreadable storage.
+    /// CEP:ASSUMES: the header is readable.
+    /// CEP:COST: 2 compares + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn literal(&self, offset: u32, index: u32) -> Result<SatLiteral, SatClauseError> {
         let header = self.header(offset)?;
         if index >= header.length {
@@ -387,14 +387,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(SatLiteral::from_encoding(words[0]))
     }
 
-    // CEP:WHAT: Writes the i-th literal of a clause (watch swap primitive).
-    // CEP:WHY: BCP swaps a candidate literal into the watched position when moving the watch; only positions 0 and 1 and interior positions of the same clause are ever written.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidClauseOffset for out-of-range indices or unreadable storage.
-    // CEP:ASSUMES: the record was created by this store.
-    // CEP:COST: 3 compares + 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::watch_moves_preserve_clause_contents.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Writes the i-th literal of a clause (watch swap primitive).
+    /// CEP:WHY: BCP swaps a candidate literal into the watched position when moving the watch; only positions 0 and 1 and interior positions of the same clause are ever written.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidClauseOffset for out-of-range indices or unreadable storage.
+    /// CEP:ASSUMES: the record was created by this store.
+    /// CEP:COST: 3 compares + 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::watch_moves_preserve_clause_contents.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn set_literal(
         &self,
         offset: u32,
@@ -430,14 +430,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Reads one next_in_watch link of a clause.
-    // CEP:WHY: Watch-list traversal (design 11.3 intrusive links).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates InvalidClauseOffset.
-    // CEP:ASSUMES: slot is 0 or 1.
-    // CEP:COST: as header().
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Reads one next_in_watch link of a clause.
+    /// CEP:WHY: Watch-list traversal (design 11.3 intrusive links).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates InvalidClauseOffset.
+    /// CEP:ASSUMES: slot is 0 or 1.
+    /// CEP:COST: as header().
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:SECURITY: none.
     pub fn next_in_watch(&self, offset: u32, slot: u32) -> Result<u32, SatClauseError> {
         let header = self.header(offset)?;
         if slot > 1 {
@@ -446,14 +446,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(header.next_in_watch[slot as usize])
     }
 
-    // CEP:WHAT: Writes one next_in_watch link of a clause.
-    // CEP:WHY: Attach, unlink, and relink during BCP watch moves.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates InvalidClauseOffset.
-    // CEP:ASSUMES: slot is 0 or 1.
-    // CEP:COST: as header() plus 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Writes one next_in_watch link of a clause.
+    /// CEP:WHY: Attach, unlink, and relink during BCP watch moves.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates InvalidClauseOffset.
+    /// CEP:ASSUMES: slot is 0 or 1.
+    /// CEP:COST: as header() plus 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:SECURITY: none.
     pub fn set_next_in_watch(
         &self,
         offset: u32,
@@ -482,14 +482,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Sets the deleted flag on a clause record (design 11.1 S25; the raw mechanism under the registry's tombstone bookkeeping).
-    // CEP:WHY: Watch lists are intrusive singly-linked lists, so eager unlinking costs O(list length) per deleted clause; the deleted mark lets BCP skip garbage lazily (MiniSat discipline) while the registry entry tombstone keeps the database enumerable; the flag-keeping header write is one bounds-checked store.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records; deleting an already-deleted record is a caller bug surfaced as InvariantViolation.
-    // CEP:ASSUMES: offset came from new_clause and is not currently marked deleted; callers that need proof notification do it around this call (the storage layer never records proofs).
-    // CEP:COST: as header() plus 2 stores.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, bcp_skips_deleted}.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Sets the deleted flag on a clause record (design 11.1 S25; the raw mechanism under the registry's tombstone bookkeeping).
+    /// CEP:WHY: Watch lists are intrusive singly-linked lists, so eager unlinking costs O(list length) per deleted clause; the deleted mark lets BCP skip garbage lazily (MiniSat discipline) while the registry entry tombstone keeps the database enumerable; the flag-keeping header write is one bounds-checked store.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates InvalidClauseOffset for unreadable records; deleting an already-deleted record is a caller bug surfaced as InvariantViolation.
+    /// CEP:ASSUMES: offset came from new_clause and is not currently marked deleted; callers that need proof notification do it around this call (the storage layer never records proofs).
+    /// CEP:COST: as header() plus 2 stores.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, bcp_skips_deleted}.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn mark_deleted(&self, offset: u32) -> Result<(), SatClauseError> {
         let end = offset
             .checked_add(core::mem::size_of::<SatClauseHeader>() as u32)
@@ -520,14 +520,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Clears the deleted flag on a clause record (temporary isolation for vivification, design 11.1 S36).
-    // CEP:WHY: Vivification must propagate against the formula minus the candidate clause; the raw mark isolates the candidate for the duration of the check and is restored when the clause is kept; the registry is never involved in temporary isolation.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates InvalidClauseOffset; unmarking a live record is a caller bug surfaced as InvariantViolation.
-    // CEP:ASSUMES: offset is currently marked deleted by the same pass that unmarks it.
-    // CEP:COST: as header() plus 2 stores.
-    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{vivification_shortens_clause, vivification_restores_unchanged_clause}.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Clears the deleted flag on a clause record (temporary isolation for vivification, design 11.1 S36).
+    /// CEP:WHY: Vivification must propagate against the formula minus the candidate clause; the raw mark isolates the candidate for the duration of the check and is restored when the clause is kept; the registry is never involved in temporary isolation.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates InvalidClauseOffset; unmarking a live record is a caller bug surfaced as InvariantViolation.
+    /// CEP:ASSUMES: offset is currently marked deleted by the same pass that unmarks it.
+    /// CEP:COST: as header() plus 2 stores.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{vivification_shortens_clause, vivification_restores_unchanged_clause}.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn unmark_deleted(&self, offset: u32) -> Result<(), SatClauseError> {
         let end = offset
             .checked_add(core::mem::size_of::<SatClauseHeader>() as u32)
@@ -563,26 +563,26 @@ impl<'a> ClauseStorage<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns whether a clause record carries the deleted flag.
-    // CEP:WHY: BCP skips deleted records (Spec 05 section 6 amendment) and the registry enumerates only live entries; a single validated predicate keeps both callers honest.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
-    // CEP:ASSUMES: offset came from new_clause.
-    // CEP:COST: as header().
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, bcp_skips_deleted}.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Returns whether a clause record carries the deleted flag.
+    /// CEP:WHY: BCP skips deleted records (Spec 05 section 6 amendment) and the registry enumerates only live entries; a single validated predicate keeps both callers honest.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
+    /// CEP:ASSUMES: offset came from new_clause.
+    /// CEP:COST: as header().
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, bcp_skips_deleted}.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn is_deleted(&self, offset: u32) -> Result<bool, SatClauseError> {
         Ok(self.header(offset)?.flags & kSatClauseFlagDeleted != 0)
     }
 
-    // CEP:WHAT: Overwrites the flag word of a clause record.
-    // CEP:WHY: The registry's lock discipline (design 11.1 S29) sets and clears the lock bit around database reduction; a single validated mutator keeps every header write on the bounds-checked storage path instead of ad-hoc raw access (CEP&CC Law 3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
-    // CEP:ASSUMES: callers preserve every bit they do not own (the deleted and learnt bits are managed only through mark_deleted/unmark_deleted and creation).
-    // CEP:COST: as header() plus 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::locked_clauses_survive.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Overwrites the flag word of a clause record.
+    /// CEP:WHY: The registry's lock discipline (design 11.1 S29) sets and clears the lock bit around database reduction; a single validated mutator keeps every header write on the bounds-checked storage path instead of ad-hoc raw access (CEP&CC Law 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
+    /// CEP:ASSUMES: callers preserve every bit they do not own (the deleted and learnt bits are managed only through mark_deleted/unmark_deleted and creation).
+    /// CEP:COST: as header() plus 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::locked_clauses_survive.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn set_header_flags(&self, offset: u32, flags: u16) -> Result<(), SatClauseError> {
         let end = offset
             .checked_add(core::mem::size_of::<SatClauseHeader>() as u32)
@@ -603,14 +603,14 @@ impl<'a> ClauseStorage<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the flag word of a clause record.
-    // CEP:WHY: The registry reads the lock and learnt bits through the same validated path as every other header consumer.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
-    // CEP:ASSUMES: offset came from new_clause.
-    // CEP:COST: as header().
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, locked_clauses_survive}.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Returns the flag word of a clause record.
+    /// CEP:WHY: The registry reads the lock and learnt bits through the same validated path as every other header consumer.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates InvalidClauseOffset for unreadable records.
+    /// CEP:ASSUMES: offset came from new_clause.
+    /// CEP:COST: as header().
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_marks_deleted, locked_clauses_survive}.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn header_flags(&self, offset: u32) -> Result<u16, SatClauseError> {
         Ok(self.header(offset)?.flags)
     }

@@ -9,6 +9,9 @@
 // CEP:EVIDENCE: unit/cold/drat_writer_test.rs; unit/cold/drat_checker_test.rs; tests/golden/drat_proof_test.rs.
 // CEP:SECURITY: proof text is generated from validated recorder state only.
 
+/// The internal DRAT checker: replays recorded steps, verifies RUP and RAT additions.
 pub mod drat_checker;
+/// The DRAT text writer: DIMACS-convention integers, 0-terminated lines, deletion prefix.
 pub mod drat_writer;
+/// The unified proof reconstruction: derivation-DAG walk, pruning, and the TSTP writer delegated to the certified kernel.
 pub mod tstp;

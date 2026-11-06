@@ -91,14 +91,14 @@ pub enum SelectionStrategy {
     AgeOnly,
 }
 
-// CEP:WHAT: Error cases of the passive heap.
-// CEP:WHY: CEP&CC Law 6 vocabulary; the heap never panics.
-// CEP:STATUS: complete
-// CEP:FAILURE: none; this type IS the failure vocabulary.
-// CEP:ASSUMES: none.
-// CEP:COST: enum copy.
-// CEP:EVIDENCE: unit/hot/search_db_test.rs::capacity_enforced.
-// CEP:SECURITY: capacity is the memory boundary.
+/// CEP:WHAT: Error cases of the passive heap.
+/// CEP:WHY: CEP&CC Law 6 vocabulary; the heap never panics.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; this type IS the failure vocabulary.
+/// CEP:ASSUMES: none.
+/// CEP:COST: enum copy.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::capacity_enforced.
+/// CEP:SECURITY: capacity is the memory boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PassiveError {
     /// CEP:WHAT: The heap capacity is exhausted.
@@ -192,14 +192,14 @@ pub struct PassiveHeap<'a> {
 }
 
 impl<'a> PassiveHeap<'a> {
-    // CEP:WHAT: Constructs the heap with the default capacity and the given strategy.
-    // CEP:WHY: Production entry point.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns Full when the array does not fit the arena.
-    // CEP:ASSUMES: arena has room for kPassiveHeapCapacity entries.
-    // CEP:COST: O(capacity) one-time allocation.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_ratio.
-    // CEP:SECURITY: capacity validated before allocation.
+    /// CEP:WHAT: Constructs the heap with the default capacity and the given strategy.
+    /// CEP:WHY: Production entry point.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Full when the array does not fit the arena.
+    /// CEP:ASSUMES: arena has room for kPassiveHeapCapacity entries.
+    /// CEP:COST: O(capacity) one-time allocation.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_ratio.
+    /// CEP:SECURITY: capacity validated before allocation.
     pub fn new(
         arena: &'a Arena,
         strategy: SelectionStrategy,
@@ -207,14 +207,14 @@ impl<'a> PassiveHeap<'a> {
         PassiveHeap::new_with(arena, kPassiveHeapCapacity, strategy)
     }
 
-    // CEP:WHAT: Constructs the heap with an explicit capacity.
-    // CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns Full when the array does not fit; rejects zero capacity.
-    // CEP:ASSUMES: capacity >= 1.
-    // CEP:COST: O(capacity) one-time.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::capacity_enforced; security/phase3_bounds_test.rs::passive_capacity_enforced.
-    // CEP:SECURITY: bounds validated.
+    /// CEP:WHAT: Constructs the heap with an explicit capacity.
+    /// CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Full when the array does not fit; rejects zero capacity.
+    /// CEP:ASSUMES: capacity >= 1.
+    /// CEP:COST: O(capacity) one-time.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::capacity_enforced; security/phase3_bounds_test.rs::passive_capacity_enforced.
+    /// CEP:SECURITY: bounds validated.
     pub fn new_with(
         arena: &'a Arena,
         capacity: u32,
@@ -236,14 +236,14 @@ impl<'a> PassiveHeap<'a> {
         })
     }
 
-    // CEP:WHAT: Computes the strategy priority of one clause.
-    // CEP:WHY: The priority is fixed at birth (age = birth order, weight = the selection weight function's value), which is what makes the order deterministic and the fairness argument of Spec 08 section 4 applicable.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (weight 0 saturates to priority age * scale - documented, cannot occur because the weight function's minimum is the default symbol weight of 1).
-    // CEP:ASSUMES: age and weight are the clause's birth values.
-    // CEP:COST: one multiply and one divide.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, heap_orders_by_weight, heap_orders_by_age}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Computes the strategy priority of one clause.
+    /// CEP:WHY: The priority is fixed at birth (age = birth order, weight = the selection weight function's value), which is what makes the order deterministic and the fairness argument of Spec 08 section 4 applicable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (weight 0 saturates to priority age * scale - documented, cannot occur because the weight function's minimum is the default symbol weight of 1).
+    /// CEP:ASSUMES: age and weight are the clause's birth values.
+    /// CEP:COST: one multiply and one divide.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, heap_orders_by_weight, heap_orders_by_age}.
+    /// CEP:SECURITY: none.
     pub fn priority_of(&self, age: u32, weight: u32) -> u64 {
         match self.strategy {
             SelectionStrategy::AgeWeightRatio => {
@@ -255,14 +255,14 @@ impl<'a> PassiveHeap<'a> {
         }
     }
 
-    // CEP:WHAT: Pushes a clause into the heap.
-    // CEP:WHY: The passive-set insertion (design 8.4); sift-up restores the heap invariant.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns Full at the capacity.
-    // CEP:ASSUMES: clause_id strictly greater than every pushed id.
-    // CEP:COST: O(log n).
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, capacity_enforced}.
-    // CEP:SECURITY: capacity bound.
+    /// CEP:WHAT: Pushes a clause into the heap.
+    /// CEP:WHY: The passive-set insertion (design 8.4); sift-up restores the heap invariant.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Full at the capacity.
+    /// CEP:ASSUMES: clause_id strictly greater than every pushed id.
+    /// CEP:COST: O(log n).
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, capacity_enforced}.
+    /// CEP:SECURITY: capacity bound.
     pub fn push(
         &self,
         clause_id: u64,
@@ -284,14 +284,14 @@ impl<'a> PassiveHeap<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Pops the best entry (minimum (priority, clause_id)).
-    // CEP:WHY: The given-clause selection step (design 15.1 step 1).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Ok(None) when the heap is empty (the search is saturated).
-    // CEP:ASSUMES: none.
-    // CEP:COST: O(log n).
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, tie_breaks_by_clause_id}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Pops the best entry (minimum (priority, clause_id)).
+    /// CEP:WHY: The given-clause selection step (design 15.1 step 1).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Ok(None) when the heap is empty (the search is saturated).
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: O(log n).
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, tie_breaks_by_clause_id}.
+    /// CEP:SECURITY: none.
     pub fn pop(&self) -> Option<PassiveEntry> {
         let count = self.count.get() as usize;
         if count == 0 {
@@ -307,26 +307,26 @@ impl<'a> PassiveHeap<'a> {
         Some(best)
     }
 
-    // CEP:WHAT: Returns the number of pending clauses.
-    // CEP:WHY: Saturation detection and diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_ratio.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of pending clauses.
+    /// CEP:WHY: Saturation detection and diagnostics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_ratio.
+    /// CEP:SECURITY: none.
     pub fn len(&self) -> u32 {
         self.count.get()
     }
 
-    // CEP:WHAT: Returns whether the heap holds no pending clauses.
-    // CEP:WHY: The len/is_empty pair discipline (CEP&CC lint); the loop's saturation check and the tests read it.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_key.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns whether the heap holds no pending clauses.
+    /// CEP:WHY: The len/is_empty pair discipline (CEP&CC lint); the loop's saturation check and the tests read it.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_key.
+    /// CEP:SECURITY: none.
     pub fn is_empty(&self) -> bool {
         self.count.get() == 0
     }

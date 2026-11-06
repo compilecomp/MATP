@@ -497,14 +497,14 @@ struct WorkerState {
     last_exported_id: u64,
 }
 
-// CEP:WHAT: Runs the portfolio to completion and returns the aggregated reports.
-// CEP:WHY: Design 19.1: spawn one scoped thread per plan (threads created once, before the search, and joined before returning - graceful shutdown by construction, design 19.4); the shared state is three atomics (stop flag, winner slot) plus the lock-free structures whose storage the manager owns; each worker: builds its arena and symbol table from the encoding, decodes the inputs, runs slice-bounded saturate rounds (the slice injects wall-clock time into the clock-free CEP-1005 callback), drains imports (own deque LIFO, then steals from other workers' deques, then the pool - Spec 13 section 5's data flow), exports filtered new clauses (weight, LBD, rule, codec bounds - design 19.2), and races the winner CAS on Theorem; the first Theorem sets the stop flag and every other worker exits at its next boundary with outcome None (cancelled) - the graceful-shutdown requirement without cancellation primitives.
-// CEP:STATUS: complete
-// CEP:FAILURE: returns PortfolioError for invalid configurations; worker failures surface in their reports (never panics, never hangs past the join).
-// CEP:ASSUMES: the encoding's lists are the symbol-id contract; the host can spawn the threads.
-// CEP:COST: workers x (arena + slice loop); the arenas are leaked until process exit (the documented fixture discipline).
-// CEP:EVIDENCE: unit/cold/portfolio_test.rs::{worker_count_validated, rejects_zero_plans, single_worker_refutes_contradiction, first_theorem_wins_and_cancels, saturating_workers_report_saturated, imports_flow_between_workers, exports_bounded_per_slice, cancelled_workers_report_none}; property/concurrency_property_test.rs::portfolio_first_theorem_is_sound.
-// CEP:SECURITY: bounded threads, bounded pool/deque storage, validated imports.
+/// CEP:WHAT: Runs the portfolio to completion and returns the aggregated reports.
+/// CEP:WHY: Design 19.1: spawn one scoped thread per plan (threads created once, before the search, and joined before returning - graceful shutdown by construction, design 19.4); the shared state is three atomics (stop flag, winner slot) plus the lock-free structures whose storage the manager owns; each worker: builds its arena and symbol table from the encoding, decodes the inputs, runs slice-bounded saturate rounds (the slice injects wall-clock time into the clock-free CEP-1005 callback), drains imports (own deque LIFO, then steals from other workers' deques, then the pool - Spec 13 section 5's data flow), exports filtered new clauses (weight, LBD, rule, codec bounds - design 19.2), and races the winner CAS on Theorem; the first Theorem sets the stop flag and every other worker exits at its next boundary with outcome None (cancelled) - the graceful-shutdown requirement without cancellation primitives.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: returns PortfolioError for invalid configurations; worker failures surface in their reports (never panics, never hangs past the join).
+/// CEP:ASSUMES: the encoding's lists are the symbol-id contract; the host can spawn the threads.
+/// CEP:COST: workers x (arena + slice loop); the arenas are leaked until process exit (the documented fixture discipline).
+/// CEP:EVIDENCE: unit/cold/portfolio_test.rs::{worker_count_validated, rejects_zero_plans, single_worker_refutes_contradiction, first_theorem_wins_and_cancels, saturating_workers_report_saturated, imports_flow_between_workers, exports_bounded_per_slice, cancelled_workers_report_none}; property/concurrency_property_test.rs::portfolio_first_theorem_is_sound.
+/// CEP:SECURITY: bounded threads, bounded pool/deque storage, validated imports.
 pub fn run_portfolio(
     problem: &ProblemEncoding,
     plans: &[WorkerPlan],

@@ -77,14 +77,14 @@ pub struct AssignmentStore<'a> {
 }
 
 impl<'a> AssignmentStore<'a> {
-    // CEP:WHAT: Allocates and clears the assignment array for the given variable count.
-    // CEP:WHY: Initialization happens before the hot path (design 19.4); clearing makes every read defined from the start (CEP&CC 22.4 no uninitialized reads).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns AssignmentError::VariableOutOfRange when variable_count exceeds kMaxSatVariables; the arena error is mapped to VariableOutOfRange as the only initialization-time failure worth distinguishing is rethrown as arena exhaustion by the caller (SatCore).
-    // CEP:ASSUMES: variable_count > 0 and <= kMaxSatVariables.
-    // CEP:COST: O(variable_count) one-time clear.
-    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::assignment_store_values.
-    // CEP:SECURITY: explicit clearing, no uninitialized state.
+    /// CEP:WHAT: Allocates and clears the assignment array for the given variable count.
+    /// CEP:WHY: Initialization happens before the hot path (design 19.4); clearing makes every read defined from the start (CEP&CC 22.4 no uninitialized reads).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns AssignmentError::VariableOutOfRange when variable_count exceeds kMaxSatVariables; the arena error is mapped to VariableOutOfRange as the only initialization-time failure worth distinguishing is rethrown as arena exhaustion by the caller (SatCore).
+    /// CEP:ASSUMES: variable_count > 0 and <= kMaxSatVariables.
+    /// CEP:COST: O(variable_count) one-time clear.
+    /// CEP:EVIDENCE: unit/hot/sat_literal_test.rs::assignment_store_values.
+    /// CEP:SECURITY: explicit clearing, no uninitialized state.
     pub fn new(
         arena: &'a Arena,
         variable_count: u32,
@@ -104,16 +104,16 @@ impl<'a> AssignmentStore<'a> {
         Ok(AssignmentStore { values })
     }
 
-    // CEP:WHAT: Reads the value of a variable.
-    // CEP:WHY: The hottest read in BCP; out-of-declared-range variables read as Unassigned with a debug assertion because the bound was validated at construction (CEP&CC 23.7: the check exists at the trust boundary, not repeated per access).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (infallible read).
-    // CEP:ASSUMES: variable < declared count (enforced by literal construction and SatCore).
-    // CEP:COST: 1 load + 1 compare (branch predicted).
-    // CEP:EVIDENCE: bench CEP-BENCH-0005; unit/hot/sat_bcp_test.rs.
-    // CEP:SECURITY: unknown bytes decode to Unassigned, never to a wrong truth value.
-    // CEP:OPTIMAL: target-optimal
-    // CEP:OPTPROOF: one byte load from a dense array; exercised within the measured 44.5-cycle propagation step (bench CEP-BENCH-0005); the inlined sequence appears in artifact disasm_sat.txt.
+    /// CEP:WHAT: Reads the value of a variable.
+    /// CEP:WHY: The hottest read in BCP; out-of-declared-range variables read as Unassigned with a debug assertion because the bound was validated at construction (CEP&CC 23.7: the check exists at the trust boundary, not repeated per access).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (infallible read).
+    /// CEP:ASSUMES: variable < declared count (enforced by literal construction and SatCore).
+    /// CEP:COST: 1 load + 1 compare (branch predicted).
+    /// CEP:EVIDENCE: bench CEP-BENCH-0005; unit/hot/sat_bcp_test.rs.
+    /// CEP:SECURITY: unknown bytes decode to Unassigned, never to a wrong truth value.
+    /// CEP:OPTIMAL: target-optimal
+    /// CEP:OPTPROOF: one byte load from a dense array; exercised within the measured 44.5-cycle propagation step (bench CEP-BENCH-0005); the inlined sequence appears in artifact disasm_sat.txt.
     pub fn value(&self, variable: SatVarRaw) -> SatValue {
         debug_assert!(variable.0 < self.values.len() as u32);
         if variable.0 as usize >= self.values.len() {
@@ -126,14 +126,14 @@ impl<'a> AssignmentStore<'a> {
         }
     }
 
-    // CEP:WHAT: Writes the value of a variable.
-    // CEP:WHY: Assignment and backtracking write the store; the write path keeps the explicit bound check because it is called orders of magnitude less often than reads.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns VariableOutOfRange for out-of-declared-range variables.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 compare + 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs.
-    // CEP:SECURITY: bounds check retained in release.
+    /// CEP:WHAT: Writes the value of a variable.
+    /// CEP:WHY: Assignment and backtracking write the store; the write path keeps the explicit bound check because it is called orders of magnitude less often than reads.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns VariableOutOfRange for out-of-declared-range variables.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 compare + 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs.
+    /// CEP:SECURITY: bounds check retained in release.
     pub fn set_value(&self, variable: SatVarRaw, value: SatValue) -> Result<(), AssignmentError> {
         if variable.0 as usize >= self.values.len() {
             return Err(AssignmentError::VariableOutOfRange);
@@ -142,14 +142,14 @@ impl<'a> AssignmentStore<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the declared variable count.
-    // CEP:WHY: Bounds documentation for callers and the verifier.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the declared variable count.
+    /// CEP:WHY: Bounds documentation for callers and the verifier.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs.
+    /// CEP:SECURITY: none.
     pub fn variable_count(&self) -> u32 {
         self.values.len() as u32
     }

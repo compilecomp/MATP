@@ -69,14 +69,14 @@ pub enum SatLiteralError {
 }
 
 impl SatLiteral {
-    // CEP:WHAT: Constructs a literal from a variable and polarity.
-    // CEP:WHY: The single sanctioned constructor; validates the variable bound so watch-head indexing can never go out of range.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns VariableOutOfRange when variable >= kMaxSatVariables.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 compare + 1 shift + 1 or.
-    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::{out_of_range_variable_rejected, encoding_roundtrip}.
-    // CEP:SECURITY: bounds check retained in release (CEP&CC 23.7).
+    /// CEP:WHAT: Constructs a literal from a variable and polarity.
+    /// CEP:WHY: The single sanctioned constructor; validates the variable bound so watch-head indexing can never go out of range.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns VariableOutOfRange when variable >= kMaxSatVariables.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 compare + 1 shift + 1 or.
+    /// CEP:EVIDENCE: unit/hot/sat_literal_test.rs::{out_of_range_variable_rejected, encoding_roundtrip}.
+    /// CEP:SECURITY: bounds check retained in release (CEP&CC 23.7).
     pub fn new(variable: SatVar, positive: bool) -> Result<SatLiteral, SatLiteralError> {
         if variable.0 >= kMaxSatVariables {
             return Err(SatLiteralError::VariableOutOfRange);
@@ -85,52 +85,52 @@ impl SatLiteral {
         Ok(SatLiteral((variable.0 << 1) | sign))
     }
 
-    // CEP:WHAT: Returns the negated literal.
-    // CEP:WHY: Complement literals share the watch-head slot pair; negation is the hottest literal operation in BCP.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 xor.
-    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::negate_roundtrip.
-    // CEP:SECURITY: none.
-    // CEP:OPTIMAL: target-optimal
-    // CEP:OPTPROOF: single XOR on the packed encoding; no cheaper negation exists.
+    /// CEP:WHAT: Returns the negated literal.
+    /// CEP:WHY: Complement literals share the watch-head slot pair; negation is the hottest literal operation in BCP.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 xor.
+    /// CEP:EVIDENCE: unit/hot/sat_literal_test.rs::negate_roundtrip.
+    /// CEP:SECURITY: none.
+    /// CEP:OPTIMAL: target-optimal
+    /// CEP:OPTPROOF: single XOR on the packed encoding; no cheaper negation exists.
     pub fn negate(&self) -> SatLiteral {
         SatLiteral(self.0 ^ kSatLiteralSignBit)
     }
 
-    // CEP:WHAT: Returns the variable of the literal.
-    // CEP:WHY: Assignment lookup and watch-head indexing by variable.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 shift.
-    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::encoding_roundtrip.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the variable of the literal.
+    /// CEP:WHY: Assignment lookup and watch-head indexing by variable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 shift.
+    /// CEP:EVIDENCE: unit/hot/sat_literal_test.rs::encoding_roundtrip.
+    /// CEP:SECURITY: none.
     pub fn variable(&self) -> SatVar {
         SatVar(self.0 >> 1)
     }
 
-    // CEP:WHAT: Returns true when the literal is positive.
-    // CEP:WHY: Polarity tests in value evaluation.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 test.
-    // CEP:EVIDENCE: unit/hot/sat_literal_test.rs::encoding_roundtrip.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when the literal is positive.
+    /// CEP:WHY: Polarity tests in value evaluation.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 test.
+    /// CEP:EVIDENCE: unit/hot/sat_literal_test.rs::encoding_roundtrip.
+    /// CEP:SECURITY: none.
     pub fn is_positive(&self) -> bool {
         self.0 & kSatLiteralSignBit == 0
     }
 
-    // CEP:WHAT: Returns the raw encoding (watch-head index).
-    // CEP:WHY: Watch lists are indexed by the packed encoding; the projection keeps the field private.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs.
-    // CEP:SECURITY: read-only projection.
+    /// CEP:WHAT: Returns the raw encoding (watch-head index).
+    /// CEP:WHY: Watch lists are indexed by the packed encoding; the projection keeps the field private.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs.
+    /// CEP:SECURITY: read-only projection.
     pub fn encoding(&self) -> u32 {
         self.0
     }

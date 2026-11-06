@@ -116,14 +116,14 @@ pub struct SharingPool<'a> {
 }
 
 impl<'a> SharingPool<'a> {
-    // CEP:WHAT: Binds the pool to caller-supplied storage, validating the layout.
-    // CEP:WHY: The hot crate is storage-agnostic; construction checks the power-of-two cell count and the words-array extent so every later masked access is provably in bounds (CEP&CC Law 3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns InvalidStorage for malformed storage.
-    // CEP:ASSUMES: sequences initialized to cell indices; cursors at 0; storage outlives all users.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/mpmc_pool_test.rs::{rejects_invalid_storage, fifo_order_single_thread}.
-    // CEP:SECURITY: validation before use.
+    /// CEP:WHAT: Binds the pool to caller-supplied storage, validating the layout.
+    /// CEP:WHY: The hot crate is storage-agnostic; construction checks the power-of-two cell count and the words-array extent so every later masked access is provably in bounds (CEP&CC Law 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns InvalidStorage for malformed storage.
+    /// CEP:ASSUMES: sequences initialized to cell indices; cursors at 0; storage outlives all users.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/mpmc_pool_test.rs::{rejects_invalid_storage, fifo_order_single_thread}.
+    /// CEP:SECURITY: validation before use.
     pub fn new(
         sequences: &'a [AtomicI64],
         words: &'a [AtomicU64],
@@ -145,14 +145,14 @@ impl<'a> SharingPool<'a> {
         })
     }
 
-    // CEP:WHAT: Enqueues one fixed-size record (the caller's word slice, zero-padded to the record width).
-    // CEP:WHY: Design 19.2 producer side; ordering (CEP&CC 8.43): the sequence Acquire load pairs with a consumer's Release sequence publish (recycle) so a recycled cell's previous read is complete before the producer overwrites; the produce-cursor CAS is Relaxed on both orders (the claim is exclusive - only the CAS winner writes the cell - and no data visibility rides on the claim itself); the record stores are Relaxed (the cell is exclusively the claiming producer's until the sequence publish); the sequence Release store publishes the record (pairs with every consumer's Acquire sequence load); failure point: the cursor CAS may lose (retry within the budget, then Full); ABA: cursors are monotonic and a cell recycles only after seq advanced a full turn - a stale claimant CASes a cursor value that no longer exists.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Full when the ring is full or the retry budget is exhausted.
-    // CEP:ASSUMES: record.len() <= kSharedClauseMaxWords; any producer count.
-    // CEP:COST: see the file header; bench CEP-BENCH-0034.
-    // CEP:EVIDENCE: unit/hot/mpmc_pool_test.rs::{fifo_order_single_thread, capacity_enforced, sequence_recycling}; property/concurrency_property_test.rs::{exactly_once_delivery, mpmc_conserves_records_under_threads}.
-    // CEP:SECURITY: masked writes; the words beyond record.len() are zero-filled (no stale data leaks).
+    /// CEP:WHAT: Enqueues one fixed-size record (the caller's word slice, zero-padded to the record width).
+    /// CEP:WHY: Design 19.2 producer side; ordering (CEP&CC 8.43): the sequence Acquire load pairs with a consumer's Release sequence publish (recycle) so a recycled cell's previous read is complete before the producer overwrites; the produce-cursor CAS is Relaxed on both orders (the claim is exclusive - only the CAS winner writes the cell - and no data visibility rides on the claim itself); the record stores are Relaxed (the cell is exclusively the claiming producer's until the sequence publish); the sequence Release store publishes the record (pairs with every consumer's Acquire sequence load); failure point: the cursor CAS may lose (retry within the budget, then Full); ABA: cursors are monotonic and a cell recycles only after seq advanced a full turn - a stale claimant CASes a cursor value that no longer exists.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Full when the ring is full or the retry budget is exhausted.
+    /// CEP:ASSUMES: record.len() <= kSharedClauseMaxWords; any producer count.
+    /// CEP:COST: see the file header; bench CEP-BENCH-0034.
+    /// CEP:EVIDENCE: unit/hot/mpmc_pool_test.rs::{fifo_order_single_thread, capacity_enforced, sequence_recycling}; property/concurrency_property_test.rs::{exactly_once_delivery, mpmc_conserves_records_under_threads}.
+    /// CEP:SECURITY: masked writes; the words beyond record.len() are zero-filled (no stale data leaks).
     pub fn enqueue(&self, record: &[u64]) -> Result<(), PoolError> {
         if record.len() > kSharedClauseMaxWords {
             return Err(PoolError::InvalidStorage);
@@ -238,14 +238,14 @@ impl<'a> SharingPool<'a> {
         }
     }
 
-    // CEP:WHAT: Dequeues one record into the caller's word slice; returns the record length or None when empty.
-    // CEP:WHY: Design 19.2 consumer side; ordering (CEP&CC 8.43): the sequence Acquire load pairs with the producer's Release publish (observing pos+1 makes the record words visible); the consume-cursor CAS is Relaxed (exclusive claim); the word loads are Relaxed (visibility carried by the sequence Acquire); the recycle Release store (seq = pos + cells + 1) tells producers the cell is free a full turn ahead and orders the consumer's reads before the next overwrite; failure point: the cursor CAS may lose (retry within the budget, then None); ABA: monotonic cursors plus the full-turn recycle discipline.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Ok(None) when empty or contention-exhausted (never a wrong or duplicated record); the record length comes from the record's own header word (the caller validates).
-    // CEP:ASSUMES: out.len() >= kSharedClauseMaxWords; any consumer count.
-    // CEP:COST: see the file header; bench CEP-BENCH-0034.
-    // CEP:EVIDENCE: unit/hot/mpmc_pool_test.rs::{fifo_order_single_thread, sequence_recycling}; property/concurrency_property_test.rs::{exactly_once_delivery, mpmc_conserves_records_under_threads}.
-    // CEP:SECURITY: masked reads; the caller bounds-checks the decoded record.
+    /// CEP:WHAT: Dequeues one record into the caller's word slice; returns the record length or None when empty.
+    /// CEP:WHY: Design 19.2 consumer side; ordering (CEP&CC 8.43): the sequence Acquire load pairs with the producer's Release publish (observing pos+1 makes the record words visible); the consume-cursor CAS is Relaxed (exclusive claim); the word loads are Relaxed (visibility carried by the sequence Acquire); the recycle Release store (seq = pos + cells + 1) tells producers the cell is free a full turn ahead and orders the consumer's reads before the next overwrite; failure point: the cursor CAS may lose (retry within the budget, then None); ABA: monotonic cursors plus the full-turn recycle discipline.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Ok(None) when empty or contention-exhausted (never a wrong or duplicated record); the record length comes from the record's own header word (the caller validates).
+    /// CEP:ASSUMES: out.len() >= kSharedClauseMaxWords; any consumer count.
+    /// CEP:COST: see the file header; bench CEP-BENCH-0034.
+    /// CEP:EVIDENCE: unit/hot/mpmc_pool_test.rs::{fifo_order_single_thread, sequence_recycling}; property/concurrency_property_test.rs::{exactly_once_delivery, mpmc_conserves_records_under_threads}.
+    /// CEP:SECURITY: masked reads; the caller bounds-checks the decoded record.
     pub fn dequeue(&self, out: &mut [u64]) -> Result<Option<usize>, PoolError> {
         if out.len() < kSharedClauseMaxWords {
             return Err(PoolError::InvalidStorage);

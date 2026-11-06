@@ -263,14 +263,14 @@ pub struct SimplifyOptions {
 }
 
 impl SimplifyOptions {
-    // CEP:WHAT: Production budgets from the named constants.
-    // CEP:WHY: One named place documents the default configuration (CEP&CC 11.3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Production budgets from the named constants.
+    /// CEP:WHY: One named place documents the default configuration (CEP&CC 11.3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs.
+    /// CEP:SECURITY: none.
     pub fn new() -> SimplifyOptions {
         SimplifyOptions {
             rounds: kMaxSimplifyRounds,
@@ -337,14 +337,14 @@ impl Workspace {
     }
 }
 
-// CEP:WHAT: Runs the bounded preprocessing pass over the solver's registry-enumerated database.
-// CEP:WHY: Design 26 Phase 3 and Spec 09: the entry point composes the four rewrites in bounded rounds; the solver is used in place (no formula copy), so every mutation is visible to the subsequent solve and the proof trace.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates CdclError; returns Unsatisfiable in the outcome when the pass refutes the formula.
-// CEP:ASSUMES: decision level 0 (NOT a flush point: after a Satisfiable assumption solve a direct simplify call fails the level invariant loudly — add or solve first to flush the deferred cleanup, Spec 10 section 5); solver built with a registry (always true from Phase 3 constructors).
-// CEP:COST: see file header; measured in bench CEP-BENCH-0013.
-// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::preprocessing_preserves_satisfiability.
-// CEP:SECURITY: all loops bounded by the injected budgets.
+/// CEP:WHAT: Runs the bounded preprocessing pass over the solver's registry-enumerated database.
+/// CEP:WHY: Design 26 Phase 3 and Spec 09: the entry point composes the four rewrites in bounded rounds; the solver is used in place (no formula copy), so every mutation is visible to the subsequent solve and the proof trace.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates CdclError; returns Unsatisfiable in the outcome when the pass refutes the formula.
+/// CEP:ASSUMES: decision level 0 (NOT a flush point: after a Satisfiable assumption solve a direct simplify call fails the level invariant loudly — add or solve first to flush the deferred cleanup, Spec 10 section 5); solver built with a registry (always true from Phase 3 constructors).
+/// CEP:COST: see file header; measured in bench CEP-BENCH-0013.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::preprocessing_preserves_satisfiability.
+/// CEP:SECURITY: all loops bounded by the injected budgets.
 pub fn simplify(
     solver: &CdclSolver<'_>,
     options: &SimplifyOptions,

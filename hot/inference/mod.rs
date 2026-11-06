@@ -11,12 +11,19 @@
 // CEP:SECURITY: all term reads are bounds-checked; recursion is depth-bounded (CEP&CC 22.10).
 // CEP:HPC-DETERMINISM: deterministic; literal and subterm enumeration are index-ordered, no clocks or addresses.
 
+/// The conclusion builder: assembles clause conclusions from inference premises inside budget-checked capacity guards.
 pub mod builder;
+/// Demodulation: ordered rewriting of clause literals with the parked-demodulant discipline.
 pub mod demodulation;
+/// Factoring and equality factoring over selected or unifiable literal pairs.
 pub mod factoring;
+/// Binary and ordered resolution between clauses with maximal-literal side conditions.
 pub mod resolution;
+/// Literal selection and maximality: the ordering-driven premises of the inference rules.
 pub mod selection;
+/// Forward and backward subsumption with the feature-vector prefilter.
 pub mod subsumption;
+/// Superposition left and right: ordered equality inferences at term positions with the position scan.
 pub mod superposition;
 
 pub use builder::{
@@ -222,14 +229,14 @@ pub struct InferenceContext<'a> {
 }
 
 impl<'a> InferenceContext<'a> {
-    // CEP:WHAT: Compares two terms under the configured ordering.
-    // CEP:WHY: One dispatch point for every side condition; errors surface (never guessed past).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates OrderingError.
-    // CEP:ASSUMES: terms interned by the context's store.
-    // CEP:COST: as compare_kbo / compare_lpo.
-    // CEP:EVIDENCE: unit/hot/inference_test.rs::superposition_orients_equations; unit/hot/selection_test.rs.
-    // CEP:SECURITY: step budgets bound the comparison work.
+    /// CEP:WHAT: Compares two terms under the configured ordering.
+    /// CEP:WHY: One dispatch point for every side condition; errors surface (never guessed past).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates OrderingError.
+    /// CEP:ASSUMES: terms interned by the context's store.
+    /// CEP:COST: as compare_kbo / compare_lpo.
+    /// CEP:EVIDENCE: unit/hot/inference_test.rs::superposition_orients_equations; unit/hot/selection_test.rs.
+    /// CEP:SECURITY: step budgets bound the comparison work.
     pub fn compare(
         &self,
         left: crate::ir::term::TermPtr,

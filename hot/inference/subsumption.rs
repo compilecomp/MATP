@@ -18,14 +18,14 @@ use crate::unification::match_terms;
 
 use super::InferenceContext;
 
-// CEP:WHAT: Decides whether candidate subsumes target.
-// CEP:WHY: Spec 08 section 2: a necessary size condition (|C| <= |D|) short-circuits, then a backtracking search assigns each candidate literal a target literal of the same polarity whose atom it matches, extending one shared substitution; success means sigma exists and the candidate subsumes the target.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(false) when no sigma exists; Err propagates structural failures; the substitution trail is unwound to the entry depth on both outcomes.
-// CEP:ASSUMES: both namespaces are dense; the caller renamed apart when needed.
-// CEP:COST: backtracking matching, worst case exponential in the literal count (bounded by the pre-filters upstream).
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{subsumption_ground_subset, subsumption_instantiates, subsumption_reuses_target_literals, subsumption_rejects}; property/inference_property_test.rs::subsumption_agrees_with_brute_force.
-// CEP:SECURITY: bounded backtrack.
+/// CEP:WHAT: Decides whether candidate subsumes target.
+/// CEP:WHY: Spec 08 section 2: a necessary size condition (|C| <= |D|) short-circuits, then a backtracking search assigns each candidate literal a target literal of the same polarity whose atom it matches, extending one shared substitution; success means sigma exists and the candidate subsumes the target.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(false) when no sigma exists; Err propagates structural failures; the substitution trail is unwound to the entry depth on both outcomes.
+/// CEP:ASSUMES: both namespaces are dense; the caller renamed apart when needed.
+/// CEP:COST: backtracking matching, worst case exponential in the literal count (bounded by the pre-filters upstream).
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{subsumption_ground_subset, subsumption_instantiates, subsumption_reuses_target_literals, subsumption_rejects}; property/inference_property_test.rs::subsumption_agrees_with_brute_force.
+/// CEP:SECURITY: bounded backtrack.
 pub fn subsumes(
     context: &InferenceContext<'_>,
     candidate: &[Literal],
@@ -82,14 +82,14 @@ fn assign_literal(
     Ok(false)
 }
 
-// CEP:WHAT: Ground tautology check: a clause containing two literals with pointer-equal atoms and opposite polarity.
-// CEP:WHY: Design 10.1 tautology deletion and design 10.4: hash-consing makes structural atom equality pointer equality (design 5.1), so the check is exact and allocation-free; unifiable-but-distinct atoms (P(x) v not P(y)) are NOT tautologies (x and y can differ) and the check correctly keeps them.
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: atoms interned by one store.
-// CEP:COST: O(n^2) pointer comparisons.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{tautology_detected, near_tautology_kept}.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Ground tautology check: a clause containing two literals with pointer-equal atoms and opposite polarity.
+/// CEP:WHY: Design 10.1 tautology deletion and design 10.4: hash-consing makes structural atom equality pointer equality (design 5.1), so the check is exact and allocation-free; unifiable-but-distinct atoms (P(x) v not P(y)) are NOT tautologies (x and y can differ) and the check correctly keeps them.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: atoms interned by one store.
+/// CEP:COST: O(n^2) pointer comparisons.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{tautology_detected, near_tautology_kept}.
+/// CEP:SECURITY: none.
 pub fn is_tautology(literals: &[Literal]) -> bool {
     for i in 0..literals.len() {
         for j in (i + 1)..literals.len() {

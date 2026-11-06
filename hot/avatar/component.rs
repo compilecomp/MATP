@@ -215,14 +215,14 @@ fn hash_words(words: &[u32]) -> u32 {
     hash
 }
 
-// CEP:WHAT: Builds the canonical word sequence of a literal slice into out; returns the word count.
-// CEP:WHY: Spec 12 section 4: one word per literal as (atom offset << 1) | polarity, sorted ascending - hash-consed atoms make the sequence injective on literal multisets over the dense variable namespace, and sorting removes literal-order dependence so components from different splits compare equal.
-// CEP:STATUS: complete
-// CEP:FAILURE: none (the caller bounds out by kMaxClauseLiterals).
-// CEP:ASSUMES: literals.len() <= out.len().
-// CEP:COST: O(n log n) insertion sort (n <= kMaxClauseLiterals, typical <= 8).
-// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::canonical_words_sorted; property/avatar_property_test.rs::splits_preserve_literal_multiset.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Builds the canonical word sequence of a literal slice into out; returns the word count.
+/// CEP:WHY: Spec 12 section 4: one word per literal as (atom offset << 1) | polarity, sorted ascending - hash-consed atoms make the sequence injective on literal multisets over the dense variable namespace, and sorting removes literal-order dependence so components from different splits compare equal.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none (the caller bounds out by kMaxClauseLiterals).
+/// CEP:ASSUMES: literals.len() <= out.len().
+/// CEP:COST: O(n log n) insertion sort (n <= kMaxClauseLiterals, typical <= 8).
+/// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::canonical_words_sorted; property/avatar_property_test.rs::splits_preserve_literal_multiset.
+/// CEP:SECURITY: none.
 pub fn canonical_component_words(literals: &[Literal], out: &mut [u32]) -> usize {
     let count = literals.len();
     for (index, literal) in literals.iter().enumerate() {
@@ -242,14 +242,14 @@ pub fn canonical_component_words(literals: &[Literal], out: &mut [u32]) -> usize
 }
 
 impl<'a> ComponentTable<'a> {
-    // CEP:WHAT: Constructs the table with production capacities.
-    // CEP:WHY: Design 19.4: every structure is fully built before the hot path; the production capacities are the named constants.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns AvatarError when the arena cannot host the arrays.
-    // CEP:ASSUMES: the arena has about 6 MiB free.
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/avatar_component_test.rs::components_interned_once.
-    // CEP:SECURITY: capacities validated before allocation.
+    /// CEP:WHAT: Constructs the table with production capacities.
+    /// CEP:WHY: Design 19.4: every structure is fully built before the hot path; the production capacities are the named constants.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns AvatarError when the arena cannot host the arrays.
+    /// CEP:ASSUMES: the arena has about 6 MiB free.
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::components_interned_once.
+    /// CEP:SECURITY: capacities validated before allocation.
     pub fn new(arena: &'a Arena) -> Result<ComponentTable<'a>, AvatarError> {
         ComponentTable::new_with(
             arena,
@@ -258,14 +258,14 @@ impl<'a> ComponentTable<'a> {
         )
     }
 
-    // CEP:WHAT: Constructs the table with explicit record and word capacities.
-    // CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production code path; the hash-slot count equals the record capacity (power of two validated by the limits chain at the production value, and re-validated here for injected values by rounding up to the next power of two).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns AvatarError::ComponentTableFull for zero capacity or arena exhaustion.
-    // CEP:ASSUMES: capacities >= 1; word capacity >= record capacity (each record needs at least one word).
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/avatar_component_test.rs::{capacity_enforced, word_budget_enforced}.
-    // CEP:SECURITY: capacities validated before allocation.
+    /// CEP:WHAT: Constructs the table with explicit record and word capacities.
+    /// CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production code path; the hash-slot count equals the record capacity (power of two validated by the limits chain at the production value, and re-validated here for injected values by rounding up to the next power of two).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns AvatarError::ComponentTableFull for zero capacity or arena exhaustion.
+    /// CEP:ASSUMES: capacities >= 1; word capacity >= record capacity (each record needs at least one word).
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::{capacity_enforced, word_budget_enforced}.
+    /// CEP:SECURITY: capacities validated before allocation.
     pub fn new_with(
         arena: &'a Arena,
         record_capacity: u32,
@@ -342,14 +342,14 @@ impl<'a> ComponentTable<'a> {
         })
     }
 
-    // CEP:WHAT: Interns a canonical word sequence citing the source-original clause id: returns the component slot, creating a record when the sequence is new.
-    // CEP:WHY: Spec 12 section 4: word-sequence equality is component equality; fresh records append to the word blob, claim the next dense slot (the assertion variable), and remember the split parent for the materialized clause's AvatarSplit derivation; shared records return the existing slot with fresh = false (the first source stays).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns ComponentTableFull when the record capacity is exhausted and WordBudgetExceeded when the blob cannot host the words.
-    // CEP:ASSUMES: words is the canonical sorted form (canonical_component_words built it); 1 <= words.len() <= kMaxClauseLiterals; source is a valid clause id (only read for fresh records).
-    // CEP:COST: O(words) hash plus O(words) per probe; bench CEP-BENCH-0032.
-    // CEP:EVIDENCE: unit/hot/avatar_component_test.rs::{components_interned_once, distinct_components_get_distinct_slots, capacity_enforced, word_budget_enforced}; unit/hot/avatar_controller_test.rs::split_derivations_cite_original.
-    // CEP:SECURITY: probe count bounded by the record capacity (every slot is either empty or holds a distinct record).
+    /// CEP:WHAT: Interns a canonical word sequence citing the source-original clause id: returns the component slot, creating a record when the sequence is new.
+    /// CEP:WHY: Spec 12 section 4: word-sequence equality is component equality; fresh records append to the word blob, claim the next dense slot (the assertion variable), and remember the split parent for the materialized clause's AvatarSplit derivation; shared records return the existing slot with fresh = false (the first source stays).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns ComponentTableFull when the record capacity is exhausted and WordBudgetExceeded when the blob cannot host the words.
+    /// CEP:ASSUMES: words is the canonical sorted form (canonical_component_words built it); 1 <= words.len() <= kMaxClauseLiterals; source is a valid clause id (only read for fresh records).
+    /// CEP:COST: O(words) hash plus O(words) per probe; bench CEP-BENCH-0032.
+    /// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::{components_interned_once, distinct_components_get_distinct_slots, capacity_enforced, word_budget_enforced}; unit/hot/avatar_controller_test.rs::split_derivations_cite_original.
+    /// CEP:SECURITY: probe count bounded by the record capacity (every slot is either empty or holds a distinct record).
     pub fn intern(&self, words: &[u32], source: u64) -> Result<Interned, AvatarError> {
         if words.is_empty() || words.len() > kMaxClauseLiterals as usize {
             return Err(AvatarError::WordBudgetExceeded);
@@ -423,38 +423,38 @@ impl<'a> ComponentTable<'a> {
         }
     }
 
-    // CEP:WHAT: Returns the number of interned components.
-    // CEP:WHY: Diagnostics and the saturation/waiting accounting.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/avatar_component_test.rs::{components_interned_once, distinct_components_get_distinct_slots}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of interned components.
+    /// CEP:WHY: Diagnostics and the saturation/waiting accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::{components_interned_once, distinct_components_get_distinct_slots}.
+    /// CEP:SECURITY: none.
     pub fn component_count(&self) -> u32 {
         self.used_records.get()
     }
 
-    // CEP:WHAT: Returns the assertion variable of a component slot (dense: SatVar(slot)).
-    // CEP:WHY: Spec 12 section 4: the slot index doubles as the assertion variable, so the abstraction solver's variable space is exactly the record capacity.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: slot < component_count.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/avatar_component_test.rs::assertion_variables_dense.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the assertion variable of a component slot (dense: SatVar(slot)).
+    /// CEP:WHY: Spec 12 section 4: the slot index doubles as the assertion variable, so the abstraction solver's variable space is exactly the record capacity.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: slot < component_count.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::assertion_variables_dense.
+    /// CEP:SECURITY: none.
     pub fn assertion_variable(&self, slot: u32) -> SatVar {
         SatVar(slot)
     }
 
-    // CEP:WHAT: Returns the materialized clause offset of a slot, or None while unmaterialized.
-    // CEP:WHY: The controller activates a component exactly once by materializing its clause; proof reconstruction and export scans read the offset.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None for out-of-range slots (bounds-checked).
-    // CEP:ASSUMES: slot came from intern.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the materialized clause offset of a slot, or None while unmaterialized.
+    /// CEP:WHY: The controller activates a component exactly once by materializing its clause; proof reconstruction and export scans read the offset.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None for out-of-range slots (bounds-checked).
+    /// CEP:ASSUMES: slot came from intern.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    /// CEP:SECURITY: bounds-checked.
     pub fn materialized(&self, slot: u32) -> Option<u32> {
         let cell = self.materialized.get(slot as usize)?;
         let offset = cell.get();
@@ -464,14 +464,14 @@ impl<'a> ComponentTable<'a> {
         Some(offset)
     }
 
-    // CEP:WHAT: Marks a slot materialized with its clause offset.
-    // CEP:WHY: Monotone activation (Spec 12 section 5): the write happens once per slot; a second call is a no-op that keeps the first offset (idempotent by design, asserted by the caller).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns AvatarError::InvalidClause for out-of-range slots.
-    // CEP:ASSUMES: offset != kInvalidClauseOffset.
-    // CEP:COST: 1 store.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Marks a slot materialized with its clause offset.
+    /// CEP:WHY: Monotone activation (Spec 12 section 5): the write happens once per slot; a second call is a no-op that keeps the first offset (idempotent by design, asserted by the caller).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns AvatarError::InvalidClause for out-of-range slots.
+    /// CEP:ASSUMES: offset != kInvalidClauseOffset.
+    /// CEP:COST: 1 store.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    /// CEP:SECURITY: bounds-checked.
     pub fn set_materialized(&self, slot: u32, offset: u32) -> Result<(), AvatarError> {
         let cell = match self.materialized.get(slot as usize) {
             Some(cell) => cell,
@@ -483,40 +483,40 @@ impl<'a> ComponentTable<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the canonical word at a blob position (identity reads for diagnostics).
-    // CEP:WHY: The controller and tests read back a record's words to verify interning identity.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None out of bounds.
-    // CEP:ASSUMES: position < word capacity.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/avatar_component_test.rs::canonical_words_sorted.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the canonical word at a blob position (identity reads for diagnostics).
+    /// CEP:WHY: The controller and tests read back a record's words to verify interning identity.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None out of bounds.
+    /// CEP:ASSUMES: position < word capacity.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::canonical_words_sorted.
+    /// CEP:SECURITY: bounds-checked.
     pub fn word_at(&self, position: u32) -> Option<u32> {
         Some(self.words.get(position as usize)?.get())
     }
 
-    // CEP:WHAT: Returns the word extent of a record.
-    // CEP:WHY: Diagnostics and tests locate a record's canonical words in the blob.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None for out-of-range slots.
-    // CEP:ASSUMES: slot < component_count.
-    // CEP:COST: 2 loads.
-    // CEP:EVIDENCE: unit/hot/avatar_component_test.rs::canonical_words_sorted.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the word extent of a record.
+    /// CEP:WHY: Diagnostics and tests locate a record's canonical words in the blob.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None for out-of-range slots.
+    /// CEP:ASSUMES: slot < component_count.
+    /// CEP:COST: 2 loads.
+    /// CEP:EVIDENCE: unit/hot/avatar_component_test.rs::canonical_words_sorted.
+    /// CEP:SECURITY: bounds-checked.
     pub fn word_extent(&self, slot: u32) -> Option<(u32, u32)> {
         let start = self.word_start.get(slot as usize)?.get();
         let count = self.word_count.get(slot as usize)?.get() as u32;
         Some((start, count))
     }
 
-    // CEP:WHAT: Returns the source-original clause id of a slot (the AvatarSplit parent).
-    // CEP:WHY: The controller builds the materialized clause's derivation from it (Spec 12 section 4).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None for out-of-range slots.
-    // CEP:ASSUMES: slot < component_count.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::split_derivations_cite_original.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the source-original clause id of a slot (the AvatarSplit parent).
+    /// CEP:WHY: The controller builds the materialized clause's derivation from it (Spec 12 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None for out-of-range slots.
+    /// CEP:ASSUMES: slot < component_count.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::split_derivations_cite_original.
+    /// CEP:SECURITY: bounds-checked.
     pub fn source_clause(&self, slot: u32) -> Option<u64> {
         let cell = self.source_clause.get(slot as usize)?;
         let value = cell.get();
@@ -526,14 +526,14 @@ impl<'a> ComponentTable<'a> {
         Some(value)
     }
 
-    // CEP:WHAT: Returns the record capacity (the assertion-variable space).
-    // CEP:WHY: The controller validates the abstraction solver's variable count against it at construction.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::controller_validates_solver_variables.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the record capacity (the assertion-variable space).
+    /// CEP:WHY: The controller validates the abstraction solver's variable count against it at construction.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::controller_validates_solver_variables.
+    /// CEP:SECURITY: none.
     pub fn record_capacity(&self) -> u32 {
         self.word_start.len() as u32
     }

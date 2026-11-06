@@ -29,14 +29,14 @@ pub enum ArenaHostError {
     AllocationFailed,
 }
 
-// CEP:WHAT: Allocates a kMaxAlignment-aligned, zero-initialized region of exactly capacity bytes with 'static lifetime.
-// CEP:WHY: The arena requires an aligned, caller-owned, stable region (hot/memory/arena.rs Arena::new); Box::leak provides the 'static guarantee without unsafe code.
-// CEP:STATUS: complete
-// CEP:FAILURE: Returns CapacityInvalid for bad sizes and AllocationFailed when the allocator refuses.
-// CEP:ASSUMES: capacity <= kArenaCapacityBytes; the caller hands the region to exactly one Arena.
-// CEP:COST: one allocation of capacity + alignment slack bytes, then a subslice; O(1).
-// CEP:EVIDENCE: unit/hot/arena_test.rs::{construction_validates_alignment, host_rejects_bad_capacities}.
-// CEP:SECURITY: bounds validated first; zero-initialization leaves no uninitialized bytes (CEP&CC 22.4).
+/// CEP:WHAT: Allocates a kMaxAlignment-aligned, zero-initialized region of exactly capacity bytes with 'static lifetime.
+/// CEP:WHY: The arena requires an aligned, caller-owned, stable region (hot/memory/arena.rs Arena::new); Box::leak provides the 'static guarantee without unsafe code.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Returns CapacityInvalid for bad sizes and AllocationFailed when the allocator refuses.
+/// CEP:ASSUMES: capacity <= kArenaCapacityBytes; the caller hands the region to exactly one Arena.
+/// CEP:COST: one allocation of capacity + alignment slack bytes, then a subslice; O(1).
+/// CEP:EVIDENCE: unit/hot/arena_test.rs::{construction_validates_alignment, host_rejects_bad_capacities}.
+/// CEP:SECURITY: bounds validated first; zero-initialization leaves no uninitialized bytes (CEP&CC 22.4).
 pub fn allocate_aligned_region(capacity_bytes: u32) -> Result<&'static mut [u8], ArenaHostError> {
     if capacity_bytes == 0 || capacity_bytes > kArenaCapacityBytes {
         return Err(ArenaHostError::CapacityInvalid);

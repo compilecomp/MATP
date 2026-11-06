@@ -181,14 +181,14 @@ pub struct SymbolTableBuilder {
 }
 
 impl SymbolTableBuilder {
-    // CEP:WHAT: Creates an empty builder.
-    // CEP:WHY: Explicit construction point.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: builder tests.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Creates an empty builder.
+    /// CEP:WHY: Explicit construction point.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: builder tests.
+    /// CEP:SECURITY: none.
     pub fn new() -> SymbolTableBuilder {
         SymbolTableBuilder {
             drafts: Vec::new(),
@@ -200,28 +200,28 @@ impl SymbolTableBuilder {
         }
     }
 
-    // CEP:WHAT: Declares a sort and returns its ID.
-    // CEP:WHY: TFF/THF support requires a sort universe before function signatures can reference sorts (design 5.6); sorts are symbols of kind Sort whose signature is themselves.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see declare_symbol.
-    // CEP:ASSUMES: sort names are unique.
-    // CEP:COST: O(1) expected.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_sort.
-    // CEP:SECURITY: name bounds enforced.
+    /// CEP:WHAT: Declares a sort and returns its ID.
+    /// CEP:WHY: TFF/THF support requires a sort universe before function signatures can reference sorts (design 5.6); sorts are symbols of kind Sort whose signature is themselves.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see declare_symbol.
+    /// CEP:ASSUMES: sort names are unique.
+    /// CEP:COST: O(1) expected.
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_sort.
+    /// CEP:SECURITY: name bounds enforced.
     pub fn declare_sort(&mut self, name: &str) -> Result<u32, BuilderError> {
         let id = self.declare_symbol(name, SymbolKind::Sort, 0, kDefaultSymbolWeight, &[], None)?;
         self.sorts.insert(name.to_string(), id);
         Ok(id)
     }
 
-    // CEP:WHAT: Declares a function symbol and returns its ID.
-    // CEP:WHY: The main declaration path for first-order terms.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see declare_symbol.
-    // CEP:ASSUMES: arg_sorts length equals arity.
-    // CEP:COST: O(1) expected.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_function.
-    // CEP:SECURITY: bounds enforced.
+    /// CEP:WHAT: Declares a function symbol and returns its ID.
+    /// CEP:WHY: The main declaration path for first-order terms.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see declare_symbol.
+    /// CEP:ASSUMES: arg_sorts length equals arity.
+    /// CEP:COST: O(1) expected.
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_function.
+    /// CEP:SECURITY: bounds enforced.
     pub fn declare_function(
         &mut self,
         name: &str,
@@ -240,14 +240,14 @@ impl SymbolTableBuilder {
         )
     }
 
-    // CEP:WHAT: Declares a predicate symbol and returns its ID.
-    // CEP:WHY: Literal atoms are built on predicate symbols (design 5.2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see declare_symbol.
-    // CEP:ASSUMES: arg_sorts length equals arity; the return sort is the Boolean sort by construction.
-    // CEP:COST: O(1) expected.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_predicate.
-    // CEP:SECURITY: bounds enforced.
+    /// CEP:WHAT: Declares a predicate symbol and returns its ID.
+    /// CEP:WHY: Literal atoms are built on predicate symbols (design 5.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see declare_symbol.
+    /// CEP:ASSUMES: arg_sorts length equals arity; the return sort is the Boolean sort by construction.
+    /// CEP:COST: O(1) expected.
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_predicate.
+    /// CEP:SECURITY: bounds enforced.
     pub fn declare_predicate(
         &mut self,
         name: &str,
@@ -290,14 +290,14 @@ impl SymbolTableBuilder {
     /// CEP:SECURITY: none.
     pub const kBooleanSortName: &'static str = "$o";
 
-    // CEP:WHAT: Returns the reserved Boolean sort ID if it exists.
-    // CEP:WHY: Diagnostics and tests need the ID; declaration happens lazily with the first predicate.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; None when no predicate has been declared yet.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_predicate.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the reserved Boolean sort ID if it exists.
+    /// CEP:WHY: Diagnostics and tests need the ID; declaration happens lazily with the first predicate.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; None when no predicate has been declared yet.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_predicate.
+    /// CEP:SECURITY: none.
     pub fn boolean_sort_id(&self) -> Option<SortId> {
         self.boolean_sort.map(SortId)
     }
@@ -391,54 +391,54 @@ impl SymbolTableBuilder {
         Ok(id)
     }
 
-    // CEP:WHAT: Marks a symbol as built-in.
-    // CEP:WHY: Design 5.6 flags; the equality pseudo-symbol discipline and future theory symbols use the marker.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; unknown IDs are ignored (the hot table validation owns that domain).
-    // CEP:ASSUMES: called before finalize.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::flags.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Marks a symbol as built-in.
+    /// CEP:WHY: Design 5.6 flags; the equality pseudo-symbol discipline and future theory symbols use the marker.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; unknown IDs are ignored (the hot table validation owns that domain).
+    /// CEP:ASSUMES: called before finalize.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::flags.
+    /// CEP:SECURITY: none.
     pub fn mark_builtin(&mut self, symbol_id: u32) {
         if let Some(draft) = self.drafts.get_mut(symbol_id as usize) {
             draft.flags |= kSymbolFlagBuiltin;
         }
     }
 
-    // CEP:WHAT: Marks a symbol as theory-laden.
-    // CEP:WHY: Design 5.6 flags; Phase 5 theory reasoning.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; unknown IDs are ignored.
-    // CEP:ASSUMES: called before finalize.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: reserved for Phase 5.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Marks a symbol as theory-laden.
+    /// CEP:WHY: Design 5.6 flags; Phase 5 theory reasoning.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; unknown IDs are ignored.
+    /// CEP:ASSUMES: called before finalize.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: reserved for Phase 5.
+    /// CEP:SECURITY: none.
     pub fn mark_theory(&mut self, symbol_id: u32) {
         if let Some(draft) = self.drafts.get_mut(symbol_id as usize) {
             draft.flags |= kSymbolFlagTheory;
         }
     }
 
-    // CEP:WHAT: Returns the symbol count declared so far.
-    // CEP:WHY: Diagnostics and bound checks.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: builder tests.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the symbol count declared so far.
+    /// CEP:WHY: Diagnostics and bound checks.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: builder tests.
+    /// CEP:SECURITY: none.
     pub fn symbol_count(&self) -> u32 {
         self.drafts.len() as u32
     }
 
-    // CEP:WHAT: Reserves the learning assertion space: declares count 0-ary predicates named mapt_assertion_<i> (deterministic names, i ascending from 0) and returns the base id.
-    // CEP:WHY: Spec 18 section 3: the FOL copies of SAT-side clauses speak only through 0-ary assertion predicates; the reservation is ONE-SHOT (a second call returns AssertionBudget), bounded by kAvatarMaxAssertionSymbols, and dense (the symbols are declared back-to-back, so assertion atom for SAT slot i is base + i); a reserved-name collision with an existing declaration is refused so the density assumption cannot silently break.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: BuilderError::AssertionBudget when count exceeds kAvatarMaxAssertionSymbols, when the reservation was already made, or when any mapt_assertion_<i> name already exists with a 0-ary predicate signature (declare_symbol would return the existing id and break the density); the TooManySymbols/DuplicateName errors of the underlying declaration propagate.
-    // CEP:ASSUMES: called after the problem symbols are declared and before freeze; count >= 1.
-    // CEP:COST: O(count) declarations plus one density check.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded; unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
-    // CEP:SECURITY: the flood bound is the named constant.
+    /// CEP:WHAT: Reserves the learning assertion space: declares count 0-ary predicates named mapt_assertion_<i> (deterministic names, i ascending from 0) and returns the base id.
+    /// CEP:WHY: Spec 18 section 3: the FOL copies of SAT-side clauses speak only through 0-ary assertion predicates; the reservation is ONE-SHOT (a second call returns AssertionBudget), bounded by kAvatarMaxAssertionSymbols, and dense (the symbols are declared back-to-back, so assertion atom for SAT slot i is base + i); a reserved-name collision with an existing declaration is refused so the density assumption cannot silently break.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: BuilderError::AssertionBudget when count exceeds kAvatarMaxAssertionSymbols, when the reservation was already made, or when any mapt_assertion_<i> name already exists with a 0-ary predicate signature (declare_symbol would return the existing id and break the density); the TooManySymbols/DuplicateName errors of the underlying declaration propagate.
+    /// CEP:ASSUMES: called after the problem symbols are declared and before freeze; count >= 1.
+    /// CEP:COST: O(count) declarations plus one density check.
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded; unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
+    /// CEP:SECURITY: the flood bound is the named constant.
     pub fn reserve_assertion_symbols(&mut self, count: u32) -> Result<u32, BuilderError> {
         if count == 0 || count > kAvatarMaxAssertionSymbols || self.assertion_base.is_some() {
             return Err(BuilderError::AssertionBudget);
@@ -467,38 +467,38 @@ impl SymbolTableBuilder {
         Ok(base)
     }
 
-    // CEP:WHAT: Returns the one-shot assertion reservation base, if made.
-    // CEP:WHY: Diagnostics and tests pin the reserved block.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: None before the first reservation.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the one-shot assertion reservation base, if made.
+    /// CEP:WHY: Diagnostics and tests pin the reserved block.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: None before the first reservation.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded.
+    /// CEP:SECURITY: none.
     pub fn assertion_symbol_base(&self) -> Option<u32> {
         self.assertion_base
     }
 
-    // CEP:WHAT: Returns the name of a symbol.
-    // CEP:WHY: Cold diagnostics and the debug printer.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns None for unknown IDs.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/debug_printer_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the name of a symbol.
+    /// CEP:WHY: Cold diagnostics and the debug printer.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns None for unknown IDs.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/cold/debug_printer_test.rs.
+    /// CEP:SECURITY: none.
     pub fn name_of(&self, symbol_id: u32) -> Option<&str> {
         self.names.get(symbol_id as usize).map(|name| name.as_str())
     }
 
-    // CEP:WHAT: Writes entries and the sort pool into the arena and freezes the hot-side table.
-    // CEP:WHY: Design 5.6: freeze is the trust boundary between CEP-1 construction and CEP-0 reads; writing in ID order keeps the layout deterministic.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaFull when the arrays do not fit; freeze itself revalidates every entry.
-    // CEP:ASSUMES: the arena is the one the hot stores use.
-    // CEP:COST: O(symbols + signature entries).
-    // CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_predicate; unit/hot/symbol_table_test.rs.
-    // CEP:SECURITY: freeze validates the entire written table before it becomes readable.
+    /// CEP:WHAT: Writes entries and the sort pool into the arena and freezes the hot-side table.
+    /// CEP:WHY: Design 5.6: freeze is the trust boundary between CEP-1 construction and CEP-0 reads; writing in ID order keeps the layout deterministic.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaFull when the arrays do not fit; freeze itself revalidates every entry.
+    /// CEP:ASSUMES: the arena is the one the hot stores use.
+    /// CEP:COST: O(symbols + signature entries).
+    /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::declare_predicate; unit/hot/symbol_table_test.rs.
+    /// CEP:SECURITY: freeze validates the entire written table before it becomes readable.
     pub fn finalize<'a>(&self, arena: &'a Arena) -> Result<SymbolTable<'a>, BuilderError> {
         let mut pool: Vec<SortId> = Vec::new();
         let mut entries: Vec<SymbolInfo> = Vec::with_capacity(self.drafts.len());
@@ -549,14 +549,14 @@ impl Default for SymbolTableBuilder {
     }
 }
 
-// CEP:WHAT: The deterministic reserved name of the assertion symbol for SAT slot i.
-// CEP:WHY: Spec 18 section 3: the FOL copy of a SAT clause over component slots names its atoms mapt_assertion_<slot>; one name builder keeps the prefix consistent between the reservation, the controller's atom construction, and the kernel's shape documentation.
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: the prefix is MAPT-reserved (problem inputs must not declare it).
-// CEP:COST: allocation-free formatting into the caller's string.
-// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded.
-// CEP:SECURITY: none.
+/// CEP:WHAT: The deterministic reserved name of the assertion symbol for SAT slot i.
+/// CEP:WHY: Spec 18 section 3: the FOL copy of a SAT clause over component slots names its atoms mapt_assertion_<slot>; one name builder keeps the prefix consistent between the reservation, the controller's atom construction, and the kernel's shape documentation.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: the prefix is MAPT-reserved (problem inputs must not declare it).
+/// CEP:COST: allocation-free formatting into the caller's string.
+/// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded.
+/// CEP:SECURITY: none.
 pub fn assertion_symbol_name(slot: u32) -> std::string::String {
     std::format!("mapt_assertion_{}", slot)
 }

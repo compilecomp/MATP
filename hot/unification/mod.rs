@@ -9,7 +9,9 @@
 // CEP:EVIDENCE: unit/hot/substitution_test.rs; unit/hot/unify_test.rs.
 // CEP:SECURITY: substitution arrays are bounded and bounds-checked.
 
+/// The substitution engine: flat binding array, trail, application, and record bookkeeping.
 pub mod substitution;
+/// Unification, matching (with the application witness), and composition over the substitution engine.
 pub mod unify;
 
 pub use substitution::{Substitution, SubstitutionError, SubstitutionRecord};

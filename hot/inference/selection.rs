@@ -73,14 +73,14 @@ pub enum SelectionFunction {
     FirstNegative,
 }
 
-// CEP:WHAT: Computes and sets the selected and maximal flags of every literal of a clause in place.
-// CEP:WHY: Design 5.2: the flags are cached on the literal records at clause creation; selection runs first (design 10.2: selection overrides maximality), then maximality compares atoms pairwise (a literal is maximal when no other atom is strictly greater; the strictly-maximal test in eligibility additionally rejects equals).
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError::Structural when an atom is unreadable or a comparison errors (loud, never conservative-silent).
-// CEP:ASSUMES: literals is non-empty in search use (the empty clause skips flag computation entirely).
-// CEP:COST: O(n^2) comparisons for n literals.
-// CEP:EVIDENCE: unit/hot/selection_test.rs::{maximality_computed, selection_overrides_maximality, first_negative_selects, ties_are_maximal_but_not_strict}.
-// CEP:SECURITY: ordering budgets bound the work.
+/// CEP:WHAT: Computes and sets the selected and maximal flags of every literal of a clause in place.
+/// CEP:WHY: Design 5.2: the flags are cached on the literal records at clause creation; selection runs first (design 10.2: selection overrides maximality), then maximality compares atoms pairwise (a literal is maximal when no other atom is strictly greater; the strictly-maximal test in eligibility additionally rejects equals).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError::Structural when an atom is unreadable or a comparison errors (loud, never conservative-silent).
+/// CEP:ASSUMES: literals is non-empty in search use (the empty clause skips flag computation entirely).
+/// CEP:COST: O(n^2) comparisons for n literals.
+/// CEP:EVIDENCE: unit/hot/selection_test.rs::{maximality_computed, selection_overrides_maximality, first_negative_selects, ties_are_maximal_but_not_strict}.
+/// CEP:SECURITY: ordering budgets bound the work.
 pub fn compute_selection_flags(
     context: &InferenceContext<'_>,
     selection: SelectionFunction,
@@ -129,14 +129,14 @@ pub fn compute_selection_flags(
     Ok(())
 }
 
-// CEP:WHAT: Eligibility of the positive-side literal of a resolution or superposition inference: selected, or nothing selected and strictly maximal.
-// CEP:WHY: Spec 07 section 3: the ordered calculus resolves/factors on strictly maximal positive literals (strictness breaks symmetric pairs), and selection overrides; the strictly-maximal test rejects equal atoms (identical literals are handled by factoring, not double resolution).
-// CEP:STATUS: complete
-// CEP:FAILURE: none (bool answer over cached flags).
-// CEP:ASSUMES: flags were computed by compute_selection_flags on this literal slice.
-// CEP:COST: O(n) for the strictness scan.
-// CEP:EVIDENCE: unit/hot/selection_test.rs::{ties_are_maximal_but_not_strict}; unit/hot/inference_test.rs::resolution_side_conditions.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Eligibility of the positive-side literal of a resolution or superposition inference: selected, or nothing selected and strictly maximal.
+/// CEP:WHY: Spec 07 section 3: the ordered calculus resolves/factors on strictly maximal positive literals (strictness breaks symmetric pairs), and selection overrides; the strictly-maximal test rejects equal atoms (identical literals are handled by factoring, not double resolution).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none (bool answer over cached flags).
+/// CEP:ASSUMES: flags were computed by compute_selection_flags on this literal slice.
+/// CEP:COST: O(n) for the strictness scan.
+/// CEP:EVIDENCE: unit/hot/selection_test.rs::{ties_are_maximal_but_not_strict}; unit/hot/inference_test.rs::resolution_side_conditions.
+/// CEP:SECURITY: none.
 pub fn eligible_positive(
     context: &InferenceContext<'_>,
     literals: &[Literal],
@@ -164,14 +164,14 @@ pub fn eligible_positive(
     true
 }
 
-// CEP:WHAT: Eligibility of the negative-side literal of a resolution or superposition inference: selected, or nothing selected and maximal (non-strict).
-// CEP:WHY: Spec 07 section 3: the negative side uses plain maximality (BG94 resolve on maximal or selected negative literals; ties are permitted because the positive side already enforces strictness).
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: flags were computed by compute_selection_flags.
-// CEP:COST: constant over cached flags.
-// CEP:EVIDENCE: unit/hot/selection_test.rs::maximality_computed; unit/hot/inference_test.rs::resolution_side_conditions.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Eligibility of the negative-side literal of a resolution or superposition inference: selected, or nothing selected and maximal (non-strict).
+/// CEP:WHY: Spec 07 section 3: the negative side uses plain maximality (BG94 resolve on maximal or selected negative literals; ties are permitted because the positive side already enforces strictness).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: flags were computed by compute_selection_flags.
+/// CEP:COST: constant over cached flags.
+/// CEP:EVIDENCE: unit/hot/selection_test.rs::maximality_computed; unit/hot/inference_test.rs::resolution_side_conditions.
+/// CEP:SECURITY: none.
 pub fn eligible_negative(literals: &[Literal], index: usize) -> bool {
     let literal = &literals[index];
     if literal.is_selected() {

@@ -10,6 +10,7 @@
 // CEP:SECURITY: bounded threads and storage; validated imports.
 // CEP:HPC-DETERMINISM: single-worker runs are deterministic; multi-worker selection is scheduling-dependent (design 19.5) with independently checkable proofs.
 
+/// The portfolio manager: one scoped worker thread per strategy with bounded wall-clock slices and sharing.
 pub mod manager;
 
 pub use manager::{

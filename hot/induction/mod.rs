@@ -13,6 +13,7 @@
 // CEP:HPC-DETERMINISM: deterministic: the scan walks clauses in id order and terms in child order, the predicate list is deduplicated then sorted by symbol id, and clause creation order fixes ids and passive order; property/induction_property_test.rs::induction_deterministic_double_run pins the two-run discipline.
 // CEP:HPC-PASS-LEGALITY: Formal Spec 15 (15_structural_induction.md) fixes the declaration contract, the clausal derivations of both schemes (sections 3-4), the initial-algebra soundness theorems (sections 3.1-3.2), the bounds (section 5), and the TSTP presentation (section 7); the property tests verify executably that generated clauses equal the hand clausification for random predicates.
 
+/// Induction schemes: structural and well-founded templates, clausification, and the attempts budget.
 pub mod scheme;
 
 use crate::inference::InferenceContext;
@@ -256,14 +257,14 @@ pub struct InductionStats {
     pub nodes_visited: u32,
 }
 
-// CEP:WHAT: Validates a declaration against the frozen symbol table.
-// CEP:WHY: Spec 15 section 2: every shape claim is checked mechanically (kind and arity per field) before any scheme exists; a malformed declaration adds nothing.
-// CEP:STATUS: complete
-// CEP:FAILURE: ZeroNotConstant, SuccNotUnary, SkolemNotConstant, WellFoundedNotBinary.
-// CEP:ASSUMES: the symbol table is the problem's frozen table.
-// CEP:COST: O(1) (four info lookups).
-// CEP:EVIDENCE: unit/hot/induction_test.rs::declaration_validation_rejects_bad_shapes.
-// CEP:SECURITY: the validation is the scheme-soundness trust boundary.
+/// CEP:WHAT: Validates a declaration against the frozen symbol table.
+/// CEP:WHY: Spec 15 section 2: every shape claim is checked mechanically (kind and arity per field) before any scheme exists; a malformed declaration adds nothing.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: ZeroNotConstant, SuccNotUnary, SkolemNotConstant, WellFoundedNotBinary.
+/// CEP:ASSUMES: the symbol table is the problem's frozen table.
+/// CEP:COST: O(1) (four info lookups).
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::declaration_validation_rejects_bad_shapes.
+/// CEP:SECURITY: the validation is the scheme-soundness trust boundary.
 pub fn validate_declaration(
     symbols: &SymbolTable<'_>,
     declaration: &InductionDeclaration,
@@ -487,14 +488,14 @@ fn scan_input_signature(
     Ok(scan)
 }
 
-// CEP:WHAT: Adds the bounded induction schemes for every collected unary predicate.
-// CEP:WHY: The Phase 4 (revised) integration point: validate, scan (proving skolem freshness and collecting the predicate domain), then per predicate (symbol-id order) add the two-clause structural scheme and, when a well-order is declared, the two-clause strong scheme; the attempts budget cuts the enumeration deterministically (the domain is sorted, the cut is a prefix), skipped predicates are counted, and every clause enters through add_theory_clause so staging, flags, weights, ages, and passive order follow the production discipline.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InductionError; no scheme is added after a rejection.
-// CEP:ASSUMES: input clauses added; max_attempts and scan_node_budget are the caller's budgets (production: kMaxInductionAttempts and kInductionScanNodeBudget; CEP&CC 34.3 injectable).
-// CEP:COST: see file header; measured in bench CEP-BENCH-0036.
-// CEP:EVIDENCE: unit/hot/induction_test.rs; property/induction_property_test.rs::{schemes_match_hand_clausification, attempts_bound_respected}.
-// CEP:SECURITY: budgets enforced (attempts, scan nodes, collection); store bounds enforced.
+/// CEP:WHAT: Adds the bounded induction schemes for every collected unary predicate.
+/// CEP:WHY: The Phase 4 (revised) integration point: validate, scan (proving skolem freshness and collecting the predicate domain), then per predicate (symbol-id order) add the two-clause structural scheme and, when a well-order is declared, the two-clause strong scheme; the attempts budget cuts the enumeration deterministically (the domain is sorted, the cut is a prefix), skipped predicates are counted, and every clause enters through add_theory_clause so staging, flags, weights, ages, and passive order follow the production discipline.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InductionError; no scheme is added after a rejection.
+/// CEP:ASSUMES: input clauses added; max_attempts and scan_node_budget are the caller's budgets (production: kMaxInductionAttempts and kInductionScanNodeBudget; CEP&CC 34.3 injectable).
+/// CEP:COST: see file header; measured in bench CEP-BENCH-0036.
+/// CEP:EVIDENCE: unit/hot/induction_test.rs; property/induction_property_test.rs::{schemes_match_hand_clausification, attempts_bound_respected}.
+/// CEP:SECURITY: budgets enforced (attempts, scan nodes, collection); store bounds enforced.
 pub fn add_induction_schemes(
     space: &SearchSpace<'_>,
     context: &InferenceContext<'_>,

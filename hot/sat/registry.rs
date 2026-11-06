@@ -291,26 +291,26 @@ pub struct ClauseRegistry<'a> {
 }
 
 impl<'a> ClauseRegistry<'a> {
-    // CEP:WHAT: Constructs the registry with the default capacity, trigger, and increment.
-    // CEP:WHY: Production entry point; the named constants are the documented defaults.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns RegistryError::Full-mapped errors when the arrays do not fit the arena.
-    // CEP:ASSUMES: the arena has room for capacity x 20 bytes.
-    // CEP:COST: O(capacity) one-time arena allocation and clear.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::registry_enumerates.
-    // CEP:SECURITY: capacity validated before allocation.
+    /// CEP:WHAT: Constructs the registry with the default capacity, trigger, and increment.
+    /// CEP:WHY: Production entry point; the named constants are the documented defaults.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns RegistryError::Full-mapped errors when the arrays do not fit the arena.
+    /// CEP:ASSUMES: the arena has room for capacity x 20 bytes.
+    /// CEP:COST: O(capacity) one-time arena allocation and clear.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::registry_enumerates.
+    /// CEP:SECURITY: capacity validated before allocation.
     pub fn new(arena: &'a Arena) -> Result<ClauseRegistry<'a>, RegistryError> {
         ClauseRegistry::new_with(arena, kSatRegistryCapacity, kSatMaxLearntClauses, 1.0)
     }
 
-    // CEP:WHAT: Constructs the registry with explicit capacity, reduction trigger, and activity increment.
-    // CEP:WHY: CEP&CC 34.3: security and policy tests must exercise the capacity bound, the trigger, and the rescale path at small, fast scales while sharing the production code path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns Full-mapped errors when the arrays do not fit; rejects zero capacity, zero trigger, or non-positive increment.
-    // CEP:ASSUMES: capacity >= 1, trigger >= 1, increment > 0.
-    // CEP:COST: O(capacity) one-time.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{capacity_enforced, reduction_trigger_enforced, activity_rescale_preserves_order}; security/phase3_bounds_test.rs::registry_capacity_enforced.
-    // CEP:SECURITY: bounds validated before allocation.
+    /// CEP:WHAT: Constructs the registry with explicit capacity, reduction trigger, and activity increment.
+    /// CEP:WHY: CEP&CC 34.3: security and policy tests must exercise the capacity bound, the trigger, and the rescale path at small, fast scales while sharing the production code path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Full-mapped errors when the arrays do not fit; rejects zero capacity, zero trigger, or non-positive increment.
+    /// CEP:ASSUMES: capacity >= 1, trigger >= 1, increment > 0.
+    /// CEP:COST: O(capacity) one-time.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{capacity_enforced, reduction_trigger_enforced, activity_rescale_preserves_order}; security/phase3_bounds_test.rs::registry_capacity_enforced.
+    /// CEP:SECURITY: bounds validated before allocation.
     pub fn new_with(
         arena: &'a Arena,
         capacity: u32,
@@ -348,14 +348,14 @@ impl<'a> ClauseRegistry<'a> {
         })
     }
 
-    // CEP:WHAT: Registers a clause (problem or learnt, decided by the storage header) and returns the entry index.
-    // CEP:WHY: CEP-1003: every clause entering the database becomes enumerable; the solver calls this from its add_clause and add_learnt_clause wrappers so registration cannot be forgotten.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Full at the capacity; Storage when the header is unreadable; InvariantViolation when the offset breaks the ascending-order invariant or is already deleted.
-    // CEP:ASSUMES: offset is a live clause of the paired storage; offsets are registered in creation order.
-    // CEP:COST: O(1) plus one header read for the learnt bit.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{registry_enumerates, capacity_enforced}.
-    // CEP:SECURITY: capacity bound.
+    /// CEP:WHAT: Registers a clause (problem or learnt, decided by the storage header) and returns the entry index.
+    /// CEP:WHY: CEP-1003: every clause entering the database becomes enumerable; the solver calls this from its add_clause and add_learnt_clause wrappers so registration cannot be forgotten.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Full at the capacity; Storage when the header is unreadable; InvariantViolation when the offset breaks the ascending-order invariant or is already deleted.
+    /// CEP:ASSUMES: offset is a live clause of the paired storage; offsets are registered in creation order.
+    /// CEP:COST: O(1) plus one header read for the learnt bit.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{registry_enumerates, capacity_enforced}.
+    /// CEP:SECURITY: capacity bound.
     pub fn register(&self, storage: &ClauseStorage<'_>, offset: u32) -> Result<u32, RegistryError> {
         let header = storage.header(offset)?;
         if header.flags & kSatClauseFlagDeleted != 0 {
@@ -380,14 +380,14 @@ impl<'a> ClauseRegistry<'a> {
         Ok(index)
     }
 
-    // CEP:WHAT: Binary-searches the entry index of a clause offset.
-    // CEP:WHY: Deletion and activity bumping arrive by offset; entries are ascending by offset so the search is O(log n) with no side arrays.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Ok(None) when the offset was never registered.
-    // CEP:ASSUMES: ascending-offset invariant (enforced at register).
-    // CEP:COST: O(log entries) compares.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{registry_enumerates, delete_unregistered_rejected}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Binary-searches the entry index of a clause offset.
+    /// CEP:WHY: Deletion and activity bumping arrive by offset; entries are ascending by offset so the search is O(log n) with no side arrays.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Ok(None) when the offset was never registered.
+    /// CEP:ASSUMES: ascending-offset invariant (enforced at register).
+    /// CEP:COST: O(log entries) compares.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{registry_enumerates, delete_unregistered_rejected}.
+    /// CEP:SECURITY: none.
     pub fn find(&self, offset: u32) -> Option<u32> {
         let count = self.next_entry.get() as usize;
         let mut low: usize = 0;
@@ -406,14 +406,14 @@ impl<'a> ClauseRegistry<'a> {
         None
     }
 
-    // CEP:WHAT: Permanently deletes a registered clause: storage deleted mark, entry tombstone, counter updates.
-    // CEP:WHY: The single sanctioned permanent-deletion path (S25) so the storage bit and the tombstone can never diverge; proof notification stays with the caller (the solver records the deletion before calling this).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: InvariantViolation for unregistered or already-deleted offsets; Storage for unreadable records.
-    // CEP:ASSUMES: offset is live and registered.
-    // CEP:COST: O(log entries) find plus O(1) marking.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_tombstones, double_delete_rejected, delete_unregistered_rejected}.
-    // CEP:SECURITY: loud lifecycle failures.
+    /// CEP:WHAT: Permanently deletes a registered clause: storage deleted mark, entry tombstone, counter updates.
+    /// CEP:WHY: The single sanctioned permanent-deletion path (S25) so the storage bit and the tombstone can never diverge; proof notification stays with the caller (the solver records the deletion before calling this).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: InvariantViolation for unregistered or already-deleted offsets; Storage for unreadable records.
+    /// CEP:ASSUMES: offset is live and registered.
+    /// CEP:COST: O(log entries) find plus O(1) marking.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_tombstones, double_delete_rejected, delete_unregistered_rejected}.
+    /// CEP:SECURITY: loud lifecycle failures.
     pub fn delete(&self, storage: &ClauseStorage<'_>, offset: u32) -> Result<(), RegistryError> {
         let index = self.find(offset).ok_or(RegistryError::InvariantViolation)?;
         let entry = &self.entries[index as usize];
@@ -430,14 +430,14 @@ impl<'a> ClauseRegistry<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Bumps the activity of a registered clause, rescaling all scores and the increment when the ceiling would be exceeded, then applying the pending bump after the rescale.
-    // CEP:WHY: Design 11.1 S24 and 11.6 priority 3; the rescale keeps scores finite and the order total (same discipline as the VSIDS heap, ceiling x factor <= 1); the bump is applied AFTER the rescale so it is never dropped, and the increment rescales with the scores so pre- and post-rescale bumps stay comparable (MiniSat clause-activity discipline).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: InvariantViolation for unregistered or tombstoned offsets.
-    // CEP:ASSUMES: called on live entries only.
-    // CEP:COST: O(1) per bump; O(entries) on rescale (amortized negligible: the ceiling is 1e100).
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{bump_raises_activity, activity_rescale_preserves_order, rescale_applies_the_pending_bump}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Bumps the activity of a registered clause, rescaling all scores and the increment when the ceiling would be exceeded, then applying the pending bump after the rescale.
+    /// CEP:WHY: Design 11.1 S24 and 11.6 priority 3; the rescale keeps scores finite and the order total (same discipline as the VSIDS heap, ceiling x factor <= 1); the bump is applied AFTER the rescale so it is never dropped, and the increment rescales with the scores so pre- and post-rescale bumps stay comparable (MiniSat clause-activity discipline).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: InvariantViolation for unregistered or tombstoned offsets.
+    /// CEP:ASSUMES: called on live entries only.
+    /// CEP:COST: O(1) per bump; O(entries) on rescale (amortized negligible: the ceiling is 1e100).
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{bump_raises_activity, activity_rescale_preserves_order, rescale_applies_the_pending_bump}.
+    /// CEP:SECURITY: none.
     pub fn bump_activity(&self, offset: u32) -> Result<(), RegistryError> {
         let index = self.find(offset).ok_or(RegistryError::InvariantViolation)?;
         let entry = &self.entries[index as usize];
@@ -465,50 +465,50 @@ impl<'a> ClauseRegistry<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the live-learnt count (the reduction trigger input).
-    // CEP:WHY: The solver asks after learning whether reduction is due (design 11.6).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::reduction_trigger_enforced.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the live-learnt count (the reduction trigger input).
+    /// CEP:WHY: The solver asks after learning whether reduction is due (design 11.6).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::reduction_trigger_enforced.
+    /// CEP:SECURITY: none.
     pub fn live_learnts(&self) -> u32 {
         self.live_learnts.get()
     }
 
-    // CEP:WHAT: Returns the reduction trigger threshold.
-    // CEP:WHY: Budget introspection for the solver loop and tests.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::reduction_trigger_enforced.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the reduction trigger threshold.
+    /// CEP:WHY: Budget introspection for the solver loop and tests.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::reduction_trigger_enforced.
+    /// CEP:SECURITY: none.
     pub fn reduction_trigger(&self) -> u32 {
         self.reduction_trigger
     }
 
-    // CEP:WHAT: Returns the number of entries ever appended.
-    // CEP:WHY: Enumeration bound for callers (preprocessing, diagnostics).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::registry_enumerates.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of entries ever appended.
+    /// CEP:WHY: Enumeration bound for callers (preprocessing, diagnostics).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::registry_enumerates.
+    /// CEP:SECURITY: none.
     pub fn entry_count(&self) -> u32 {
         self.next_entry.get()
     }
 
-    // CEP:WHAT: Returns the entry record at an index (tombstones included).
-    // CEP:WHY: Enumeration API for preprocessing and tests; the caller filters tombstones.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: InvariantViolation for out-of-range indices (loud, never a panic).
-    // CEP:ASSUMES: index < entry_count.
-    // CEP:COST: 1 bounds check.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::registry_enumerates.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the entry record at an index (tombstones included).
+    /// CEP:WHY: Enumeration API for preprocessing and tests; the caller filters tombstones.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: InvariantViolation for out-of-range indices (loud, never a panic).
+    /// CEP:ASSUMES: index < entry_count.
+    /// CEP:COST: 1 bounds check.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::registry_enumerates.
+    /// CEP:SECURITY: bounds-checked.
     pub fn entry(&self, index: u32) -> Result<&RegistryEntry, RegistryError> {
         let slot = index as usize;
         if slot >= self.next_entry.get() as usize {
@@ -517,14 +517,14 @@ impl<'a> ClauseRegistry<'a> {
         Ok(&self.entries[slot])
     }
 
-    // CEP:WHAT: Runs one database reduction when the trigger is reached: locks reason clauses and the active conflict clause, sorts live unlocked learnts best-first under the design 11.6 total order, deletes the worst live - live/divisor (recording proof deletions first when a recorder is attached), then unlocks.
-    // CEP:WHY: Design 11.6 and CEP-1003: bounded learnt database with the three-criteria priority; locking implements S29 (clauses involved in conflict analysis are not deleted); the deterministic heapsort makes the victim set a pure function of the database state (CEP&CC 38.10); the proof notification happens inside the deletion loop so the trace can never miss a database mutation (S41).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Storage and InvariantViolation surface loudly; returns Ok(0) when the trigger is not reached (a no-op call is not an error).
-    // CEP:ASSUMES: called between conflicts with a quiescent core (no analysis in progress); conflict_offset may be kInvalidClauseOffset when reduction runs outside a conflict (for example from preprocessing).
-    // CEP:COST: O(variables) lock marking + O(live log live) heapsort + O(deleted) storage marks; see file header for amortization.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_keeps_best_half, locked_clauses_survive, reduction_trigger_enforced, reduction_marks_deleted, bcp_skips_deleted, reduction_records_proof_deletions}; property/cdcl_property_test.rs::solve_agrees_with_brute_force with reduction enabled via the injected trigger.
-    // CEP:SECURITY: all scans are bounded by named capacities.
+    /// CEP:WHAT: Runs one database reduction when the trigger is reached: locks reason clauses and the active conflict clause, sorts live unlocked learnts best-first under the design 11.6 total order, deletes the worst live - live/divisor (recording proof deletions first when a recorder is attached), then unlocks.
+    /// CEP:WHY: Design 11.6 and CEP-1003: bounded learnt database with the three-criteria priority; locking implements S29 (clauses involved in conflict analysis are not deleted); the deterministic heapsort makes the victim set a pure function of the database state (CEP&CC 38.10); the proof notification happens inside the deletion loop so the trace can never miss a database mutation (S41).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Storage and InvariantViolation surface loudly; returns Ok(0) when the trigger is not reached (a no-op call is not an error).
+    /// CEP:ASSUMES: called between conflicts with a quiescent core (no analysis in progress); conflict_offset may be kInvalidClauseOffset when reduction runs outside a conflict (for example from preprocessing).
+    /// CEP:COST: O(variables) lock marking + O(live log live) heapsort + O(deleted) storage marks; see file header for amortization.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{reduction_keeps_best_half, locked_clauses_survive, reduction_trigger_enforced, reduction_marks_deleted, bcp_skips_deleted, reduction_records_proof_deletions}; property/cdcl_property_test.rs::solve_agrees_with_brute_force with reduction enabled via the injected trigger.
+    /// CEP:SECURITY: all scans are bounded by named capacities.
     pub fn reduce(
         &self,
         core: &SatCore<'_>,
@@ -600,14 +600,14 @@ impl<'a> ClauseRegistry<'a> {
         Ok(deleted)
     }
 
-    // CEP:WHAT: Deletes every live learnt clause registered at or after the given entry index (recording proof deletions first when a recorder is attached) and returns the deleted count.
-    // CEP:WHY: Assumption solves may learn clauses that depend on the temporary assumption units; keeping them would corrupt later incremental solves of the base formula, so solve_with_assumptions snapshots entry_count at entry and deletes everything learnt since on exit (deletion is always sound; the failed core is extracted before cleanup); the entry-index boundary is exact because offsets and entry indices are both monotonic.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Storage and Proof errors surface loudly.
-    // CEP:ASSUMES: the core is at level 0 (backtrack first); level-0 reason records may reference victims - harmless by construction, because both conflict analyses skip level-0 variables (Spec 06 section 9) and BCP never consults reasons of level-0 assignments; entry_index <= entry_count.
-    // CEP:COST: O(entries - entry_index) with one map lookup and one header read per candidate.
-    // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{learnts_do_not_leak_across_solves, repeated_assumption_solves_agree}.
-    // CEP:SECURITY: bounded scan.
+    /// CEP:WHAT: Deletes every live learnt clause registered at or after the given entry index (recording proof deletions first when a recorder is attached) and returns the deleted count.
+    /// CEP:WHY: Assumption solves may learn clauses that depend on the temporary assumption units; keeping them would corrupt later incremental solves of the base formula, so solve_with_assumptions snapshots entry_count at entry and deletes everything learnt since on exit (deletion is always sound; the failed core is extracted before cleanup); the entry-index boundary is exact because offsets and entry indices are both monotonic.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Storage and Proof errors surface loudly.
+    /// CEP:ASSUMES: the core is at level 0 (backtrack first); level-0 reason records may reference victims - harmless by construction, because both conflict analyses skip level-0 variables (Spec 06 section 9) and BCP never consults reasons of level-0 assignments; entry_index <= entry_count.
+    /// CEP:COST: O(entries - entry_index) with one map lookup and one header read per candidate.
+    /// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{learnts_do_not_leak_across_solves, repeated_assumption_solves_agree}.
+    /// CEP:SECURITY: bounded scan.
     pub fn delete_learnts_from(
         &self,
         storage: &ClauseStorage<'_>,
@@ -638,14 +638,14 @@ impl<'a> ClauseRegistry<'a> {
         Ok(deleted)
     }
 
-    // CEP:WHAT: Completes the deletion of a clause already isolated by the raw storage deleted mark: proof notification stays with the caller; this sets the tombstone and counters only.
-    // CEP:WHY: Vivification isolates its candidate with the raw mark before knowing whether a shortened replacement exists; when it does, the permanent deletion must finish the already-marked record instead of double-marking (mark_deleted rejects double marks), so the registry exposes the completion half of the deletion protocol (CEP-1003 wording: tombstone unlinking after isolation).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: InvariantViolation for unregistered or already-tombstoned offsets or a record whose deleted bit is not set; Storage for unreadable records.
-    // CEP:ASSUMES: the caller recorded the proof deletion first and the storage deleted bit is set.
-    // CEP:COST: O(log entries) find plus O(1) bookkeeping.
-    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::vivification_shortens_clause.
-    // CEP:SECURITY: loud lifecycle failures.
+    /// CEP:WHAT: Completes the deletion of a clause already isolated by the raw storage deleted mark: proof notification stays with the caller; this sets the tombstone and counters only.
+    /// CEP:WHY: Vivification isolates its candidate with the raw mark before knowing whether a shortened replacement exists; when it does, the permanent deletion must finish the already-marked record instead of double-marking (mark_deleted rejects double marks), so the registry exposes the completion half of the deletion protocol (CEP-1003 wording: tombstone unlinking after isolation).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: InvariantViolation for unregistered or already-tombstoned offsets or a record whose deleted bit is not set; Storage for unreadable records.
+    /// CEP:ASSUMES: the caller recorded the proof deletion first and the storage deleted bit is set.
+    /// CEP:COST: O(log entries) find plus O(1) bookkeeping.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::vivification_shortens_clause.
+    /// CEP:SECURITY: loud lifecycle failures.
     pub fn complete_deletion(
         &self,
         storage: &ClauseStorage<'_>,

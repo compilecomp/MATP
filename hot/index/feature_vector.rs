@@ -200,26 +200,26 @@ impl Default for CollectState {
 }
 
 impl<'a> FeatureVectorIndex<'a> {
-    // CEP:WHAT: Constructs the index with the default pool capacity.
-    // CEP:WHY: Production entry point.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns PoolFull when the array does not fit the arena.
-    // CEP:ASSUMES: arena has room for kFeatureVectorPoolWords words.
-    // CEP:COST: O(capacity) one-time allocation.
-    // CEP:EVIDENCE: unit/hot/feature_vector_test.rs::vectors_store_counts.
-    // CEP:SECURITY: capacity validated before allocation.
+    /// CEP:WHAT: Constructs the index with the default pool capacity.
+    /// CEP:WHY: Production entry point.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns PoolFull when the array does not fit the arena.
+    /// CEP:ASSUMES: arena has room for kFeatureVectorPoolWords words.
+    /// CEP:COST: O(capacity) one-time allocation.
+    /// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::vectors_store_counts.
+    /// CEP:SECURITY: capacity validated before allocation.
     pub fn new(arena: &'a Arena) -> Result<FeatureVectorIndex<'a>, FeatureError> {
         FeatureVectorIndex::new_with(arena, kFeatureVectorPoolWords)
     }
 
-    // CEP:WHAT: Constructs the index with an explicit pool capacity.
-    // CEP:WHY: CEP&CC 34.3: capacity tests run at small scales on the production code path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns PoolFull when the array does not fit; rejects zero capacity.
-    // CEP:ASSUMES: capacity >= 1.
-    // CEP:COST: O(capacity) one-time.
-    // CEP:EVIDENCE: unit/hot/feature_vector_test.rs::pool_capacity_enforced; security/phase3_bounds_test.rs::feature_pool_capacity_enforced.
-    // CEP:SECURITY: bounds validated before allocation.
+    /// CEP:WHAT: Constructs the index with an explicit pool capacity.
+    /// CEP:WHY: CEP&CC 34.3: capacity tests run at small scales on the production code path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns PoolFull when the array does not fit; rejects zero capacity.
+    /// CEP:ASSUMES: capacity >= 1.
+    /// CEP:COST: O(capacity) one-time.
+    /// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::pool_capacity_enforced; security/phase3_bounds_test.rs::feature_pool_capacity_enforced.
+    /// CEP:SECURITY: bounds validated before allocation.
     pub fn new_with(
         arena: &'a Arena,
         capacity: u32,
@@ -239,14 +239,14 @@ impl<'a> FeatureVectorIndex<'a> {
         })
     }
 
-    // CEP:WHAT: Builds the feature vector of one clause: walks every literal's atom, counts function and predicate symbol occurrences (variables excluded), sorts by symbol id, and appends the pairs to the pool.
-    // CEP:WHY: Design 9.3's per-clause feature vector; the walk is depth-guarded recursion over interned terms (same discipline as the discrimination-tree flatten); equality atoms contribute their two argument-side symbols but no equality pseudo-entry (the pseudo-symbol is an index-space sentinel, not a term symbol).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns PoolFull when the pairs do not fit; unreadable atoms surface as empty vectors with truncated = true (the filter then passes them - sound, documented) only when the term store rejects reads, which cannot happen for store-interned atoms (law 3: construction validated them).
-    // CEP:ASSUMES: literals' atoms were interned by the given term store.
-    // CEP:COST: O(total term nodes) with an insertion sort bounded by kFeatureVectorSlots.
-    // CEP:EVIDENCE: unit/hot/feature_vector_test.rs::{vectors_store_counts, counts_are_per_symbol, equality_atoms_contribute_arguments}; property/inference_property_test.rs::subsumption_filter_admits_all_true_subsumptions.
-    // CEP:SECURITY: depth-bounded recursion (CEP&CC 22.10).
+    /// CEP:WHAT: Builds the feature vector of one clause: walks every literal's atom, counts function and predicate symbol occurrences (variables excluded), sorts by symbol id, and appends the pairs to the pool.
+    /// CEP:WHY: Design 9.3's per-clause feature vector; the walk is depth-guarded recursion over interned terms (same discipline as the discrimination-tree flatten); equality atoms contribute their two argument-side symbols but no equality pseudo-entry (the pseudo-symbol is an index-space sentinel, not a term symbol).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns PoolFull when the pairs do not fit; unreadable atoms surface as empty vectors with truncated = true (the filter then passes them - sound, documented) only when the term store rejects reads, which cannot happen for store-interned atoms (law 3: construction validated them).
+    /// CEP:ASSUMES: literals' atoms were interned by the given term store.
+    /// CEP:COST: O(total term nodes) with an insertion sort bounded by kFeatureVectorSlots.
+    /// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::{vectors_store_counts, counts_are_per_symbol, equality_atoms_contribute_arguments}; property/inference_property_test.rs::subsumption_filter_admits_all_true_subsumptions.
+    /// CEP:SECURITY: depth-bounded recursion (CEP&CC 22.10).
     pub fn build(
         &self,
         terms: &TermStore<'_>,
@@ -367,14 +367,14 @@ impl<'a> FeatureVectorIndex<'a> {
         }
     }
 
-    // CEP:WHAT: Reads one (symbol, count) pair of a vector.
-    // CEP:WHY: The filter and tests read vectors pair-wise; bounds-checked so forged handles fail loudly.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None for out-of-extent indices.
-    // CEP:ASSUMES: vector came from build.
-    // CEP:COST: 2 loads.
-    // CEP:EVIDENCE: unit/hot/feature_vector_test.rs::vectors_store_counts.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Reads one (symbol, count) pair of a vector.
+    /// CEP:WHY: The filter and tests read vectors pair-wise; bounds-checked so forged handles fail loudly.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None for out-of-extent indices.
+    /// CEP:ASSUMES: vector came from build.
+    /// CEP:COST: 2 loads.
+    /// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::vectors_store_counts.
+    /// CEP:SECURITY: bounds-checked.
     pub fn pair(&self, vector: FeatureVector, index: u32) -> Option<(u32, u32)> {
         if index >= vector.pairs {
             return None;
@@ -386,14 +386,14 @@ impl<'a> FeatureVectorIndex<'a> {
         Some((self.pool[slot].get(), self.pool[slot + 1].get()))
     }
 
-    // CEP:WHAT: Sound subsumption pre-filter: true when candidate might subsume the target (no necessary condition violated), false when subsumption is impossible.
-    // CEP:WHY: Design 9.3 and Spec 08 section 3: C subsumes D implies |C| <= |D| and occ(f, C) <= occ(f, D) for every symbol f (sigma only instantiates); the two-pointer scan over symbol-sorted vectors checks the dominance conditions it can see (an absent candidate symbol whose sort position sits above every target symbol is not detectable as a violation by the two-pointer walk - a harmless direction, since the checker verifies every admitted pair); truncated vectors (either side) pass - sound because truncation only removes evidence of violation.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (bool answer; the filter never claims subsumption, only possibility).
-    // CEP:ASSUMES: both vectors came from build (symbol-sorted).
-    // CEP:COST: O(|C| + |D|) two-pointer.
-    // CEP:EVIDENCE: unit/hot/feature_vector_test.rs::{dominance_filter_sound, dominance_filter_rejects, literal_count_filter_rejects}; property/inference_property_test.rs::subsumption_filter_admits_all_true_subsumptions.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Sound subsumption pre-filter: true when candidate might subsume the target (no necessary condition violated), false when subsumption is impossible.
+    /// CEP:WHY: Design 9.3 and Spec 08 section 3: C subsumes D implies |C| <= |D| and occ(f, C) <= occ(f, D) for every symbol f (sigma only instantiates); the two-pointer scan over symbol-sorted vectors checks the dominance conditions it can see (an absent candidate symbol whose sort position sits above every target symbol is not detectable as a violation by the two-pointer walk - a harmless direction, since the checker verifies every admitted pair); truncated vectors (either side) pass - sound because truncation only removes evidence of violation.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (bool answer; the filter never claims subsumption, only possibility).
+    /// CEP:ASSUMES: both vectors came from build (symbol-sorted).
+    /// CEP:COST: O(|C| + |D|) two-pointer.
+    /// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::{dominance_filter_sound, dominance_filter_rejects, literal_count_filter_rejects}; property/inference_property_test.rs::subsumption_filter_admits_all_true_subsumptions.
+    /// CEP:SECURITY: none.
     pub fn may_subsume(&self, candidate: FeatureVector, target: FeatureVector) -> bool {
         if candidate.truncated || target.truncated {
             return true;
@@ -429,14 +429,14 @@ impl<'a> FeatureVectorIndex<'a> {
         true
     }
 
-    // CEP:WHAT: Returns the number of pool words in use.
-    // CEP:WHY: Capacity introspection for tests and diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/feature_vector_test.rs::pool_capacity_enforced.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of pool words in use.
+    /// CEP:WHY: Capacity introspection for tests and diagnostics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/feature_vector_test.rs::pool_capacity_enforced.
+    /// CEP:SECURITY: none.
     pub fn used_words(&self) -> u32 {
         self.used.get()
     }

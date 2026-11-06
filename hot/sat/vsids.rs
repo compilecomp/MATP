@@ -42,14 +42,14 @@ const kPercentScaleF64: f64 = 100.0;
 // CEP:SECURITY: none.
 const kHeapArity: u32 = 2;
 
-// CEP:WHAT: Sentinel heap position meaning "variable is not in the heap".
-// CEP:WHY: Assigned variables are removed from the heap; the sentinel distinguishes absence from position zero (CEP&CC 11.3).
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: never aliases a real position because positions are below the variable count.
-// CEP:COST: compile-time only.
-// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{pick_skips_assigned, insert_after_backtrack}.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Sentinel heap position meaning "variable is not in the heap".
+/// CEP:WHY: Assigned variables are removed from the heap; the sentinel distinguishes absence from position zero (CEP&CC 11.3).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: never aliases a real position because positions are below the variable count.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{pick_skips_assigned, insert_after_backtrack}.
+/// CEP:SECURITY: none.
 pub const kNotInHeap: u32 = u32::MAX;
 
 /// CEP:WHAT: Error cases of VSIDS construction.
@@ -127,14 +127,14 @@ pub struct VsidsHeap<'a> {
 }
 
 impl<'a> VsidsHeap<'a> {
-    // CEP:WHAT: Constructs the heap with all variables inserted in index order and zero activities.
-    // CEP:WHY: Zero activities with the index-ascending tie-break make the identity array a valid max-heap, so initialization needs no sift passes (design 19.4 build-before-hot-path discipline).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns VariableCountInvalid for zero or oversize counts, ArenaFull when the arrays do not fit.
-    // CEP:ASSUMES: 0 < variables <= kMaxSatVariables.
-    // CEP:COST: O(variables) one-time.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{construction_rejects_bad_counts, initial_pick_is_lowest_index}.
-    // CEP:SECURITY: count validated before allocation.
+    /// CEP:WHAT: Constructs the heap with all variables inserted in index order and zero activities.
+    /// CEP:WHY: Zero activities with the index-ascending tie-break make the identity array a valid max-heap, so initialization needs no sift passes (design 19.4 build-before-hot-path discipline).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns VariableCountInvalid for zero or oversize counts, ArenaFull when the arrays do not fit.
+    /// CEP:ASSUMES: 0 < variables <= kMaxSatVariables.
+    /// CEP:COST: O(variables) one-time.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{construction_rejects_bad_counts, initial_pick_is_lowest_index}.
+    /// CEP:SECURITY: count validated before allocation.
     pub fn new(arena: &'a Arena, variables: u32) -> Result<VsidsHeap<'a>, VsidsError> {
         if variables == 0 || variables > kMaxSatVariables {
             return Err(VsidsError::VariableCountInvalid);
@@ -171,14 +171,14 @@ impl<'a> VsidsHeap<'a> {
         })
     }
 
-    // CEP:WHAT: Returns the activity of a variable.
-    // CEP:WHY: Diagnostics and the deterministic tie-break contract documentation.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns 0.0 for out-of-range variables (clamped, deterministic).
-    // CEP:ASSUMES: variable below the declared count.
-    // CEP:COST: 1 bounds check + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::bump_raises_activity.
-    // CEP:SECURITY: clamped read.
+    /// CEP:WHAT: Returns the activity of a variable.
+    /// CEP:WHY: Diagnostics and the deterministic tie-break contract documentation.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns 0.0 for out-of-range variables (clamped, deterministic).
+    /// CEP:ASSUMES: variable below the declared count.
+    /// CEP:COST: 1 bounds check + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::bump_raises_activity.
+    /// CEP:SECURITY: clamped read.
     pub fn activity(&self, variable: u32) -> f64 {
         let index = variable as usize;
         if index >= self.activities.len() {
@@ -187,26 +187,26 @@ impl<'a> VsidsHeap<'a> {
         self.activities[index].get()
     }
 
-    // CEP:WHAT: Returns the current increment.
-    // CEP:WHY: Decay behavior documentation and tests.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::decay_grows_increment.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the current increment.
+    /// CEP:WHY: Decay behavior documentation and tests.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::decay_grows_increment.
+    /// CEP:SECURITY: none.
     pub fn increment(&self) -> f64 {
         self.increment.get()
     }
 
-    // CEP:WHAT: Adds the current increment to a variable's activity and restores the heap invariant.
-    // CEP:WHY: Design 11.1 S13: variables on the current conflict's implication graph are bumped; the sift-up maintains the heap under the total (activity desc, index asc) key.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (out-of-range variables are clamped no-ops, deterministic).
-    // CEP:ASSUMES: variable below the declared count in solver use.
-    // CEP:COST: O(log n).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::bump_raises_activity.
-    // CEP:SECURITY: clamped.
+    /// CEP:WHAT: Adds the current increment to a variable's activity and restores the heap invariant.
+    /// CEP:WHY: Design 11.1 S13: variables on the current conflict's implication graph are bumped; the sift-up maintains the heap under the total (activity desc, index asc) key.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (out-of-range variables are clamped no-ops, deterministic).
+    /// CEP:ASSUMES: variable below the declared count in solver use.
+    /// CEP:COST: O(log n).
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::bump_raises_activity.
+    /// CEP:SECURITY: clamped.
     pub fn bump(&self, variable: u32) {
         let index = variable as usize;
         if index >= self.activities.len() {
@@ -220,14 +220,14 @@ impl<'a> VsidsHeap<'a> {
         }
     }
 
-    // CEP:WHAT: Grows the increment by the decay factor and rescales all activities when the increment passes the ceiling.
-    // CEP:WHY: Design 11.1 S13 (decay) and the f64-overflow discipline: the rescale multiplies every activity and the increment by kSatVsidsRescaleFactor, an order-preserving positive constant, keeping all scores finite and the heap comparison total.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: called once per conflict.
-    // CEP:COST: constant, plus O(variables) on a rescale.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{decay_grows_increment, rescale_keeps_scores_finite}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Grows the increment by the decay factor and rescales all activities when the increment passes the ceiling.
+    /// CEP:WHY: Design 11.1 S13 (decay) and the f64-overflow discipline: the rescale multiplies every activity and the increment by kSatVsidsRescaleFactor, an order-preserving positive constant, keeping all scores finite and the heap comparison total.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: called once per conflict.
+    /// CEP:COST: constant, plus O(variables) on a rescale.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{decay_grows_increment, rescale_keeps_scores_finite}.
+    /// CEP:SECURITY: none.
     pub fn decay(&self) {
         let factor = kPercentScaleF64 / kSatVsidsDecayPercent as f64;
         self.increment.set(self.increment.get() * factor);
@@ -240,14 +240,14 @@ impl<'a> VsidsHeap<'a> {
         }
     }
 
-    // CEP:WHAT: Inserts a variable into the heap if absent (backtracking reinsertion).
-    // CEP:WHY: Assigned variables leave the heap at pick time; cancel_until unassigns them and the solver reinserts here, restoring the invariant that every unassigned variable is in the heap.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (out-of-range or already-present variables are no-ops, deterministic).
-    // CEP:ASSUMES: the variable is unassigned in solver use.
-    // CEP:COST: O(log n).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::insert_after_backtrack.
-    // CEP:SECURITY: clamped.
+    /// CEP:WHAT: Inserts a variable into the heap if absent (backtracking reinsertion).
+    /// CEP:WHY: Assigned variables leave the heap at pick time; cancel_until unassigns them and the solver reinserts here, restoring the invariant that every unassigned variable is in the heap.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (out-of-range or already-present variables are no-ops, deterministic).
+    /// CEP:ASSUMES: the variable is unassigned in solver use.
+    /// CEP:COST: O(log n).
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::insert_after_backtrack.
+    /// CEP:SECURITY: clamped.
     pub fn insert(&self, variable: u32) {
         let index = variable as usize;
         if index >= self.positions.len() {
@@ -266,14 +266,14 @@ impl<'a> VsidsHeap<'a> {
         self.sift_up(size);
     }
 
-    // CEP:WHAT: Picks the unassigned variable with the highest (activity, index) key, discarding assigned variables from the heap.
-    // CEP:WHY: Design 11.1 S12 and 11.2: the decision primitive; the is_assigned predicate keeps the heap free of the caller's assignment state without this module owning it (no dyn, no coupling).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (None means every variable is assigned).
-    // CEP:ASSUMES: the predicate reflects the caller's current assignment store.
-    // CEP:COST: O(log n) amortized (each assigned top is discarded once per assignment epoch).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, ties_broken_by_index, pick_skips_assigned}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Picks the unassigned variable with the highest (activity, index) key, discarding assigned variables from the heap.
+    /// CEP:WHY: Design 11.1 S12 and 11.2: the decision primitive; the is_assigned predicate keeps the heap free of the caller's assignment state without this module owning it (no dyn, no coupling).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (None means every variable is assigned).
+    /// CEP:ASSUMES: the predicate reflects the caller's current assignment store.
+    /// CEP:COST: O(log n) amortized (each assigned top is discarded once per assignment epoch).
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{bump_raises_activity, ties_broken_by_index, pick_skips_assigned}.
+    /// CEP:SECURITY: none.
     pub fn pick_unassigned(&self, is_assigned: impl Fn(u32) -> bool) -> Option<u32> {
         while self.heap_size.get() > 0 {
             let candidate = self.extract_max()?;
@@ -447,14 +447,14 @@ pub struct PhaseTable<'a> {
 }
 
 impl<'a> PhaseTable<'a> {
-    // CEP:WHAT: Constructs a phase table with every entry unset.
-    // CEP:WHY: Unset entries fall back to the default decision polarity (S14).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns VariableCountInvalid / ArenaFull.
-    // CEP:ASSUMES: 0 < variables <= kMaxSatVariables.
-    // CEP:COST: O(variables) one-time.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::saved_phase_defaults_to_constant.
-    // CEP:SECURITY: count validated before allocation.
+    /// CEP:WHAT: Constructs a phase table with every entry unset.
+    /// CEP:WHY: Unset entries fall back to the default decision polarity (S14).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns VariableCountInvalid / ArenaFull.
+    /// CEP:ASSUMES: 0 < variables <= kMaxSatVariables.
+    /// CEP:COST: O(variables) one-time.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::saved_phase_defaults_to_constant.
+    /// CEP:SECURITY: count validated before allocation.
     pub fn new(arena: &'a Arena, variables: u32) -> Result<PhaseTable<'a>, VsidsError> {
         if variables == 0 || variables > kMaxSatVariables {
             return Err(VsidsError::VariableCountInvalid);
@@ -471,14 +471,14 @@ impl<'a> PhaseTable<'a> {
         Ok(PhaseTable { phases })
     }
 
-    // CEP:WHAT: Returns the saved decision polarity of a variable, or the default when unset.
-    // CEP:WHY: Design 11.1 S14: "Use saved phase (phase saving) or constant phase."
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (clamped to the default for out-of-range variables).
-    // CEP:ASSUMES: variable below the declared count in solver use.
-    // CEP:COST: 1 bounds check + 1 load + 1 compare.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, phase_table_roundtrip}.
-    // CEP:SECURITY: clamped read.
+    /// CEP:WHAT: Returns the saved decision polarity of a variable, or the default when unset.
+    /// CEP:WHY: Design 11.1 S14: "Use saved phase (phase saving) or constant phase."
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (clamped to the default for out-of-range variables).
+    /// CEP:ASSUMES: variable below the declared count in solver use.
+    /// CEP:COST: 1 bounds check + 1 load + 1 compare.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::{saved_phase_defaults_to_constant, phase_table_roundtrip}.
+    /// CEP:SECURITY: clamped read.
     pub fn phase(&self, variable: u32) -> bool {
         let index = variable as usize;
         if index >= self.phases.len() {
@@ -491,14 +491,14 @@ impl<'a> PhaseTable<'a> {
         }
     }
 
-    // CEP:WHAT: Saves the last-assigned polarity of a variable.
-    // CEP:WHY: Design 11.1 S17: "Save polarity on assignment" (MAPT saves at unassignment time, which records the same last-assigned polarity).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (out-of-range variables are clamped no-ops).
-    // CEP:ASSUMES: variable below the declared count in solver use.
-    // CEP:COST: 1 bounds check + 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::phase_table_roundtrip.
-    // CEP:SECURITY: clamped write.
+    /// CEP:WHAT: Saves the last-assigned polarity of a variable.
+    /// CEP:WHY: Design 11.1 S17: "Save polarity on assignment" (MAPT saves at unassignment time, which records the same last-assigned polarity).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (out-of-range variables are clamped no-ops).
+    /// CEP:ASSUMES: variable below the declared count in solver use.
+    /// CEP:COST: 1 bounds check + 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::phase_table_roundtrip.
+    /// CEP:SECURITY: clamped write.
     pub fn save_phase(&self, variable: u32, positive: bool) {
         let index = variable as usize;
         if index >= self.phases.len() {
@@ -511,14 +511,14 @@ impl<'a> PhaseTable<'a> {
         });
     }
 
-    // CEP:WHAT: Clears every saved phase back to unset.
-    // CEP:WHY: Design 11.1 S17: "Reset on restart (configurable)"; the solver calls this only when constructed with phase reset enabled.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: O(variables).
-    // CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::phase_table_roundtrip.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Clears every saved phase back to unset.
+    /// CEP:WHY: Design 11.1 S17: "Reset on restart (configurable)"; the solver calls this only when constructed with phase reset enabled.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: O(variables).
+    /// CEP:EVIDENCE: unit/hot/sat_vsids_test.rs::phase_table_roundtrip.
+    /// CEP:SECURITY: none.
     pub fn reset(&self) {
         for slot in self.phases.iter() {
             slot.set(kPhaseUnset);

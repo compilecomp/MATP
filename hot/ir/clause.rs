@@ -196,26 +196,26 @@ pub enum ClauseError {
 pub struct ClausePtr(u32);
 
 impl ClausePtr {
-    // CEP:WHAT: Returns the raw arena offset for serialization and diagnostics.
-    // CEP:WHY: Cold printers and the future FFI need the numeric identity; construction stays private.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/cold/verifier_test.rs.
-    // CEP:SECURITY: read-only projection.
+    /// CEP:WHAT: Returns the raw arena offset for serialization and diagnostics.
+    /// CEP:WHY: Cold printers and the future FFI need the numeric identity; construction stays private.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/cold/verifier_test.rs.
+    /// CEP:SECURITY: read-only projection.
     pub fn as_u32(&self) -> u32 {
         self.0
     }
 
-    // CEP:WHAT: Rebuilds a handle from a raw arena offset (the active-set and tree payload path).
-    // CEP:WHY: Phase 3 tree payloads pack clause offsets as bare u32 and the loop tests read clauses by offset; the reconstruction is memory-safe for any u32 because every dereference goes through the bounds-checked clause() accessor, and semantic validity is the caller's documented contract (offsets come from this store or as_u32).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: subsequent clause() reads validate the offset and reject garbage loudly.
-    // CEP:ASSUMES: the offset came from as_u32 of a live record.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated}; unit/hot/inference_test.rs::resolution_candidates_retrieved.
-    // CEP:SECURITY: validation deferred to the bounds-checked reader.
+    /// CEP:WHAT: Rebuilds a handle from a raw arena offset (the active-set and tree payload path).
+    /// CEP:WHY: Phase 3 tree payloads pack clause offsets as bare u32 and the loop tests read clauses by offset; the reconstruction is memory-safe for any u32 because every dereference goes through the bounds-checked clause() accessor, and semantic validity is the caller's documented contract (offsets come from this store or as_u32).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: subsequent clause() reads validate the offset and reject garbage loudly.
+    /// CEP:ASSUMES: the offset came from as_u32 of a live record.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated}; unit/hot/inference_test.rs::resolution_candidates_retrieved.
+    /// CEP:SECURITY: validation deferred to the bounds-checked reader.
     pub fn from_u32(offset: u32) -> ClausePtr {
         ClausePtr(offset)
     }
@@ -522,14 +522,14 @@ pub struct ClauseStore<'a> {
 }
 
 impl<'a> ClauseStore<'a> {
-    // CEP:WHAT: Constructs the clause store without an id side table (Phase 1 behavior).
-    // CEP:WHY: Explicit initialization before the hot path with no allocation (records are allocated on demand from the arena); the empty side table means offset_of_id resolves nothing - direct constructions that never walk derivations keep the exact Phase 1 footprint, and the production search space constructs through new_with with the full table.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: arena outlives the store; no caller will resolve clause ids on this store (offset_of_id returns None).
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction; unit/hot/clause_test.rs::{ids_are_monotonic, arena_full_after_exhaustion}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Constructs the clause store without an id side table (Phase 1 behavior).
+    /// CEP:WHY: Explicit initialization before the hot path with no allocation (records are allocated on demand from the arena); the empty side table means offset_of_id resolves nothing - direct constructions that never walk derivations keep the exact Phase 1 footprint, and the production search space constructs through new_with with the full table.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: arena outlives the store; no caller will resolve clause ids on this store (offset_of_id returns None).
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::store_construction; unit/hot/clause_test.rs::{ids_are_monotonic, arena_full_after_exhaustion}.
+    /// CEP:SECURITY: none.
     pub fn new(arena: &'a Arena) -> ClauseStore<'a> {
         ClauseStore {
             arena,
@@ -539,14 +539,14 @@ impl<'a> ClauseStore<'a> {
         }
     }
 
-    // CEP:WHAT: Constructs the clause store with an explicit clause-id side-table capacity.
-    // CEP:WHY: CEP&CC 34.3: every capacity bound must be injectable on the production code path so tests exercise the exhaustion path at small scales; the production search space injects kClauseOffsetTableCapacity so proof reconstruction (design 18.2) and AVATAR ancestry (design 12.2 rule 4) can resolve parent ids.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns OffsetTableFull for zero capacity or when the arena cannot host the table.
-    // CEP:ASSUMES: capacity >= 1; the arena has room for capacity x 4 bytes.
-    // CEP:COST: O(capacity) one-time.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::{side_table_resolves_ids, side_table_capacity_enforced}.
-    // CEP:SECURITY: capacity validated before allocation.
+    /// CEP:WHAT: Constructs the clause store with an explicit clause-id side-table capacity.
+    /// CEP:WHY: CEP&CC 34.3: every capacity bound must be injectable on the production code path so tests exercise the exhaustion path at small scales; the production search space injects kClauseOffsetTableCapacity so proof reconstruction (design 18.2) and AVATAR ancestry (design 12.2 rule 4) can resolve parent ids.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns OffsetTableFull for zero capacity or when the arena cannot host the table.
+    /// CEP:ASSUMES: capacity >= 1; the arena has room for capacity x 4 bytes.
+    /// CEP:COST: O(capacity) one-time.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::{side_table_resolves_ids, side_table_capacity_enforced}.
+    /// CEP:SECURITY: capacity validated before allocation.
     pub fn new_with(arena: &'a Arena, id_capacity: u32) -> Result<ClauseStore<'a>, ClauseError> {
         if id_capacity == 0 {
             return Err(ClauseError::OffsetTableFull);
@@ -568,38 +568,38 @@ impl<'a> ClauseStore<'a> {
         })
     }
 
-    // CEP:WHAT: Returns the number of constructed clauses.
-    // CEP:WHY: Diagnostics and budget accounting.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of constructed clauses.
+    /// CEP:WHY: Diagnostics and budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
+    /// CEP:SECURITY: none.
     pub fn live_clauses(&self) -> u32 {
         self.live_clauses.get()
     }
 
-    // CEP:WHAT: Returns the next unassigned clause ID.
-    // CEP:WHY: Deterministic diagnostics; tests assert monotonicity.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::ids_are_monotonic.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the next unassigned clause ID.
+    /// CEP:WHY: Deterministic diagnostics; tests assert monotonicity.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::ids_are_monotonic.
+    /// CEP:SECURITY: none.
     pub fn next_clause_id(&self) -> ClauseId {
         ClauseId(self.next_id.get())
     }
 
-    // CEP:WHAT: Resolves a clause id to its record offset through the id side table.
-    // CEP:WHY: Proof reconstruction (design 18.2) and AVATAR ancestry collection (design 12.2 rule 4) walk derivations by parent id; the dense side table gives O(1) resolution with no per-record linked list (Spec 14 section 2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None when the store has no side table (Phase 1 construction), the id is outside the assigned range, or the slot is unwritten.
-    // CEP:ASSUMES: ids are dense and monotonic; the store wrote each slot at creation.
-    // CEP:COST: 1 load plus bounds check.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::side_table_resolves_ids.
-    // CEP:SECURITY: bounds-checked; unassigned ids resolve to None, never to a wrong record.
+    /// CEP:WHAT: Resolves a clause id to its record offset through the id side table.
+    /// CEP:WHY: Proof reconstruction (design 18.2) and AVATAR ancestry collection (design 12.2 rule 4) walk derivations by parent id; the dense side table gives O(1) resolution with no per-record linked list (Spec 14 section 2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None when the store has no side table (Phase 1 construction), the id is outside the assigned range, or the slot is unwritten.
+    /// CEP:ASSUMES: ids are dense and monotonic; the store wrote each slot at creation.
+    /// CEP:COST: 1 load plus bounds check.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::side_table_resolves_ids.
+    /// CEP:SECURITY: bounds-checked; unassigned ids resolve to None, never to a wrong record.
     pub fn offset_of_id(&self, id: ClauseId) -> Option<u32> {
         if self.id_offsets.is_empty() {
             return None;
@@ -614,14 +614,14 @@ impl<'a> ClauseStore<'a> {
         Some(offset)
     }
 
-    // CEP:WHAT: Reads the clause record for a clause id through the id side table.
-    // CEP:WHY: The proof-walking entry point (TSTP reconstruction, checker, ancestry); one accessor keeps the resolve-then-read sequence auditable.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns InvalidPointer when the id resolves to nothing and OffsetTableFull never occurs here (resolution failures map to InvalidPointer).
-    // CEP:ASSUMES: see offset_of_id.
-    // CEP:COST: as offset_of_id plus the record read.
-    // CEP:EVIDENCE: unit/cold/tstp_test.rs::proof_walk_resolves_parents.
-    // CEP:SECURITY: bounds-checked read through the same entry point as handle-based access.
+    /// CEP:WHAT: Reads the clause record for a clause id through the id side table.
+    /// CEP:WHY: The proof-walking entry point (TSTP reconstruction, checker, ancestry); one accessor keeps the resolve-then-read sequence auditable.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns InvalidPointer when the id resolves to nothing and OffsetTableFull never occurs here (resolution failures map to InvalidPointer).
+    /// CEP:ASSUMES: see offset_of_id.
+    /// CEP:COST: as offset_of_id plus the record read.
+    /// CEP:EVIDENCE: unit/cold/tstp_test.rs::proof_walk_resolves_parents.
+    /// CEP:SECURITY: bounds-checked read through the same entry point as handle-based access.
     pub fn clause_by_id(&self, id: ClauseId) -> Result<&'a Clause, ClauseError> {
         match self.offset_of_id(id) {
             Some(offset) => self.clause(ClausePtr::from_u32(offset)),
@@ -629,14 +629,14 @@ impl<'a> ClauseStore<'a> {
         }
     }
 
-    // CEP:WHAT: Writes the AVATAR split level (component slot + 1) into a stored record's header.
-    // CEP:WHY: Design 5.3 field split_level (0 = not split) is metadata written once by the AVATAR controller after record creation (the creation path stays Phase 1-stable); the write locates the record through the same bounds-checked reader and mutates one arena word through the arena's array_mut discipline - records are otherwise immutable and this is the single sanctioned metadata mutator (Spec 12 section 4).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns InvalidPointer for unreadable or misaligned offsets and OffsetTableFull never occurs here.
-    // CEP:ASSUMES: the record exists and has not been read as immutable by concurrent callers (single-threaded store); level <= u16::MAX.
-    // CEP:COST: bounds check plus one store.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::split_derivations_cite_original.
-    // CEP:SECURITY: bounds-checked; the write touches exactly the 2-byte split_level field inside the record header.
+    /// CEP:WHAT: Writes the AVATAR split level (component slot + 1) into a stored record's header.
+    /// CEP:WHY: Design 5.3 field split_level (0 = not split) is metadata written once by the AVATAR controller after record creation (the creation path stays Phase 1-stable); the write locates the record through the same bounds-checked reader and mutates one arena word through the arena's array_mut discipline - records are otherwise immutable and this is the single sanctioned metadata mutator (Spec 12 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns InvalidPointer for unreadable or misaligned offsets and OffsetTableFull never occurs here.
+    /// CEP:ASSUMES: the record exists and has not been read as immutable by concurrent callers (single-threaded store); level <= u16::MAX.
+    /// CEP:COST: bounds check plus one store.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::split_derivations_cite_original.
+    /// CEP:SECURITY: bounds-checked; the write touches exactly the 2-byte split_level field inside the record header.
     pub fn set_split_level(&self, ptr: ClausePtr, level: u16) -> Result<(), ClauseError> {
         let offset = ptr.as_u32();
         let end = offset
@@ -651,14 +651,14 @@ impl<'a> ClauseStore<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Constructs a clause: validates bounds, sorts literals canonically, computes weight, allocates, assigns the next ID.
-    // CEP:WHY: Design 5.3: every field invariant (canonical literal order, cached weight, monotonic ID, bounded count) is established here so downstream consumers never re-validate (CEP&CC Law 3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TooManyLiterals beyond the literal bound, ClauseBudgetExceeded past kMaxClauses, WeightOverflow on weight overflow, ArenaFull when the arena is exhausted, TooManyParents for bad derivations, InvalidPointer for unreadable atoms.
-    // CEP:ASSUMES: literal atoms were interned by the given term store (weight reads demand readable terms).
-    // CEP:COST: O(n^2) worst-case canonical insertion sort (n <= kMaxClauseLiterals = 512, typical n <= 8) plus one arena allocation; measured in bench CEP-BENCH-0003.
-    // CEP:EVIDENCE: bench CEP-BENCH-0003; unit/hot/clause_test.rs (canonical order, weight, monotonic ids, overflow layout).
-    // CEP:SECURITY: literal count, ID budget, and weight sum are all explicitly bounded.
+    /// CEP:WHAT: Constructs a clause: validates bounds, sorts literals canonically, computes weight, allocates, assigns the next ID.
+    /// CEP:WHY: Design 5.3: every field invariant (canonical literal order, cached weight, monotonic ID, bounded count) is established here so downstream consumers never re-validate (CEP&CC Law 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TooManyLiterals beyond the literal bound, ClauseBudgetExceeded past kMaxClauses, WeightOverflow on weight overflow, ArenaFull when the arena is exhausted, TooManyParents for bad derivations, InvalidPointer for unreadable atoms.
+    /// CEP:ASSUMES: literal atoms were interned by the given term store (weight reads demand readable terms).
+    /// CEP:COST: O(n^2) worst-case canonical insertion sort (n <= kMaxClauseLiterals = 512, typical n <= 8) plus one arena allocation; measured in bench CEP-BENCH-0003.
+    /// CEP:EVIDENCE: bench CEP-BENCH-0003; unit/hot/clause_test.rs (canonical order, weight, monotonic ids, overflow layout).
+    /// CEP:SECURITY: literal count, ID budget, and weight sum are all explicitly bounded.
     pub fn new_clause(
         &self,
         terms: &TermStore,
@@ -760,14 +760,14 @@ impl<'a> ClauseStore<'a> {
         Ok(ClausePtr(header_range.start))
     }
 
-    // CEP:WHAT: Returns the clause header at a handle.
-    // CEP:WHY: Single bounds-checked entry point for clause reads.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidPointer when the offset is unreadable, misaligned, or truncated.
-    // CEP:ASSUMES: ptr was produced by this store.
-    // CEP:COST: 3 compares + slice construction.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::header_readback; fuzz coverage in sat_fuzz for store hygiene.
-    // CEP:SECURITY: bounds and alignment checks retained in release.
+    /// CEP:WHAT: Returns the clause header at a handle.
+    /// CEP:WHY: Single bounds-checked entry point for clause reads.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidPointer when the offset is unreadable, misaligned, or truncated.
+    /// CEP:ASSUMES: ptr was produced by this store.
+    /// CEP:COST: 3 compares + slice construction.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::header_readback; fuzz coverage in sat_fuzz for store hygiene.
+    /// CEP:SECURITY: bounds and alignment checks retained in release.
     pub fn clause(&self, ptr: ClausePtr) -> Result<&'a Clause, ClauseError> {
         let offset = ptr.0;
         let clause_size = core::mem::size_of::<Clause>() as u32;
@@ -788,14 +788,14 @@ impl<'a> ClauseStore<'a> {
         Ok(&slice[0])
     }
 
-    // CEP:WHAT: Returns the i-th literal of a clause.
-    // CEP:WHY: Inference generation iterates literals; the accessor hides the inline/overflow split (design 5.3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidPointer for out-of-range indices or unreadable overflow storage.
-    // CEP:ASSUMES: the clause header is readable.
-    // CEP:COST: 1 compare + 1 load (inline) or slice construction (overflow).
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::inline_and_overflow_layout.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Returns the i-th literal of a clause.
+    /// CEP:WHY: Inference generation iterates literals; the accessor hides the inline/overflow split (design 5.3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidPointer for out-of-range indices or unreadable overflow storage.
+    /// CEP:ASSUMES: the clause header is readable.
+    /// CEP:COST: 1 compare + 1 load (inline) or slice construction (overflow).
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::inline_and_overflow_layout.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn literal(&self, clause: &Clause, index: u16) -> Result<Literal, ClauseError> {
         if index >= clause.literal_count {
             return Err(ClauseError::InvalidPointer);

@@ -307,14 +307,14 @@ pub struct DiscriminationTree<'a> {
 }
 
 impl<'a> DiscriminationTree<'a> {
-    // CEP:WHAT: Constructs an empty discrimination tree with the root node allocated.
-    // CEP:WHY: The root must exist before any insert walks it; both arrays are pre-allocated at their named caps so the hot path never allocates and cap enforcement is a counter check (design 8.1 initialization discipline).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaFull when either array does not fit.
-    // CEP:ASSUMES: arena has room for kDiscriminationTreeNodes nodes and kDiscriminationTreeEntries entries (about 104 MiB at the maximum caps; tests and benches size arenas accordingly).
-    // CEP:COST: one-time pre-allocation.
-    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::exact_retrieval.
-    // CEP:SECURITY: fixed capacity, no growth path.
+    /// CEP:WHAT: Constructs an empty discrimination tree with the root node allocated.
+    /// CEP:WHY: The root must exist before any insert walks it; both arrays are pre-allocated at their named caps so the hot path never allocates and cap enforcement is a counter check (design 8.1 initialization discipline).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaFull when either array does not fit.
+    /// CEP:ASSUMES: arena has room for kDiscriminationTreeNodes nodes and kDiscriminationTreeEntries entries (about 104 MiB at the maximum caps; tests and benches size arenas accordingly).
+    /// CEP:COST: one-time pre-allocation.
+    /// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::exact_retrieval.
+    /// CEP:SECURITY: fixed capacity, no growth path.
     pub fn new(arena: &'a Arena) -> Result<DiscriminationTree<'a>, IndexError> {
         DiscriminationTree::new_with_caps(
             arena,
@@ -323,14 +323,14 @@ impl<'a> DiscriminationTree<'a> {
         )
     }
 
-    // CEP:WHAT: Constructs a tree with explicit node and entry caps (the production constructor delegates with the named constants).
-    // CEP:WHY: Security tests must exercise cap enforcement at small, fast scales instead of allocating the full production arrays; the explicit-cap constructor keeps the enforcement code identical for both paths (CEP&CC 34.3: test the mechanism, not a copy of it).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaFull on exhaustion; caps below one node (the root) are rejected as ArenaFull.
-    // CEP:ASSUMES: caps >= 1; the arena holds cap x 20 plus cap x 16 bytes.
-    // CEP:COST: one-time allocation proportional to the caps.
-    // CEP:EVIDENCE: security/phase2_bounds_test.rs::{discrimination_tree_node_cap_enforced, discrimination_tree_entry_budget_enforced}; unit/hot/discrimination_tree_test.rs::exact_retrieval.
-    // CEP:SECURITY: fixed capacity, no growth path.
+    /// CEP:WHAT: Constructs a tree with explicit node and entry caps (the production constructor delegates with the named constants).
+    /// CEP:WHY: Security tests must exercise cap enforcement at small, fast scales instead of allocating the full production arrays; the explicit-cap constructor keeps the enforcement code identical for both paths (CEP&CC 34.3: test the mechanism, not a copy of it).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaFull on exhaustion; caps below one node (the root) are rejected as ArenaFull.
+    /// CEP:ASSUMES: caps >= 1; the arena holds cap x 20 plus cap x 16 bytes.
+    /// CEP:COST: one-time allocation proportional to the caps.
+    /// CEP:EVIDENCE: security/phase2_bounds_test.rs::{discrimination_tree_node_cap_enforced, discrimination_tree_entry_budget_enforced}; unit/hot/discrimination_tree_test.rs::exact_retrieval.
+    /// CEP:SECURITY: fixed capacity, no growth path.
     pub fn new_with_caps(
         arena: &'a Arena,
         node_cap: u32,
@@ -366,38 +366,38 @@ impl<'a> DiscriminationTree<'a> {
         })
     }
 
-    // CEP:WHAT: Returns the number of allocated nodes.
-    // CEP:WHY: Diagnostics and cap reporting.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::shared_prefixes_share_nodes.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of allocated nodes.
+    /// CEP:WHY: Diagnostics and cap reporting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::shared_prefixes_share_nodes.
+    /// CEP:SECURITY: none.
     pub fn node_count(&self) -> u32 {
         self.node_count.get()
     }
 
-    // CEP:WHAT: Returns the number of allocated payload entries.
-    // CEP:WHY: Diagnostics and budget accounting.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::exact_retrieval.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of allocated payload entries.
+    /// CEP:WHY: Diagnostics and budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::exact_retrieval.
+    /// CEP:SECURITY: none.
     pub fn entry_count(&self) -> u32 {
         self.entry_count.get()
     }
 
-    // CEP:WHAT: Inserts a term with a payload: flattens the term's preorder sequence, walks or builds the edge path, and prepends the payload at the final node.
-    // CEP:WHY: Design 9.2 insert: "Walk the tree, creating nodes as needed. O(depth)."; the payload list at the path end is what retrieval returns.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TermTooLarge past kIndexTermCapacity, TreeFull / EntryBudgetExceeded at the caps, InvalidTerm for unreadable terms.
-    // CEP:ASSUMES: the term was interned by the caller's store.
-    // CEP:COST: O(term size) with one node allocation per new edge; measured in bench CEP-BENCH-0008.
-    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{exact_retrieval, shared_prefixes_share_nodes, multiple_payloads_at_one_leaf}; bench CEP-BENCH-0008.
-    // CEP:SECURITY: caps enforced before allocation.
+    /// CEP:WHAT: Inserts a term with a payload: flattens the term's preorder sequence, walks or builds the edge path, and prepends the payload at the final node.
+    /// CEP:WHY: Design 9.2 insert: "Walk the tree, creating nodes as needed. O(depth)."; the payload list at the path end is what retrieval returns.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TermTooLarge past kIndexTermCapacity, TreeFull / EntryBudgetExceeded at the caps, InvalidTerm for unreadable terms.
+    /// CEP:ASSUMES: the term was interned by the caller's store.
+    /// CEP:COST: O(term size) with one node allocation per new edge; measured in bench CEP-BENCH-0008.
+    /// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{exact_retrieval, shared_prefixes_share_nodes, multiple_payloads_at_one_leaf}; bench CEP-BENCH-0008.
+    /// CEP:SECURITY: caps enforced before allocation.
     pub fn insert(
         &self,
         terms: &TermStore<'_>,
@@ -423,14 +423,14 @@ impl<'a> DiscriminationTree<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Deletes a payload from a term's leaf list.
-    // CEP:WHY: Design 9.2 delete: "Remove clause references from leaf nodes. O(depth)."; index maintenance when clauses leave the active set (design 9.5); entries are unlinked, not freed (arena reclamation is Phase 3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidTerm for unreadable terms, TermTooLarge past the capacity, and PayloadMissing when the walk cannot reach a leaf or the payload is absent there.
-    // CEP:ASSUMES: the term was inserted with this payload.
-    // CEP:COST: O(term size) walk plus O(list length) unlink.
-    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{delete_removes_payload, delete_removes_payload}.
-    // CEP:SECURITY: bounds-checked walk.
+    /// CEP:WHAT: Deletes a payload from a term's leaf list.
+    /// CEP:WHY: Design 9.2 delete: "Remove clause references from leaf nodes. O(depth)."; index maintenance when clauses leave the active set (design 9.5); entries are unlinked, not freed (arena reclamation is Phase 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidTerm for unreadable terms, TermTooLarge past the capacity, and PayloadMissing when the walk cannot reach a leaf or the payload is absent there.
+    /// CEP:ASSUMES: the term was inserted with this payload.
+    /// CEP:COST: O(term size) walk plus O(list length) unlink.
+    /// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{delete_removes_payload, delete_removes_payload}.
+    /// CEP:SECURITY: bounds-checked walk.
     pub fn delete(
         &self,
         terms: &TermStore<'_>,
@@ -470,14 +470,14 @@ impl<'a> DiscriminationTree<'a> {
         }
     }
 
-    // CEP:WHAT: Retrieves the payloads of every stored term whose flat sequence matches the query under the design 9.2 rule.
-    // CEP:WHY: Design 9.2 retrieve: "Walk the tree, matching symbols. Variables in the query match any symbol."; stored variable edges match any query symbol symmetrically; paths must end together, so the walk consumes exactly one edge per query symbol and collects at the final node.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns BufferTooSmall when the result set exceeds the buffer, TermTooLarge past the capacity, InvalidTerm for unreadable queries.
-    // CEP:ASSUMES: the buffer is caller-owned; retrieved order is the deterministic child-list order (most recently inserted matching path first).
-    // CEP:COST: O(query size x branching factor) worst case; measured in bench CEP-BENCH-0008.
-    // CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{exact_retrieval, query_variables_match_any_symbol, variable_edges_match_any_query_symbol, length_rule_enforced}; property/discrimination_property_test.rs::retrieval_matches_naive_scan.
-    // CEP:SECURITY: bounds-checked traversal; output bounded by the caller buffer.
+    /// CEP:WHAT: Retrieves the payloads of every stored term whose flat sequence matches the query under the design 9.2 rule.
+    /// CEP:WHY: Design 9.2 retrieve: "Walk the tree, matching symbols. Variables in the query match any symbol."; stored variable edges match any query symbol symmetrically; paths must end together, so the walk consumes exactly one edge per query symbol and collects at the final node.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns BufferTooSmall when the result set exceeds the buffer, TermTooLarge past the capacity, InvalidTerm for unreadable queries.
+    /// CEP:ASSUMES: the buffer is caller-owned; retrieved order is the deterministic child-list order (most recently inserted matching path first).
+    /// CEP:COST: O(query size x branching factor) worst case; measured in bench CEP-BENCH-0008.
+    /// CEP:EVIDENCE: unit/hot/discrimination_tree_test.rs::{exact_retrieval, query_variables_match_any_symbol, variable_edges_match_any_query_symbol, length_rule_enforced}; property/discrimination_property_test.rs::retrieval_matches_naive_scan.
+    /// CEP:SECURITY: bounds-checked traversal; output bounded by the caller buffer.
     pub fn retrieve(
         &self,
         terms: &TermStore<'_>,

@@ -20,14 +20,14 @@ use crate::ir::term::{TermPtr, TermStore, TermTag};
 use crate::unification::substitution::{Substitution, SubstitutionError};
 use mapt_config::limits::{kMaxUnificationDepth, kMaxVariablesPerClause};
 
-// CEP:WHAT: Composes two substitutions sigma and tau: the result maps x to hat-sigma(hat-tau(x)) on the union of the domains, materialized as an arena record.
-// CEP:WHY: Design 5.5 requires explicit composition allocating into the arena, and Formal Spec 02 section 3 fixes the semantics (apply tau first, then sigma); composition is what makes MGU chains from nested inferences shareable through derivation steps.
-// CEP:STATUS: complete
-// CEP:FAILURE: Propagates SubstitutionError from application (DepthExceeded on cyclic inputs, InvalidPointer, ArenaFull when the record does not fit); a cyclic input substitution is caller misuse and errors loudly rather than looping.
-// CEP:ASSUMES: both substitutions are over the same variable namespace and the same term store; identity mappings (x -> x) are dropped from the record per Spec 02 section 1.
-// CEP:COST: O(bound variables) with one or two application passes per composed entry; two arena allocations for the record.
-// CEP:EVIDENCE: unit/hot/unify_test.rs::{compose_union_of_domains, compose_drops_identity}.
-// CEP:SECURITY: binding count bounded by kMaxVariablesPerClause; record writes bounds-checked.
+/// CEP:WHAT: Composes two substitutions sigma and tau: the result maps x to hat-sigma(hat-tau(x)) on the union of the domains, materialized as an arena record.
+/// CEP:WHY: Design 5.5 requires explicit composition allocating into the arena, and Formal Spec 02 section 3 fixes the semantics (apply tau first, then sigma); composition is what makes MGU chains from nested inferences shareable through derivation steps.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Propagates SubstitutionError from application (DepthExceeded on cyclic inputs, InvalidPointer, ArenaFull when the record does not fit); a cyclic input substitution is caller misuse and errors loudly rather than looping.
+/// CEP:ASSUMES: both substitutions are over the same variable namespace and the same term store; identity mappings (x -> x) are dropped from the record per Spec 02 section 1.
+/// CEP:COST: O(bound variables) with one or two application passes per composed entry; two arena allocations for the record.
+/// CEP:EVIDENCE: unit/hot/unify_test.rs::{compose_union_of_domains, compose_drops_identity}.
+/// CEP:SECURITY: binding count bounded by kMaxVariablesPerClause; record writes bounds-checked.
 pub fn compose(
     sigma: &Substitution<'_>,
     tau: &Substitution<'_>,
@@ -75,14 +75,14 @@ pub fn compose(
 const kComposedPairBound: u32 = kMaxVariablesPerClause;
 const _: () = assert!(kComposedPairBound == kMaxVariablesPerClause);
 
-// CEP:WHAT: Unifies two terms: extends the substitution with an MGU of left and right, or returns false with all of this call's bindings undone.
-// CEP:WHY: Design 8.2 and Phase 2 build order: the MGU engine behind resolution, superposition, and factoring; the entry point records the trail depth so failure is fully backtrackable (Spec 02 section 4) and success leaves the MGU in place for materialization into derivation steps (Spec 02 section 5d).
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(false) on clash, occurs-check failure, or arity/symbol mismatch (legitimate unification outcomes); SubstitutionError on depth, bounds, or structural failures; on Ok(false) every binding made by this call is undone.
-// CEP:ASSUMES: see file header; the caller observes the entry trail depth is preserved on failure.
-// CEP:COST: O(|s| + |t|) expected; one bind per newly touched variable; measured in bench CEP-BENCH-0006.
-// CEP:EVIDENCE: unit/hot/unify_test.rs::{unify_ground_identical, unify_one_binding, occurs_check_rejects_cycle, clash_returns_false, failure_unwinds_trail}; property/unify_property_test.rs::mgu_is_unifier_and_idempotent.
-// CEP:SECURITY: dereference chains and recursion are bounded by kMaxUnificationDepth.
+/// CEP:WHAT: Unifies two terms: extends the substitution with an MGU of left and right, or returns false with all of this call's bindings undone.
+/// CEP:WHY: Design 8.2 and Phase 2 build order: the MGU engine behind resolution, superposition, and factoring; the entry point records the trail depth so failure is fully backtrackable (Spec 02 section 4) and success leaves the MGU in place for materialization into derivation steps (Spec 02 section 5d).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(false) on clash, occurs-check failure, or arity/symbol mismatch (legitimate unification outcomes); SubstitutionError on depth, bounds, or structural failures; on Ok(false) every binding made by this call is undone.
+/// CEP:ASSUMES: see file header; the caller observes the entry trail depth is preserved on failure.
+/// CEP:COST: O(|s| + |t|) expected; one bind per newly touched variable; measured in bench CEP-BENCH-0006.
+/// CEP:EVIDENCE: unit/hot/unify_test.rs::{unify_ground_identical, unify_one_binding, occurs_check_rejects_cycle, clash_returns_false, failure_unwinds_trail}; property/unify_property_test.rs::mgu_is_unifier_and_idempotent.
+/// CEP:SECURITY: dereference chains and recursion are bounded by kMaxUnificationDepth.
 pub fn unify(
     terms: &TermStore<'_>,
     substitution: &Substitution<'_>,
@@ -106,14 +106,14 @@ pub fn unify(
     }
 }
 
-// CEP:WHAT: Matches pattern onto subject: extends the substitution with a matcher, or returns false with this call's bindings undone.
-// CEP:WHY: Design 8.2 and Phase 2 build order: matching drives demodulation and subsumption (one-directional, pattern variables only, no occurs check per Spec 02 section 5); the final application witness verifies hat-sigma(pattern) = subject exactly, which keeps matching sound even when pattern and subject share the variable namespace.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(false) on structural mismatch, on binding conflicts, or when the witness application shows the bindings do not reproduce the subject (including the cycle case, converted from DepthExceeded to a plain failure); SubstitutionError on genuine structural failures; failure undoes this call's bindings.
-// CEP:ASSUMES: see file header; the subject is treated as ground with respect to the substitution.
-// CEP:COST: O(|p|) matching plus one O(|p|) application witness on success; measured in bench CEP-BENCH-0006.
-// CEP:EVIDENCE: unit/hot/unify_test.rs::{match_ground_pattern, match_binds_pattern_variables, match_rejects_subject_variables, match_witness_rejects_namespace_overlap}; property/unify_property_test.rs::matcher_reproduces_subject.
-// CEP:SECURITY: witness application is depth-bounded; bindings bounded by the substitution engine.
+/// CEP:WHAT: Matches pattern onto subject: extends the substitution with a matcher, or returns false with this call's bindings undone.
+/// CEP:WHY: Design 8.2 and Phase 2 build order: matching drives demodulation and subsumption (one-directional, pattern variables only, no occurs check per Spec 02 section 5); the final application witness verifies hat-sigma(pattern) = subject exactly, which keeps matching sound even when pattern and subject share the variable namespace.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(false) on structural mismatch, on binding conflicts, or when the witness application shows the bindings do not reproduce the subject (including the cycle case, converted from DepthExceeded to a plain failure); SubstitutionError on genuine structural failures; failure undoes this call's bindings.
+/// CEP:ASSUMES: see file header; the subject is treated as ground with respect to the substitution.
+/// CEP:COST: O(|p|) matching plus one O(|p|) application witness on success; measured in bench CEP-BENCH-0006.
+/// CEP:EVIDENCE: unit/hot/unify_test.rs::{match_ground_pattern, match_binds_pattern_variables, match_rejects_subject_variables, match_witness_rejects_namespace_overlap}; property/unify_property_test.rs::matcher_reproduces_subject.
+/// CEP:SECURITY: witness application is depth-bounded; bindings bounded by the substitution engine.
 pub fn match_terms(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,

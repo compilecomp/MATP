@@ -11,9 +11,13 @@
 // CEP:SECURITY: every budget is a named constant or an injected bound; all loops are bounded.
 // CEP:HPC-DETERMINISM: deterministic end to end (verified by the two-identical-solves test in the fuzz suite); the injected time budget is the only nondeterminism source and returns GaveUp(Timeout), never a different answer.
 
+/// The active set: processed clauses with atom and rule indexes plus the feature-vector prefilter.
 pub mod active;
+/// The bounded inference generator: enumerates conclusions of the selected given clause with a deferrable cursor.
 pub mod generate;
+/// The given-clause saturation loop: budget checks, selection, generation, subsumption, and the AVATAR and conjecture hooks.
 pub mod given_clause;
+/// The passive set: an age/weight ratio heap with weight and age strategies.
 pub mod passive;
 
 pub use active::{ActiveError, ActiveSet, ActiveSlot};

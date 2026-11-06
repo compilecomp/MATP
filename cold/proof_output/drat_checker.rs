@@ -192,14 +192,14 @@ pub struct CheckOptions {
 }
 
 impl CheckOptions {
-    // CEP:WHAT: Production budgets from the named constants.
-    // CEP:WHY: One named place documents the defaults (CEP&CC 11.3); require_refutation defaults to false so satisfiable-run traces and hypothesis-scoped verifications keep their per-step semantics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/drat_checker_test.rs::refutation_proofs_verify; property/drat_property_test.rs::proofs_of_random_solves_verify.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Production budgets from the named constants.
+    /// CEP:WHY: One named place documents the defaults (CEP&CC 11.3); require_refutation defaults to false so satisfiable-run traces and hypothesis-scoped verifications keep their per-step semantics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/cold/drat_checker_test.rs::refutation_proofs_verify; property/drat_property_test.rs::proofs_of_random_solves_verify.
+    /// CEP:SECURITY: none.
     pub fn new() -> CheckOptions {
         CheckOptions {
             step_budget: 1_000_000,

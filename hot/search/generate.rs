@@ -229,14 +229,14 @@ impl Default for InferenceBuffer {
 }
 
 impl InferenceBuffer {
-    // CEP:WHAT: Constructs an empty buffer.
-    // CEP:WHY: Explicit initialization with filler literals (the count governs reads).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::resolution_fires.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Constructs an empty buffer.
+    /// CEP:WHY: Explicit initialization with filler literals (the count governs reads).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::resolution_fires.
+    /// CEP:SECURITY: none.
     pub fn new() -> InferenceBuffer {
         InferenceBuffer {
             clauses: [GeneratedClause {
@@ -359,14 +359,14 @@ impl Default for GenerationCursor {
 }
 
 impl GenerationCursor {
-    // CEP:WHAT: Constructs a fresh cursor at the first phase.
-    // CEP:WHY: The search creates one per given clause.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::{resolution_fires, generation_is_deterministic}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Constructs a fresh cursor at the first phase.
+    /// CEP:WHY: The search creates one per given clause.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{resolution_fires, generation_is_deterministic}.
+    /// CEP:SECURITY: none.
     pub fn new() -> GenerationCursor {
         GenerationCursor {
             phase: GenerationPhase::Factoring,
@@ -383,27 +383,27 @@ impl GenerationCursor {
         }
     }
 
-    // CEP:WHAT: Returns whether the given clause's generation is finished.
-    // CEP:WHY: The search checks between iterations.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::inference_deferral_resumes.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns whether the given clause's generation is finished.
+    /// CEP:WHY: The search checks between iterations.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::inference_deferral_resumes.
+    /// CEP:SECURITY: none.
     pub fn is_done(&self) -> bool {
         self.phase == GenerationPhase::Done
     }
 }
 
-// CEP:WHAT: Advances a subterm path to the next DFS position of an atom (pre-order, child-index order), skipping the empty root path.
-// CEP:WHY: The superposition phases enumerate every non-root position of the into atom; the odometer walk (descend to child 0 when possible, else increment the last component, else backtrack) is the standard deterministic enumeration, and variables are kept (the rules reject them cheaply) so the walk stays structure-blind and resumable.
-// CEP:STATUS: complete
-// CEP:FAILURE: returns false when no further position exists.
-// CEP:ASSUMES: path[..path_len] addresses a valid position or is the root position (path_len == 0).
-// CEP:COST: O(path length) per step.
-// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{superposition_into_fires, superposition_from_fires}.
-// CEP:SECURITY: depth-bounded by kMaxPathLength.
+/// CEP:WHAT: Advances a subterm path to the next DFS position of an atom (pre-order, child-index order), skipping the empty root path.
+/// CEP:WHY: The superposition phases enumerate every non-root position of the into atom; the odometer walk (descend to child 0 when possible, else increment the last component, else backtrack) is the standard deterministic enumeration, and variables are kept (the rules reject them cheaply) so the walk stays structure-blind and resumable.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: returns false when no further position exists.
+/// CEP:ASSUMES: path[..path_len] addresses a valid position or is the root position (path_len == 0).
+/// CEP:COST: O(path length) per step.
+/// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{superposition_into_fires, superposition_from_fires}.
+/// CEP:SECURITY: depth-bounded by kMaxPathLength.
 pub fn advance_path(
     terms: &TermStore<'_>,
     atom: crate::ir::term::TermPtr,
@@ -561,14 +561,14 @@ pub(crate) struct ScanInputs<'a> {
     pub(crate) workspace: &'a mut GenerationWorkspace,
 }
 
-// CEP:WHAT: Runs one bounded generation step for the given clause and fills the buffer.
-// CEP:WHY: The composition point of design 10.3: phases advance in order, each rule attempt is side-condition-checked inside the rule, conclusions append to the buffer with their derivation labels, and every bound defers or drops with a counter; the search calls this until Complete.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates SearchError on structural failures; never panics.
-// CEP:ASSUMES: given literals carry computed flags; the active set is consistent; buffer and cursor belong to the same given clause.
-// CEP:COST: see file header; measured in bench CEP-BENCH-0010.
-// CEP:EVIDENCE: unit/hot/given_clause_test.rs; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force}; bench CEP-BENCH-0010.
-// CEP:SECURITY: all loops bounded.
+/// CEP:WHAT: Runs one bounded generation step for the given clause and fills the buffer.
+/// CEP:WHY: The composition point of design 10.3: phases advance in order, each rule attempt is side-condition-checked inside the rule, conclusions append to the buffer with their derivation labels, and every bound defers or drops with a counter; the search calls this until Complete.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates SearchError on structural failures; never panics.
+/// CEP:ASSUMES: given literals carry computed flags; the active set is consistent; buffer and cursor belong to the same given clause.
+/// CEP:COST: see file header; measured in bench CEP-BENCH-0010.
+/// CEP:EVIDENCE: unit/hot/given_clause_test.rs; property/given_clause_property_test.rs::{loop_agrees_with_sat_solver, loop_agrees_with_brute_force}; bench CEP-BENCH-0010.
+/// CEP:SECURITY: all loops bounded.
 pub fn generate_step(
     context: &InferenceContext<'_>,
     store: &ClauseStore<'_>,

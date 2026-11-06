@@ -96,14 +96,14 @@ pub struct SatTrail<'a> {
 }
 
 impl<'a> SatTrail<'a> {
-    // CEP:WHAT: Allocates and initializes the trail for a declared variable count.
-    // CEP:WHY: Level 0 (root) must exist before any assignment so propagation at level 0 is representable; arrays are cleared for deterministic state; sizing by the variable count is sound because a variable is assigned at most once between backtracks (design 11.1 S5), so the trail never holds more entries than variables and levels never outnumber assignments plus one.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns NotInitialized when arena allocation fails or the variable count is zero or above kSatTrailCapacity.
-    // CEP:ASSUMES: arena has room for both arrays.
-    // CEP:COST: O(variables) one-time clear.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::initial_state; property/bcp_property_test.rs exercises many cores in one process.
-    // CEP:SECURITY: cleared arrays, no uninitialized reads; capacity bounded by the declared count.
+    /// CEP:WHAT: Allocates and initializes the trail for a declared variable count.
+    /// CEP:WHY: Level 0 (root) must exist before any assignment so propagation at level 0 is representable; arrays are cleared for deterministic state; sizing by the variable count is sound because a variable is assigned at most once between backtracks (design 11.1 S5), so the trail never holds more entries than variables and levels never outnumber assignments plus one.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns NotInitialized when arena allocation fails or the variable count is zero or above kSatTrailCapacity.
+    /// CEP:ASSUMES: arena has room for both arrays.
+    /// CEP:COST: O(variables) one-time clear.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::initial_state; property/bcp_property_test.rs exercises many cores in one process.
+    /// CEP:SECURITY: cleared arrays, no uninitialized reads; capacity bounded by the declared count.
     pub fn new(arena: &'a Arena, variable_count: u32) -> Result<SatTrail<'a>, SatTrailError> {
         if variable_count == 0 || variable_count > kSatTrailCapacity {
             return Err(SatTrailError::NotInitialized);
@@ -135,14 +135,14 @@ impl<'a> SatTrail<'a> {
         })
     }
 
-    // CEP:WHAT: Appends an assignment at the current level.
-    // CEP:WHY: BCP enqueues forced literals; decisions are enqueued through push_decision.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TrailFull at capacity.
-    // CEP:ASSUMES: the literal's variable is unassigned (caller discipline, property-tested).
-    // CEP:COST: 1 compare + 2 stores.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::push_and_read_back.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Appends an assignment at the current level.
+    /// CEP:WHY: BCP enqueues forced literals; decisions are enqueued through push_decision.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TrailFull at capacity.
+    /// CEP:ASSUMES: the literal's variable is unassigned (caller discipline, property-tested).
+    /// CEP:COST: 1 compare + 2 stores.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::push_and_read_back.
+    /// CEP:SECURITY: bounds-checked.
     pub fn push_assignment(&self, literal: SatLiteral) -> Result<(), SatTrailError> {
         let length = self.length.get();
         if length >= self.literals.len() as u32 {
@@ -153,14 +153,14 @@ impl<'a> SatTrail<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Opens a new decision level and appends the decision literal.
-    // CEP:WHY: Level markers are the rewind points for non-chronological backtracking (design 11.1 S22 uses them in Phase 2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TooManyLevels at the level bound and TrailFull at capacity.
-    // CEP:ASSUMES: as push_assignment.
-    // CEP:COST: 2 compares + 4 stores.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Opens a new decision level and appends the decision literal.
+    /// CEP:WHY: Level markers are the rewind points for non-chronological backtracking (design 11.1 S22 uses them in Phase 2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TooManyLevels at the level bound and TrailFull at capacity.
+    /// CEP:ASSUMES: as push_assignment.
+    /// CEP:COST: 2 compares + 4 stores.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
+    /// CEP:SECURITY: bounds-checked.
     pub fn push_decision(&self, literal: SatLiteral) -> Result<(), SatTrailError> {
         let levels = self.level_count.get();
         if levels >= self.level_starts.len() as u32 {
@@ -177,14 +177,14 @@ impl<'a> SatTrail<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the entry at an index.
-    // CEP:WHY: BCP reads the queue; conflict analysis (Phase 2) walks the stack.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns None for out-of-range indices (BCP treats None as queue end).
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 compare + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::push_and_read_back.
-    // CEP:SECURITY: bounds check retained in release.
+    /// CEP:WHAT: Returns the entry at an index.
+    /// CEP:WHY: BCP reads the queue; conflict analysis (Phase 2) walks the stack.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns None for out-of-range indices (BCP treats None as queue end).
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 compare + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::push_and_read_back.
+    /// CEP:SECURITY: bounds check retained in release.
     pub fn literal_at(&self, index: u32) -> Option<SatLiteral> {
         if index >= self.length.get() {
             return None;
@@ -194,74 +194,74 @@ impl<'a> SatTrail<'a> {
         ))
     }
 
-    // CEP:WHAT: Returns the current stack length.
-    // CEP:WHY: Queue-end detection and backtracking bookkeeping.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the current stack length.
+    /// CEP:WHY: Queue-end detection and backtracking bookkeeping.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs.
+    /// CEP:SECURITY: none.
     pub fn len(&self) -> u32 {
         self.length.get()
     }
 
-    // CEP:WHAT: Returns true when the trail holds no assignments.
-    // CEP:WHY: Complements len() for empty-state checks; clippy requires the pair.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 compare.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::initial_state.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when the trail holds no assignments.
+    /// CEP:WHY: Complements len() for empty-state checks; clippy requires the pair.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 compare.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::initial_state.
+    /// CEP:SECURITY: none.
     pub fn is_empty(&self) -> bool {
         self.length.get() == 0
     }
 
-    // CEP:WHAT: Returns the current decision level.
-    // CEP:WHY: Level-relative operations and diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: at least the root level exists.
-    // CEP:COST: 1 load + 1 subtract.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the current decision level.
+    /// CEP:WHY: Level-relative operations and diagnostics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: at least the root level exists.
+    /// CEP:COST: 1 load + 1 subtract.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
+    /// CEP:SECURITY: none.
     pub fn level(&self) -> u32 {
         self.level_count.get() - 1
     }
 
-    // CEP:WHAT: Returns the index of the first entry of the current level.
-    // CEP:WHY: Backtracking pops to this index.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 2 loads.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the index of the first entry of the current level.
+    /// CEP:WHY: Backtracking pops to this index.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 2 loads.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::levels.
+    /// CEP:SECURITY: none.
     pub fn current_level_start(&self) -> u32 {
         self.level_starts[self.level_count.get() as usize - 1].get()
     }
 
-    // CEP:WHAT: Returns the propagation queue head.
-    // CEP:WHY: BCP consumes assignments below qhead and stops at equality with len.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::propagation_drains_queue.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the propagation queue head.
+    /// CEP:WHY: BCP consumes assignments below qhead and stops at equality with len.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::propagation_drains_queue.
+    /// CEP:SECURITY: none.
     pub fn qhead(&self) -> u32 {
         self.qhead.get()
     }
 
-    // CEP:WHAT: Advances the queue head (one assignment consumed).
-    // CEP:WHY: BCP step primitive; separated from reads for auditability.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; clamped internally to len.
-    // CEP:ASSUMES: caller checked qhead < len.
-    // CEP:COST: 1 compare + 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::propagation_drains_queue.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Advances the queue head (one assignment consumed).
+    /// CEP:WHY: BCP step primitive; separated from reads for auditability.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; clamped internally to len.
+    /// CEP:ASSUMES: caller checked qhead < len.
+    /// CEP:COST: 1 compare + 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_bcp_test.rs::propagation_drains_queue.
+    /// CEP:SECURITY: none.
     pub fn advance_qhead(&self) {
         let next = self.qhead.get() + 1;
         if next <= self.length.get() {
@@ -269,27 +269,27 @@ impl<'a> SatTrail<'a> {
         }
     }
 
-    // CEP:WHAT: Returns the trail index where a level begins.
-    // CEP:WHY: Backtracking computes the popped segment from the target level's start; the accessor keeps the level array private.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; levels beyond the current level clamp to the current level's start.
-    // CEP:ASSUMES: level <= current level for meaningful results.
-    // CEP:COST: 1 compare + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::cancel_until.
-    // CEP:SECURITY: clamped index, no out-of-range access.
+    /// CEP:WHAT: Returns the trail index where a level begins.
+    /// CEP:WHY: Backtracking computes the popped segment from the target level's start; the accessor keeps the level array private.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; levels beyond the current level clamp to the current level's start.
+    /// CEP:ASSUMES: level <= current level for meaningful results.
+    /// CEP:COST: 1 compare + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::cancel_until.
+    /// CEP:SECURITY: clamped index, no out-of-range access.
     pub fn level_start(&self, level: u32) -> u32 {
         let clamped = level.min(self.level_count.get() - 1);
         self.level_starts[clamped as usize].get()
     }
 
-    // CEP:WHAT: Returns the trail length that backtracking to a target level keeps.
-    // CEP:WHY: Cancelling to level L keeps levels 0 through L; the kept prefix ends where level L+1 begins, so the keep index is level_starts[L+1]; targets at or above the current level are no-ops that keep the whole trail.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: level_starts is monotonic.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::cancel_until; unit/hot/sat_bcp_test.rs::cancel_restores_assignments.
-    // CEP:SECURITY: clamped arithmetic, no underflow.
+    /// CEP:WHAT: Returns the trail length that backtracking to a target level keeps.
+    /// CEP:WHY: Cancelling to level L keeps levels 0 through L; the kept prefix ends where level L+1 begins, so the keep index is level_starts[L+1]; targets at or above the current level are no-ops that keep the whole trail.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: level_starts is monotonic.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::cancel_until; unit/hot/sat_bcp_test.rs::cancel_restores_assignments.
+    /// CEP:SECURITY: clamped arithmetic, no underflow.
     pub fn cancel_keep_index(&self, target_level: u32) -> u32 {
         let current = self.level_count.get() - 1;
         if target_level >= current {
@@ -298,14 +298,14 @@ impl<'a> SatTrail<'a> {
         self.level_starts[(target_level + 1) as usize].get()
     }
 
-    // CEP:WHAT: Pops every entry above the target level and rewinds the queue head.
-    // CEP:WHY: Design 11.1 S22 backjumping support; the assignment store is cleared by the caller (SatCore) which owns both structures.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; targets at or above the current level are no-ops (documented, deterministic).
-    // CEP:ASSUMES: the caller clears assignment values for popped literals using cancel_keep_index before calling this.
-    // CEP:COST: O(1); the caller performs the O(popped) value clears.
-    // CEP:EVIDENCE: unit/hot/sat_trail_test.rs::cancel_until.
-    // CEP:SECURITY: clamped arithmetic, no underflow.
+    /// CEP:WHAT: Pops every entry above the target level and rewinds the queue head.
+    /// CEP:WHY: Design 11.1 S22 backjumping support; the assignment store is cleared by the caller (SatCore) which owns both structures.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; targets at or above the current level are no-ops (documented, deterministic).
+    /// CEP:ASSUMES: the caller clears assignment values for popped literals using cancel_keep_index before calling this.
+    /// CEP:COST: O(1); the caller performs the O(popped) value clears.
+    /// CEP:EVIDENCE: unit/hot/sat_trail_test.rs::cancel_until.
+    /// CEP:SECURITY: clamped arithmetic, no underflow.
     pub fn cancel_until(&self, target_level: u32) {
         let keep = self.cancel_keep_index(target_level);
         let current = self.level_count.get() - 1;

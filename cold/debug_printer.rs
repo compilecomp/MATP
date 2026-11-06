@@ -32,14 +32,14 @@ pub enum PrintError {
     UnreadableClause,
 }
 
-// CEP:WHAT: Prints one term in s-expression syntax into out.
-// CEP:WHY: The internal debug format (design 5.7 printable requirement); variables print as V<n>, functions as (name args...), predicates the same, equality as (= l r), application as (@ f x), sorts as (sort id).
-// CEP:STATUS: complete
-// CEP:FAILURE: Returns UnreadableTerm when the term or a descendant cannot be read.
-// CEP:ASSUMES: names is the builder that produced the symbols.
-// CEP:COST: O(term size).
-// CEP:EVIDENCE: unit/cold/debug_printer_test.rs::term_syntax; tests/golden/ir_debug_print_test.rs.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Prints one term in s-expression syntax into out.
+/// CEP:WHY: The internal debug format (design 5.7 printable requirement); variables print as V<n>, functions as (name args...), predicates the same, equality as (= l r), application as (@ f x), sorts as (sort id).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Returns UnreadableTerm when the term or a descendant cannot be read.
+/// CEP:ASSUMES: names is the builder that produced the symbols.
+/// CEP:COST: O(term size).
+/// CEP:EVIDENCE: unit/cold/debug_printer_test.rs::term_syntax; tests/golden/ir_debug_print_test.rs.
+/// CEP:SECURITY: none.
 pub fn print_term(
     terms: &TermStore,
     names: &SymbolTableBuilder,
@@ -106,14 +106,14 @@ pub fn print_term(
 /// CEP:SECURITY: none.
 pub const kUnknownSymbolName: &str = "<?symbol?>";
 
-// CEP:WHAT: Prints one clause in disjunctive syntax into out.
-// CEP:WHY: Clause printing closes the printable-IR contract; literals print in stored (canonical) order, negative literals with a tilde prefix.
-// CEP:STATUS: complete
-// CEP:FAILURE: Returns UnreadableClause on unreadable headers and UnreadableTerm on unreadable atoms.
-// CEP:ASSUMES: the clause was built by the given stores.
-// CEP:COST: O(clause size).
-// CEP:EVIDENCE: unit/cold/debug_printer_test.rs::clause_syntax; tests/golden/ir_debug_print_test.rs.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Prints one clause in disjunctive syntax into out.
+/// CEP:WHY: Clause printing closes the printable-IR contract; literals print in stored (canonical) order, negative literals with a tilde prefix.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Returns UnreadableClause on unreadable headers and UnreadableTerm on unreadable atoms.
+/// CEP:ASSUMES: the clause was built by the given stores.
+/// CEP:COST: O(clause size).
+/// CEP:EVIDENCE: unit/cold/debug_printer_test.rs::clause_syntax; tests/golden/ir_debug_print_test.rs.
+/// CEP:SECURITY: none.
 pub fn print_clause(
     terms: &TermStore,
     names: &SymbolTableBuilder,
@@ -157,14 +157,14 @@ pub fn print_clause(
 /// CEP:SECURITY: none.
 pub const kFalseClauseMarker: &str = "<false>";
 
-// CEP:WHAT: Reports whether the printer would query symbol weights (compatibility shim for future sort-aware printing).
-// CEP:WHY: Keeps the printer independent of the frozen table so printing works on partially built states.
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: none.
-// CEP:COST: constant.
-// CEP:EVIDENCE: unit/cold/debug_printer_test.rs.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Reports whether the printer would query symbol weights (compatibility shim for future sort-aware printing).
+/// CEP:WHY: Keeps the printer independent of the frozen table so printing works on partially built states.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: none.
+/// CEP:COST: constant.
+/// CEP:EVIDENCE: unit/cold/debug_printer_test.rs.
+/// CEP:SECURITY: none.
 pub fn printer_uses_symbol_table(_symbols: &SymbolTable) -> bool {
     false
 }

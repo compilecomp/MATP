@@ -80,14 +80,14 @@ pub enum TstpError {
     BudgetExhausted,
 }
 
-// CEP:WHAT: Collects the reachable clause ids from the refutation, ascending, through the certified kernel's DAG walk (Spec 19).
-// CEP:WHY: Design 18.2 step 1-2 and Spec 19 section 3: one walk owner - the kernel's descending pass marks the ancestry exactly (parents strictly older than children, monotonic ids, Spec 14 section 2), reports non-monotonic parents as CycleDetected and unresolvable records as UnreadableClause, and the writer and the checker share the same walk so the pruned, ascending-id order is a valid topological order.
-// CEP:STATUS: complete
-// CEP:FAILURE: UnreadableClause for unresolvable ids, CycleDetected for non-monotonic parents (both mapped from the kernel's rejection verdict).
-// CEP:ASSUMES: refutation is a store-produced offset; the store has an id side table.
-// CEP:COST: O(max id) scan plus O(ancestry) reads.
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{proof_walk_resolves_parents, prunes_unreachable_steps, cycle_detected}; unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_non_monotonic_derivation}.
-// CEP:SECURITY: all reads bounds-checked.
+/// CEP:WHAT: Collects the reachable clause ids from the refutation, ascending, through the certified kernel's DAG walk (Spec 19).
+/// CEP:WHY: Design 18.2 step 1-2 and Spec 19 section 3: one walk owner - the kernel's descending pass marks the ancestry exactly (parents strictly older than children, monotonic ids, Spec 14 section 2), reports non-monotonic parents as CycleDetected and unresolvable records as UnreadableClause, and the writer and the checker share the same walk so the pruned, ascending-id order is a valid topological order.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: UnreadableClause for unresolvable ids, CycleDetected for non-monotonic parents (both mapped from the kernel's rejection verdict).
+/// CEP:ASSUMES: refutation is a store-produced offset; the store has an id side table.
+/// CEP:COST: O(max id) scan plus O(ancestry) reads.
+/// CEP:EVIDENCE: unit/cold/tstp_test.rs::{proof_walk_resolves_parents, prunes_unreachable_steps, cycle_detected}; unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_non_monotonic_derivation}.
+/// CEP:SECURITY: all reads bounds-checked.
 pub fn reachable_proof_ids(
     store: &ClauseStore<'_>,
     refutation: u32,
@@ -206,14 +206,14 @@ fn rule_name(rule: InferenceRule) -> &'static str {
     }
 }
 
-// CEP:WHAT: Formats the reconstructed TSTP proof into out; returns the statement count.
-// CEP:WHY: Design 18.2 step 3: every reachable clause becomes one cnf statement - axioms and the negated conjecture keep their roles, derived clauses are plain with their inference source (rule name, empty info list, parent names); literals join with " | ", negative literals prefix "~", the empty clause renders "$false"; the pruned, ascending-id order is a valid topological order (parents precede children), so the proof reads forward.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates TstpError.
-// CEP:ASSUMES: as reachable_proof_ids.
-// CEP:COST: O(proof size).
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{formats_refutation_proof, prunes_unreachable_steps, roles_and_sources, empty_clause_renders_false}.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Formats the reconstructed TSTP proof into out; returns the statement count.
+/// CEP:WHY: Design 18.2 step 3: every reachable clause becomes one cnf statement - axioms and the negated conjecture keep their roles, derived clauses are plain with their inference source (rule name, empty info list, parent names); literals join with " | ", negative literals prefix "~", the empty clause renders "$false"; the pruned, ascending-id order is a valid topological order (parents precede children), so the proof reads forward.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates TstpError.
+/// CEP:ASSUMES: as reachable_proof_ids.
+/// CEP:COST: O(proof size).
+/// CEP:EVIDENCE: unit/cold/tstp_test.rs::{formats_refutation_proof, prunes_unreachable_steps, roles_and_sources, empty_clause_renders_false}.
+/// CEP:SECURITY: none.
 pub fn write_tstp_proof(
     terms: &TermStore,
     names: &SymbolTableBuilder,
@@ -277,14 +277,14 @@ pub fn write_tstp_proof(
     Ok(ids.len())
 }
 
-// CEP:WHAT: Verifies the whole proof through the certified kernel (Spec 19): every reachable step replays its production rule between its recorded parents under the kKernelReplayBudget.
-// CEP:WHY: Design 18.4: "the checker verifies every inference step independently - if the checker finds an invalid step, the proof is rejected and MAPT returns Error"; the kernel owns the arms (Spec 19 section 4), the walk order (ascending ids) replays parents before conclusions, and a rejection verdict maps onto InvalidStep with the offending clause id while budget exhaustion maps onto BudgetExhausted (an error, never a rejection).
-// CEP:STATUS: complete
-// CEP:FAILURE: InvalidStep/UnreadableClause/CycleDetected/BudgetExhausted propagate (the caller returns Error).
-// CEP:ASSUMES: as the kernel's verify_refutation_with_budget; the context's substitution is at baseline depth (every replay unwinds per attempt).
-// CEP:COST: bounded by kKernelReplayBudget charged actions.
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution, checker_rejects_unrecorded_demodulation}; unit/cold/kernel_test.rs (the whole file); property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
-// CEP:SECURITY: proof validation is the soundness certification of design 18.4, executed by the kernel.
+/// CEP:WHAT: Verifies the whole proof through the certified kernel (Spec 19): every reachable step replays its production rule between its recorded parents under the kKernelReplayBudget.
+/// CEP:WHY: Design 18.4: "the checker verifies every inference step independently - if the checker finds an invalid step, the proof is rejected and MAPT returns Error"; the kernel owns the arms (Spec 19 section 4), the walk order (ascending ids) replays parents before conclusions, and a rejection verdict maps onto InvalidStep with the offending clause id while budget exhaustion maps onto BudgetExhausted (an error, never a rejection).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: InvalidStep/UnreadableClause/CycleDetected/BudgetExhausted propagate (the caller returns Error).
+/// CEP:ASSUMES: as the kernel's verify_refutation_with_budget; the context's substitution is at baseline depth (every replay unwinds per attempt).
+/// CEP:COST: bounded by kKernelReplayBudget charged actions.
+/// CEP:EVIDENCE: unit/cold/tstp_test.rs::{checker_accepts_valid_proof, checker_rejects_broken_resolution, checker_rejects_unrecorded_demodulation}; unit/cold/kernel_test.rs (the whole file); property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
+/// CEP:SECURITY: proof validation is the soundness certification of design 18.4, executed by the kernel.
 pub fn check_proof(
     context: &InferenceContext<'_>,
     store: &ClauseStore<'_>,
@@ -313,14 +313,14 @@ pub fn check_proof(
     }
 }
 
-// CEP:WHAT: Convenience driver: formats and verifies in one call; returns (statement count, rendered proof).
-// CEP:WHY: The CEP-1 entry point of design 18.2-18.4: reconstruct, prune, format, verify - a proof that fails verification never leaves the process as valid output.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates TstpError (verification failure included).
-// CEP:ASSUMES: as write_tstp_proof and check_proof.
-// CEP:COST: as both.
-// CEP:EVIDENCE: unit/cold/tstp_test.rs::{formats_refutation_proof, checker_accepts_valid_proof}; property/tstp_property_test.rs::every_refutation_formats_and_checks.
-// CEP:SECURITY: the verified-then-emitted ordering.
+/// CEP:WHAT: Convenience driver: formats and verifies in one call; returns (statement count, rendered proof).
+/// CEP:WHY: The CEP-1 entry point of design 18.2-18.4: reconstruct, prune, format, verify - a proof that fails verification never leaves the process as valid output.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates TstpError (verification failure included).
+/// CEP:ASSUMES: as write_tstp_proof and check_proof.
+/// CEP:COST: as both.
+/// CEP:EVIDENCE: unit/cold/tstp_test.rs::{formats_refutation_proof, checker_accepts_valid_proof}; property/tstp_property_test.rs::every_refutation_formats_and_checks.
+/// CEP:SECURITY: the verified-then-emitted ordering.
 pub fn render_verified_proof(
     context: &InferenceContext<'_>,
     terms: &TermStore,

@@ -263,26 +263,26 @@ impl TermPtr {
         TermPtr(offset)
     }
 
-    // CEP:WHAT: Returns the raw arena offset for serialization and diagnostics.
-    // CEP:WHY: Cold printers and the future FFI need the numeric identity; keeping construction private preserves the invariant while allowing read-out.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/cold/debug_printer_test.rs.
-    // CEP:SECURITY: read-only projection; no inverse in the public API.
+    /// CEP:WHAT: Returns the raw arena offset for serialization and diagnostics.
+    /// CEP:WHY: Cold printers and the future FFI need the numeric identity; keeping construction private preserves the invariant while allowing read-out.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/cold/debug_printer_test.rs.
+    /// CEP:SECURITY: read-only projection; no inverse in the public API.
     pub fn as_u32(&self) -> u32 {
         self.0
     }
 
-    // CEP:WHAT: Constructs the invalid handle used for zero-filling unused clause literal slots and test buffers.
-    // CEP:WHY: Unused inline slots and Phase 3 test/generator filler buffers need a deterministic filler whose dereference fails loudly; the invalid offset makes TermStore::term return InvalidPointer instead of reading garbage (CEP&CC 22.4 no uninitialized or misleading reads); the constructor is public because test fixtures (external integration tests) build filler literals, and forging it is harmless - every dereference errors loudly.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: dereferencing the result always returns TermError::InvalidPointer.
-    // CEP:ASSUMES: never stored as a real atom.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::inline_slots_zeroed; unit/cold/verifier_test.rs; unit/hot/inference_test.rs::binary_resolution_ground.
-    // CEP:SECURITY: loud-failure sentinel.
+    /// CEP:WHAT: Constructs the invalid handle used for zero-filling unused clause literal slots and test buffers.
+    /// CEP:WHY: Unused inline slots and Phase 3 test/generator filler buffers need a deterministic filler whose dereference fails loudly; the invalid offset makes TermStore::term return InvalidPointer instead of reading garbage (CEP&CC 22.4 no uninitialized or misleading reads); the constructor is public because test fixtures (external integration tests) build filler literals, and forging it is harmless - every dereference errors loudly.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: dereferencing the result always returns TermError::InvalidPointer.
+    /// CEP:ASSUMES: never stored as a real atom.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::inline_slots_zeroed; unit/cold/verifier_test.rs; unit/hot/inference_test.rs::binary_resolution_ground.
+    /// CEP:SECURITY: loud-failure sentinel.
     pub fn invalid() -> TermPtr {
         TermPtr(kInvalidTermOffset)
     }
@@ -299,14 +299,14 @@ impl TermPtr {
         TermPtr(offset)
     }
 
-    // CEP:WHAT: Rebuilds a handle from a raw offset for diagnostics and verification.
-    // CEP:WHY: The cold IR verifier and debug printer read term offsets from hash-table slots and serialized records; they need the inverse of as_u32. The constructor is memory-safe for any u32 because every dereference goes through the bounds-checked term() accessor; semantic validity is the caller's documented contract (offsets come from this store's table or as_u32).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: dereferencing an invalid offset returns TermError::InvalidPointer, never UB.
-    // CEP:ASSUMES: the offset was produced by this store (as_u32 or a hash-table slot).
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/verifier_test.rs; unit/cold/debug_printer_test.rs.
-    // CEP:SECURITY: bounds checks on every use make forged handles fail loudly instead of reading out of bounds.
+    /// CEP:WHAT: Rebuilds a handle from a raw offset for diagnostics and verification.
+    /// CEP:WHY: The cold IR verifier and debug printer read term offsets from hash-table slots and serialized records; they need the inverse of as_u32. The constructor is memory-safe for any u32 because every dereference goes through the bounds-checked term() accessor; semantic validity is the caller's documented contract (offsets come from this store's table or as_u32).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: dereferencing an invalid offset returns TermError::InvalidPointer, never UB.
+    /// CEP:ASSUMES: the offset was produced by this store (as_u32 or a hash-table slot).
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/cold/verifier_test.rs; unit/cold/debug_printer_test.rs.
+    /// CEP:SECURITY: bounds checks on every use make forged handles fail loudly instead of reading out of bounds.
     pub fn from_verified_offset(offset: u32) -> TermPtr {
         TermPtr(offset)
     }
@@ -366,14 +366,14 @@ pub struct TermView<'a> {
 }
 
 impl<'a> TermView<'a> {
-    // CEP:WHAT: Constructs a view over a word slice, validating the declared child count fits.
-    // CEP:WHY: One validation point for every term read (CEP&CC Law 3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TermError::InvalidPointer when the slice is shorter than the fixed part plus declared children.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 compare.
-    // CEP:EVIDENCE: fuzz/term_fuzz_test.rs::truncated_records_rejected.
-    // CEP:SECURITY: bounds enforcement for corrupted or truncated records.
+    /// CEP:WHAT: Constructs a view over a word slice, validating the declared child count fits.
+    /// CEP:WHY: One validation point for every term read (CEP&CC Law 3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TermError::InvalidPointer when the slice is shorter than the fixed part plus declared children.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 compare.
+    /// CEP:EVIDENCE: fuzz/term_fuzz_test.rs::truncated_records_rejected.
+    /// CEP:SECURITY: bounds enforcement for corrupted or truncated records.
     pub fn from_words(words: &'a [u32]) -> Result<TermView<'a>, TermError> {
         if words.len() < kTermFixedWords as usize {
             return Err(TermError::InvalidPointer);
@@ -391,14 +391,14 @@ impl<'a> TermView<'a> {
         Ok(TermView { words })
     }
 
-    // CEP:WHAT: Returns the term tag.
-    // CEP:WHY: Tag dispatch is the first branch of every traversal; the discriminant space is validated at record construction (from_words), so this accessor is total on valid views and unknown discriminants can never be silently aliased to a wrong kind (CEP&CC Law 6, 11.3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none on views built through from_words (which rejects unknown discriminants).
-    // CEP:ASSUMES: the view passed from_words validation.
-    // CEP:COST: 1 load + mask.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::tag_roundtrip; fuzz/term_fuzz_test.rs::truncated_records_rejected.
-    // CEP:SECURITY: out-of-range tags are rejected at from_words, never silently reinterpreted.
+    /// CEP:WHAT: Returns the term tag.
+    /// CEP:WHY: Tag dispatch is the first branch of every traversal; the discriminant space is validated at record construction (from_words), so this accessor is total on valid views and unknown discriminants can never be silently aliased to a wrong kind (CEP&CC Law 6, 11.3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none on views built through from_words (which rejects unknown discriminants).
+    /// CEP:ASSUMES: the view passed from_words validation.
+    /// CEP:COST: 1 load + mask.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::tag_roundtrip; fuzz/term_fuzz_test.rs::truncated_records_rejected.
+    /// CEP:SECURITY: out-of-range tags are rejected at from_words, never silently reinterpreted.
     pub fn tag(&self) -> TermTag {
         match (self.words[0] & kTermTagMask) as u8 {
             kTermTagVariable => TermTag::Variable,
@@ -411,86 +411,86 @@ impl<'a> TermView<'a> {
         }
     }
 
-    // CEP:WHAT: Returns the flags byte.
-    // CEP:WHY: Groundness and future flags are cached here (design 5.1).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load + shift.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::ground_flag.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the flags byte.
+    /// CEP:WHY: Groundness and future flags are cached here (design 5.1).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load + shift.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::ground_flag.
+    /// CEP:SECURITY: none.
     pub fn flags(&self) -> u8 {
         (self.words[0] >> kTermFlagsShift) as u8
     }
 
-    // CEP:WHAT: Returns true when the term contains no variables.
-    // CEP:WHY: Ground terms drive ground indexing and simplification decisions.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: the ground bit was computed at intern.
-    // CEP:COST: 1 load + test.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::ground_flag.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when the term contains no variables.
+    /// CEP:WHY: Ground terms drive ground indexing and simplification decisions.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the ground bit was computed at intern.
+    /// CEP:COST: 1 load + test.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::ground_flag.
+    /// CEP:SECURITY: none.
     pub fn is_ground(&self) -> bool {
         self.flags() & kTermFlagGround != 0
     }
 
-    // CEP:WHAT: Returns the symbol ID (or variable index / sort ID, depending on tag).
-    // CEP:WHY: The symbol field's meaning is tag-dependent by design 5.1; the accessor documents the overload once.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::symbol_field.
-    // CEP:SECURITY: consumers must bounds-check IDs against the symbol table.
+    /// CEP:WHAT: Returns the symbol ID (or variable index / sort ID, depending on tag).
+    /// CEP:WHY: The symbol field's meaning is tag-dependent by design 5.1; the accessor documents the overload once.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::symbol_field.
+    /// CEP:SECURITY: consumers must bounds-check IDs against the symbol table.
     pub fn symbol(&self) -> u32 {
         self.words[1]
     }
 
-    // CEP:WHAT: Returns the cached term depth (leaves have depth 0).
-    // CEP:WHY: Design 8.3 caches order-relevant measurements at construction; depth also bounds recursion.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: computed at intern as 1 + max(child depths).
-    // CEP:COST: 1 load + mask.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::depth_cache.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the cached term depth (leaves have depth 0).
+    /// CEP:WHY: Design 8.3 caches order-relevant measurements at construction; depth also bounds recursion.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: computed at intern as 1 + max(child depths).
+    /// CEP:COST: 1 load + mask.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::depth_cache.
+    /// CEP:SECURITY: none.
     pub fn depth(&self) -> u16 {
         (self.words[kTermWordIndexDepth] & kTermDepthMask) as u16
     }
 
-    // CEP:WHAT: Returns the cached term weight.
-    // CEP:WHY: KBO comparison (design 8.3) and clause weighting (design 15.3) read the cache instead of re-summing.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: computed at intern from symbol weights; <= kMaxTermWeight.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::weight_accumulation.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the cached term weight.
+    /// CEP:WHY: KBO comparison (design 8.3) and clause weighting (design 15.3) read the cache instead of re-summing.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: computed at intern from symbol weights; <= kMaxTermWeight.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::weight_accumulation.
+    /// CEP:SECURITY: none.
     pub fn weight(&self) -> u32 {
         self.words[kTermWordIndexWeight]
     }
 
-    // CEP:WHAT: Returns the child count.
-    // CEP:WHY: Traversal bounds.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load + shift.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::word_layout.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the child count.
+    /// CEP:WHY: Traversal bounds.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load + shift.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::word_layout.
+    /// CEP:SECURITY: none.
     pub fn child_count(&self) -> u16 {
         (self.words[0] >> kTermCountShift) as u16
     }
 
-    // CEP:WHAT: Returns the i-th child handle.
-    // CEP:WHY: Child access with a retained bounds check; out-of-range is a caller bug surfaced as an error, not a panic.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TermError::InvalidPointer when i >= child_count.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 compare + 1 load.
-    // CEP:EVIDENCE: fuzz/term_fuzz_test.rs::child_index_rejected.
-    // CEP:SECURITY: bounds check retained in release.
+    /// CEP:WHAT: Returns the i-th child handle.
+    /// CEP:WHY: Child access with a retained bounds check; out-of-range is a caller bug surfaced as an error, not a panic.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TermError::InvalidPointer when i >= child_count.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 compare + 1 load.
+    /// CEP:EVIDENCE: fuzz/term_fuzz_test.rs::child_index_rejected.
+    /// CEP:SECURITY: bounds check retained in release.
     pub fn child(&self, index: u16) -> Result<TermPtr, TermError> {
         if index >= self.child_count() {
             return Err(TermError::InvalidPointer);
@@ -499,14 +499,14 @@ impl<'a> TermView<'a> {
         Ok(TermPtr(self.words[slot]))
     }
 
-    // CEP:WHAT: Returns all child handles as a slice-backed copy-free iterator bound.
-    // CEP:WHY: Bulk child traversal (unification, printing) avoids per-child error plumbing by validating the range once.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; the view is pre-validated.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load per child.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::children_slice.
-    // CEP:SECURITY: slice indexing is bounds-checked.
+    /// CEP:WHAT: Returns all child handles as a slice-backed copy-free iterator bound.
+    /// CEP:WHY: Bulk child traversal (unification, printing) avoids per-child error plumbing by validating the range once.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; the view is pre-validated.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load per child.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::children_slice.
+    /// CEP:SECURITY: slice indexing is bounds-checked.
     pub fn children(&self) -> impl Iterator<Item = TermPtr> + 'a {
         let count = self.child_count() as usize;
         self.words[kTermFixedWords as usize..kTermFixedWords as usize + count]
@@ -564,14 +564,14 @@ pub struct TermStore<'a> {
 }
 
 impl<'a> TermStore<'a> {
-    // CEP:WHAT: Constructs the term store and its fixed hash table in the arena.
-    // CEP:WHY: The table must exist before any interning and never resize (design 5.1); allocating it here makes construction order explicit and deterministic.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TermError::ArenaFull when the table does not fit; TermError::InvalidPointer never occurs but is mapped for total function typing.
-    // CEP:ASSUMES: called before the hot path starts (CEP-1 initialization phase).
-    // CEP:COST: one arena allocation of kTermHashTableCapacity * 4 bytes.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
-    // CEP:SECURITY: fixed, named capacity; no growth path exists.
+    /// CEP:WHAT: Constructs the term store and its fixed hash table in the arena.
+    /// CEP:WHY: The table must exist before any interning and never resize (design 5.1); allocating it here makes construction order explicit and deterministic.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TermError::ArenaFull when the table does not fit; TermError::InvalidPointer never occurs but is mapped for total function typing.
+    /// CEP:ASSUMES: called before the hot path starts (CEP-1 initialization phase).
+    /// CEP:COST: one arena allocation of kTermHashTableCapacity * 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
+    /// CEP:SECURITY: fixed, named capacity; no growth path exists.
     pub fn new(arena: &'a Arena) -> Result<TermStore<'a>, TermError> {
         let table_range = arena
             .alloc_array::<Cell<u32>>(kTermHashTableCapacity)
@@ -590,38 +590,38 @@ impl<'a> TermStore<'a> {
         })
     }
 
-    // CEP:WHAT: Returns the number of interned terms.
-    // CEP:WHY: Diagnostics and load-factor reporting.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of interned terms.
+    /// CEP:WHY: Diagnostics and load-factor reporting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::store_construction.
+    /// CEP:SECURITY: none.
     pub fn live_terms(&self) -> u32 {
         self.live_terms.get()
     }
 
-    // CEP:WHAT: Returns a validated view of the term stored at a raw arena offset.
-    // CEP:WHY: Cold diagnostics, the IR verifier, and proof output read terms serialized as offsets (for example from hash-table slots); this public entry point validates the offset exactly like term() so cold code never needs the private constructor.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TermError::InvalidPointer when the offset is unreadable or the record is truncated.
-    // CEP:ASSUMES: the offset came from TermPtr::as_u32 or a hash-table slot of this store.
-    // CEP:COST: as term().
-    // CEP:EVIDENCE: unit/cold/verifier_test.rs; unit/cold/debug_printer_test.rs.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Returns a validated view of the term stored at a raw arena offset.
+    /// CEP:WHY: Cold diagnostics, the IR verifier, and proof output read terms serialized as offsets (for example from hash-table slots); this public entry point validates the offset exactly like term() so cold code never needs the private constructor.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TermError::InvalidPointer when the offset is unreadable or the record is truncated.
+    /// CEP:ASSUMES: the offset came from TermPtr::as_u32 or a hash-table slot of this store.
+    /// CEP:COST: as term().
+    /// CEP:EVIDENCE: unit/cold/verifier_test.rs; unit/cold/debug_printer_test.rs.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn term_by_offset(&self, offset: u32) -> Result<TermView<'a>, TermError> {
         self.term(TermPtr::from_raw(offset))
     }
 
-    // CEP:WHAT: Returns a validated view of the term referenced by ptr.
-    // CEP:WHY: Every hot-path term read goes through this single bounds-checked entry point.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TermError::InvalidPointer when the offset is out of arena bounds or the record is truncated.
-    // CEP:ASSUMES: ptr was produced by intern (structurally guaranteed by the private constructor).
-    // CEP:COST: 3 compares + slice construction.
-    // CEP:EVIDENCE: fuzz/term_fuzz_test.rs::truncated_records_rejected.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Returns a validated view of the term referenced by ptr.
+    /// CEP:WHY: Every hot-path term read goes through this single bounds-checked entry point.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TermError::InvalidPointer when the offset is out of arena bounds or the record is truncated.
+    /// CEP:ASSUMES: ptr was produced by intern (structurally guaranteed by the private constructor).
+    /// CEP:COST: 3 compares + slice construction.
+    /// CEP:EVIDENCE: fuzz/term_fuzz_test.rs::truncated_records_rejected.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn term(&self, ptr: TermPtr) -> Result<TermView<'a>, TermError> {
         let offset = ptr.0;
         if offset >= self.arena.used_bytes()
@@ -640,14 +640,14 @@ impl<'a> TermStore<'a> {
         TermView::from_words(&words[..visible])
     }
 
-    // CEP:WHAT: Interns a variable term.
-    // CEP:WHY: Variables are terms (design 5.1); clause-local dense indices keep substitution lookup flat (design 5.5).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns TermError::VariableOutOfRange when var_index >= kMaxVariablesPerClause; otherwise see intern().
-    // CEP:ASSUMES: var_index is a per-clause dense index (design 5.5).
-    // CEP:COST: see intern().
-    // CEP:EVIDENCE: unit/hot/term_test.rs::variable_terms.
-    // CEP:SECURITY: index bound enforced.
+    /// CEP:WHAT: Interns a variable term.
+    /// CEP:WHY: Variables are terms (design 5.1); clause-local dense indices keep substitution lookup flat (design 5.5).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns TermError::VariableOutOfRange when var_index >= kMaxVariablesPerClause; otherwise see intern().
+    /// CEP:ASSUMES: var_index is a per-clause dense index (design 5.5).
+    /// CEP:COST: see intern().
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::variable_terms.
+    /// CEP:SECURITY: index bound enforced.
     pub fn intern_var(&self, var_index: u32) -> Result<TermPtr, TermError> {
         if var_index >= kMaxVariablesPerClause {
             return Err(TermError::VariableOutOfRange);
@@ -662,14 +662,14 @@ impl<'a> TermStore<'a> {
         )
     }
 
-    // CEP:WHAT: Interns a function application f(children).
-    // CEP:WHY: The dominant construction path for first-order terms.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns UnknownSymbol / SymbolKindMismatch / ArityMismatch from table validation; see intern() for the rest.
-    // CEP:ASSUMES: symbols is the frozen table the caller also uses for search.
-    // CEP:COST: table validation (1 lookup) plus intern().
-    // CEP:EVIDENCE: unit/hot/term_test.rs::function_terms.
-    // CEP:SECURITY: symbol ID and arity validated against the frozen table.
+    /// CEP:WHAT: Interns a function application f(children).
+    /// CEP:WHY: The dominant construction path for first-order terms.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns UnknownSymbol / SymbolKindMismatch / ArityMismatch from table validation; see intern() for the rest.
+    /// CEP:ASSUMES: symbols is the frozen table the caller also uses for search.
+    /// CEP:COST: table validation (1 lookup) plus intern().
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::function_terms.
+    /// CEP:SECURITY: symbol ID and arity validated against the frozen table.
     pub fn intern_fun(
         &self,
         symbols: &SymbolTable,
@@ -688,14 +688,14 @@ impl<'a> TermStore<'a> {
         self.intern_tagged(symbols, TermTag::Function, symbol_id, children)
     }
 
-    // CEP:WHAT: Interns a predicate atom p(children).
-    // CEP:WHY: Literals are built on predicate atoms (design 5.2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as intern_fun().
-    // CEP:ASSUMES: as intern_fun().
-    // CEP:COST: as intern_fun().
-    // CEP:EVIDENCE: unit/hot/term_test.rs::predicate_terms.
-    // CEP:SECURITY: as intern_fun().
+    /// CEP:WHAT: Interns a predicate atom p(children).
+    /// CEP:WHY: Literals are built on predicate atoms (design 5.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as intern_fun().
+    /// CEP:ASSUMES: as intern_fun().
+    /// CEP:COST: as intern_fun().
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::predicate_terms.
+    /// CEP:SECURITY: as intern_fun().
     pub fn intern_pred(
         &self,
         symbols: &SymbolTable,
@@ -714,14 +714,14 @@ impl<'a> TermStore<'a> {
         self.intern_tagged(symbols, TermTag::Predicate, symbol_id, children)
     }
 
-    // CEP:WHAT: Interns an equality atom Eq(left, right).
-    // CEP:WHY: Equality is special-cased for superposition (design 5.1); it carries no symbol ID (reserved 0) and exactly two children.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see intern().
-    // CEP:ASSUMES: the symbol field is reserved zero for equality and never participates in symbol-table lookups.
-    // CEP:COST: see intern().
-    // CEP:EVIDENCE: unit/hot/term_test.rs::equality_terms.
-    // CEP:SECURITY: fixed arity two enforced.
+    /// CEP:WHAT: Interns an equality atom Eq(left, right).
+    /// CEP:WHY: Equality is special-cased for superposition (design 5.1); it carries no symbol ID (reserved 0) and exactly two children.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see intern().
+    /// CEP:ASSUMES: the symbol field is reserved zero for equality and never participates in symbol-table lookups.
+    /// CEP:COST: see intern().
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::equality_terms.
+    /// CEP:SECURITY: fixed arity two enforced.
     pub fn intern_eq(
         &self,
         symbols: &SymbolTable,
@@ -736,14 +736,14 @@ impl<'a> TermStore<'a> {
         )
     }
 
-    // CEP:WHAT: Interns a higher-order application App(func, arg).
-    // CEP:WHY: Design 5.1 includes App for the lambda-free higher-order fragment (design 14.1).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see intern().
-    // CEP:ASSUMES: Phase 1 builds but never decomposes applications; applicative encoding arrives with Phase 5.
-    // CEP:COST: see intern().
-    // CEP:EVIDENCE: unit/hot/term_test.rs::application_and_sort_terms.
-    // CEP:SECURITY: fixed arity two enforced.
+    /// CEP:WHAT: Interns a higher-order application App(func, arg).
+    /// CEP:WHY: Design 5.1 includes App for the lambda-free higher-order fragment (design 14.1).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see intern().
+    /// CEP:ASSUMES: Phase 1 builds but never decomposes applications; applicative encoding arrives with Phase 5.
+    /// CEP:COST: see intern().
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::application_and_sort_terms.
+    /// CEP:SECURITY: fixed arity two enforced.
     pub fn intern_app(
         &self,
         symbols: &SymbolTable,
@@ -758,14 +758,14 @@ impl<'a> TermStore<'a> {
         )
     }
 
-    // CEP:WHAT: Interns a sort annotation term Sort(sort_id).
-    // CEP:WHY: Design 5.1 includes Sort as a term kind for typed fragments (TFF/THF).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see intern().
-    // CEP:ASSUMES: the symbol field carries the SortId; no symbol-table validation happens here (sorts are validated by the builder).
-    // CEP:COST: see intern().
-    // CEP:EVIDENCE: unit/hot/term_test.rs::application_and_sort_terms.
-    // CEP:SECURITY: none beyond intern().
+    /// CEP:WHAT: Interns a sort annotation term Sort(sort_id).
+    /// CEP:WHY: Design 5.1 includes Sort as a term kind for typed fragments (TFF/THF).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see intern().
+    /// CEP:ASSUMES: the symbol field carries the SortId; no symbol-table validation happens here (sorts are validated by the builder).
+    /// CEP:COST: see intern().
+    /// CEP:EVIDENCE: unit/hot/term_test.rs::application_and_sort_terms.
+    /// CEP:SECURITY: none beyond intern().
     pub fn intern_sort(&self, sort_id: u32) -> Result<TermPtr, TermError> {
         self.intern(TermTag::Sort, sort_id, &[], kDefaultSymbolWeight, 0, true)
     }
@@ -933,26 +933,26 @@ impl<'a> TermStore<'a> {
         Ok(true)
     }
 
-    // CEP:WHAT: Returns true iff two handles reference the same term.
-    // CEP:WHY: Documenting that equality is offset equality makes the hash-consing contract explicit at use sites (design 5.1).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: both handles were produced by this store.
-    // CEP:COST: 1 compare.
-    // CEP:EVIDENCE: property/term_property_test.rs::interning_is_canonical.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true iff two handles reference the same term.
+    /// CEP:WHY: Documenting that equality is offset equality makes the hash-consing contract explicit at use sites (design 5.1).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: both handles were produced by this store.
+    /// CEP:COST: 1 compare.
+    /// CEP:EVIDENCE: property/term_property_test.rs::interning_is_canonical.
+    /// CEP:SECURITY: none.
     pub fn term_equal(&self, left: TermPtr, right: TermPtr) -> bool {
         left == right
     }
 
-    // CEP:WHAT: Returns the byte range of the hash table (diagnostics).
-    // CEP:WHY: Cold diagnostics and the verifier need the table location.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/cold/verifier_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the byte range of the hash table (diagnostics).
+    /// CEP:WHY: Cold diagnostics and the verifier need the table location.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/cold/verifier_test.rs.
+    /// CEP:SECURITY: none.
     pub fn table_range(&self) -> ArenaRange {
         self.table_range
     }

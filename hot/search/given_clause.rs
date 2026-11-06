@@ -326,14 +326,14 @@ pub struct SearchOptions {
 }
 
 impl SearchOptions {
-    // CEP:WHAT: Production defaults.
-    // CEP:WHY: One named place for the default configuration (CEP&CC 11.3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::{refutes_contradiction, saturates_on_satisfiable}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Production defaults.
+    /// CEP:WHY: One named place for the default configuration (CEP&CC 11.3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{refutes_contradiction, saturates_on_satisfiable}.
+    /// CEP:SECURITY: none.
     pub fn new() -> SearchOptions {
         SearchOptions {
             strategy: SelectionStrategy::AgeWeightRatio,
@@ -357,14 +357,14 @@ impl SearchOptions {
 pub struct SelectionWeight;
 
 impl SelectionWeight {
-    // CEP:WHAT: Computes the selection weight of one clause.
-    // CEP:WHY: Design 15.3 with the default weights.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: saturating add (see type header).
-    // CEP:ASSUMES: literals interned by the store.
-    // CEP:COST: O(total term nodes).
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{selection_weight_counts_symbols, selection_weight_ignores_variables}.
-    // CEP:SECURITY: depth-bounded.
+    /// CEP:WHAT: Computes the selection weight of one clause.
+    /// CEP:WHY: Design 15.3 with the default weights.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: saturating add (see type header).
+    /// CEP:ASSUMES: literals interned by the store.
+    /// CEP:COST: O(total term nodes).
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{selection_weight_counts_symbols, selection_weight_ignores_variables}.
+    /// CEP:SECURITY: depth-bounded.
     pub fn of(terms: &TermStore<'_>, symbols: &SymbolTable<'_>, literals: &[Literal]) -> u32 {
         let mut total: u64 = 0;
         for literal in literals.iter() {
@@ -520,14 +520,14 @@ pub struct SearchSpace<'a> {
 }
 
 impl<'a> SearchSpace<'a> {
-    // CEP:WHAT: Constructs the search space with production capacities.
-    // CEP:WHY: Production entry point; the capacities are the named constants.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns SearchError on capacity exhaustion.
-    // CEP:ASSUMES: the arena has room (slot, tree, and pool arrays; about 120 MiB at maximum caps).
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::{refutes_contradiction, saturates_on_satisfiable}.
-    // CEP:SECURITY: capacities validated before allocation.
+    /// CEP:WHAT: Constructs the search space with production capacities.
+    /// CEP:WHY: Production entry point; the capacities are the named constants.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns SearchError on capacity exhaustion.
+    /// CEP:ASSUMES: the arena has room (slot, tree, and pool arrays; about 120 MiB at maximum caps).
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{refutes_contradiction, saturates_on_satisfiable}.
+    /// CEP:SECURITY: capacities validated before allocation.
     pub fn new(arena: &'a Arena, options: &SearchOptions) -> Result<SearchSpace<'a>, SearchError> {
         SearchSpace::new_with(
             arena,
@@ -541,22 +541,22 @@ impl<'a> SearchSpace<'a> {
         )
     }
 
-    // CEP:WHAT: Constructs the search space with explicit capacities.
-    // CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path; Phase 4 adds the clause-id side-table capacity so proof reconstruction and AVATAR ancestry can resolve parent ids on the production space while tests inject small tables.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns SearchError on exhaustion.
-    // CEP:ASSUMES: capacities >= 1.
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::passive_overflow_stops; security/phase3_bounds_test.rs::{passive_capacity_enforced, active_capacity_enforced}; unit/hot/clause_test.rs::side_table_capacity_enforced.
-    // CEP:SECURITY: bounds validated.
-    // CEP:WHAT: Clippy allowance for the eight explicit capacities (one per bounded substructure).
-    // CEP:WHY: CEP&CC 34.3 requires every capacity injectable on the production path; an options struct would hide which test uses which bound, so the parameter list is the documented interface.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: compile-time only.
-    // CEP:EVIDENCE: security/phase3_bounds_test.rs; security/phase4_bounds_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Constructs the search space with explicit capacities.
+    /// CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path; Phase 4 adds the clause-id side-table capacity so proof reconstruction and AVATAR ancestry can resolve parent ids on the production space while tests inject small tables.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns SearchError on exhaustion.
+    /// CEP:ASSUMES: capacities >= 1.
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::passive_overflow_stops; security/phase3_bounds_test.rs::{passive_capacity_enforced, active_capacity_enforced}; unit/hot/clause_test.rs::side_table_capacity_enforced.
+    /// CEP:SECURITY: bounds validated.
+    /// CEP:WHAT: Clippy allowance for the eight explicit capacities (one per bounded substructure).
+    /// CEP:WHY: CEP&CC 34.3 requires every capacity injectable on the production path; an options struct would hide which test uses which bound, so the parameter list is the documented interface.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: compile-time only.
+    /// CEP:EVIDENCE: security/phase3_bounds_test.rs; security/phase4_bounds_test.rs.
+    /// CEP:SECURITY: none.
     #[allow(clippy::too_many_arguments)]
     pub fn new_with(
         arena: &'a Arena,
@@ -585,14 +585,14 @@ impl<'a> SearchSpace<'a> {
         })
     }
 
-    // CEP:WHAT: Adds one input clause: computes the selection flags, the selection weight, creates the record with the Input derivation, and pushes it into the passive set.
-    // CEP:WHY: Design 15.1's initial passive population; the empty input clause is pushed like any other (the loop detects it on pop and returns Theorem).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates SearchError (store bounds, flag computation, passive capacity).
-    // CEP:ASSUMES: literal atoms were interned by the caller's term store; the caller standardizes each clause's variables to a dense namespace (design 7.2 stage 7 discipline).
-    // CEP:COST: O(literals^2) flag comparisons plus the weight walk plus one store insert plus one heap push.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::{refutes_contradiction, saturates_on_satisfiable}; unit/hot/selection_test.rs::{maximality_computed, first_negative_selects}.
-    // CEP:SECURITY: store bounds enforced.
+    /// CEP:WHAT: Adds one input clause: computes the selection flags, the selection weight, creates the record with the Input derivation, and pushes it into the passive set.
+    /// CEP:WHY: Design 15.1's initial passive population; the empty input clause is pushed like any other (the loop detects it on pop and returns Theorem).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates SearchError (store bounds, flag computation, passive capacity).
+    /// CEP:ASSUMES: literal atoms were interned by the caller's term store; the caller standardizes each clause's variables to a dense namespace (design 7.2 stage 7 discipline).
+    /// CEP:COST: O(literals^2) flag comparisons plus the weight walk plus one store insert plus one heap push.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{refutes_contradiction, saturates_on_satisfiable}; unit/hot/selection_test.rs::{maximality_computed, first_negative_selects}.
+    /// CEP:SECURITY: store bounds enforced.
     pub fn add_input_clause(
         &self,
         context: &InferenceContext<'_>,
@@ -609,26 +609,26 @@ impl<'a> SearchSpace<'a> {
         self.stage_and_push(context, options, literals, derivation)
     }
 
-    // CEP:WHAT: Returns the number of input clauses added.
-    // CEP:WHY: Diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::refutes_contradiction.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of input clauses added.
+    /// CEP:WHY: Diagnostics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::refutes_contradiction.
+    /// CEP:SECURITY: none.
     pub fn input_count(&self) -> u32 {
         self.input_age.get()
     }
 
-    // CEP:WHAT: Adds one parentless theory clause (induction scheme) with an explicit rule.
-    // CEP:WHY: Revised build order Phase 4 (Spec 15): structural and well-founded induction schemes enter the passive set like inputs but carry their scheme rule so the proof walk and the TSTP writer present them as named theory axioms; the age comes from the shared input counter (the sanctioned allocation point, next_input_age's discipline).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates SearchError (store bounds, flag computation, passive capacity).
-    // CEP:ASSUMES: literal atoms were interned by the caller's term store; the rule is one of the parentless theory rules (StructuralInduction, WellFoundedInduction).
-    // CEP:COST: as add_input_clause (one staging pass, one store insert, one heap push).
-    // CEP:EVIDENCE: unit/hot/induction_test.rs::{structural_scheme_clauses_match_clausification, schemes_enter_passive_set}.
-    // CEP:SECURITY: store bounds enforced.
+    /// CEP:WHAT: Adds one parentless theory clause (induction scheme) with an explicit rule.
+    /// CEP:WHY: Revised build order Phase 4 (Spec 15): structural and well-founded induction schemes enter the passive set like inputs but carry their scheme rule so the proof walk and the TSTP writer present them as named theory axioms; the age comes from the shared input counter (the sanctioned allocation point, next_input_age's discipline).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates SearchError (store bounds, flag computation, passive capacity).
+    /// CEP:ASSUMES: literal atoms were interned by the caller's term store; the rule is one of the parentless theory rules (StructuralInduction, WellFoundedInduction).
+    /// CEP:COST: as add_input_clause (one staging pass, one store insert, one heap push).
+    /// CEP:EVIDENCE: unit/hot/induction_test.rs::{structural_scheme_clauses_match_clausification, schemes_enter_passive_set}.
+    /// CEP:SECURITY: store bounds enforced.
     pub fn add_theory_clause(
         &self,
         context: &InferenceContext<'_>,
@@ -646,14 +646,14 @@ impl<'a> SearchSpace<'a> {
         self.stage_and_push(context, options, literals, derivation)
     }
 
-    // CEP:WHAT: Adds one assumption clause (a conjecture candidate's negation) to this space.
-    // CEP:WHY: Spec 16 section 5: the mini-refutation premise must be distinguishable from axioms in the imported proof DAG, so it carries the ConjectureNegation rule; the shape is add_input_clause's with a different derivation label.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates SearchError.
-    // CEP:ASSUMES: literal atoms were interned by the caller's term store; called on the MINI space by the conjecture filter (the main search never adds assumptions).
-    // CEP:COST: as add_input_clause.
-    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, unprovable_candidate_adds_nothing}.
-    // CEP:SECURITY: store bounds enforced.
+    /// CEP:WHAT: Adds one assumption clause (a conjecture candidate's negation) to this space.
+    /// CEP:WHY: Spec 16 section 5: the mini-refutation premise must be distinguishable from axioms in the imported proof DAG, so it carries the ConjectureNegation rule; the shape is add_input_clause's with a different derivation label.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates SearchError.
+    /// CEP:ASSUMES: literal atoms were interned by the caller's term store; called on the MINI space by the conjecture filter (the main search never adds assumptions).
+    /// CEP:COST: as add_input_clause.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, unprovable_candidate_adds_nothing}.
+    /// CEP:SECURITY: store bounds enforced.
     pub fn add_assumption_clause(
         &self,
         context: &InferenceContext<'_>,
@@ -670,14 +670,14 @@ impl<'a> SearchSpace<'a> {
         self.stage_and_push(context, options, literals, derivation)
     }
 
-    // CEP:WHAT: Creates one proof-DAG clause without entering the passive set.
-    // CEP:WHY: Spec 17 section 3: the conjecture import replays a mini refutation into the main store clause by clause; the imported steps are proof-only (they never re-enter the search, or the main loop would saturate on its own lemmas' subproofs); the derivation is taken verbatim with the caller's translated parent ids, so the imported chain is exactly the mini chain.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates SearchError (store bounds, flag computation).
-    // CEP:ASSUMES: literal atoms were interned by the caller's term store; parent ids are valid main-store ids strictly older than the next id; the age is the mini clause's age.
-    // CEP:COST: one staging pass plus one store insert.
-    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
-    // CEP:SECURITY: store bounds enforced.
+    /// CEP:WHAT: Creates one proof-DAG clause without entering the passive set.
+    /// CEP:WHY: Spec 17 section 3: the conjecture import replays a mini refutation into the main store clause by clause; the imported steps are proof-only (they never re-enter the search, or the main loop would saturate on its own lemmas' subproofs); the derivation is taken verbatim with the caller's translated parent ids, so the imported chain is exactly the mini chain.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates SearchError (store bounds, flag computation).
+    /// CEP:ASSUMES: literal atoms were interned by the caller's term store; parent ids are valid main-store ids strictly older than the next id; the age is the mini clause's age.
+    /// CEP:COST: one staging pass plus one store insert.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
+    /// CEP:SECURITY: store bounds enforced.
     pub fn add_proof_clause(
         &self,
         context: &InferenceContext<'_>,
@@ -700,14 +700,14 @@ impl<'a> SearchSpace<'a> {
         Ok(ptr.as_u32())
     }
 
-    // CEP:WHAT: Returns the proof-only watermark: the first imported clause's id, or the next unstaged id when no import has happened.
-    // CEP:WHY: The harvest's premise enumeration, unit window, and constructor-instance scan treat every id below this bound as harvest-visible and everything at or above it as import-private (Spec 16 section 3, the Task 26 sev-0 repair); before any import the bound is the next id, so the un-imported space behaves exactly as before.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: called between clause creations (the returned bound is a snapshot; a concurrent creation only lowers what the caller sees, never raises it).
-    // CEP:COST: one load plus, before the first import, one next-id read.
-    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::{proof_watermark_bounds_harvest_scans, two_harvests_stay_sound}.
-    // CEP:SECURITY: the soundness boundary of the conjecture feature's id-space sharing.
+    /// CEP:WHAT: Returns the proof-only watermark: the first imported clause's id, or the next unstaged id when no import has happened.
+    /// CEP:WHY: The harvest's premise enumeration, unit window, and constructor-instance scan treat every id below this bound as harvest-visible and everything at or above it as import-private (Spec 16 section 3, the Task 26 sev-0 repair); before any import the bound is the next id, so the un-imported space behaves exactly as before.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: called between clause creations (the returned bound is a snapshot; a concurrent creation only lowers what the caller sees, never raises it).
+    /// CEP:COST: one load plus, before the first import, one next-id read.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{proof_watermark_bounds_harvest_scans, two_harvests_stay_sound}.
+    /// CEP:SECURITY: the soundness boundary of the conjecture feature's id-space sharing.
     pub fn proof_base(&self) -> u64 {
         match self.proof_base.get() {
             kInvalidClauseId => self.store.next_clause_id().0,
@@ -715,14 +715,14 @@ impl<'a> SearchSpace<'a> {
         }
     }
 
-    // CEP:WHAT: Adds one derived clause with an explicit derivation into the passive set.
-    // CEP:WHY: Spec 16 section 6: a lemma proved by bounded refutation enters the main search through the normal passive path with the ConjectureLemma derivation (parents: imported negation premise and imported empty clause); the shape is add_input_clause's with the caller's derivation.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates SearchError.
-    // CEP:ASSUMES: literal atoms were interned by the caller's term store.
-    // CEP:COST: as add_input_clause.
-    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, lemma_enters_passive_set}.
-    // CEP:SECURITY: store bounds enforced.
+    /// CEP:WHAT: Adds one derived clause with an explicit derivation into the passive set.
+    /// CEP:WHY: Spec 16 section 6: a lemma proved by bounded refutation enters the main search through the normal passive path with the ConjectureLemma derivation (parents: imported negation premise and imported empty clause); the shape is add_input_clause's with the caller's derivation.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates SearchError.
+    /// CEP:ASSUMES: literal atoms were interned by the caller's term store.
+    /// CEP:COST: as add_input_clause.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, lemma_enters_passive_set}.
+    /// CEP:SECURITY: store bounds enforced.
     pub fn add_derived_clause(
         &self,
         context: &InferenceContext<'_>,
@@ -807,14 +807,14 @@ impl<'a> SearchSpace<'a> {
         Ok(ptr.as_u32())
     }
 
-    // CEP:WHAT: Allocates the next input age (monotonic counter shared by input clauses and AVATAR component materializations).
-    // CEP:WHY: Materialized components (design 12.2 rule 3) enter the passive set like inputs and need the same monotone age discipline (design 15.2); the counter stays private to the space, so this is the single sanctioned allocation point.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: single-threaded space.
-    // CEP:COST: 1 load, 1 store.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Allocates the next input age (monotonic counter shared by input clauses and AVATAR component materializations).
+    /// CEP:WHY: Materialized components (design 12.2 rule 3) enter the passive set like inputs and need the same monotone age discipline (design 15.2); the counter stays private to the space, so this is the single sanctioned allocation point.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: single-threaded space.
+    /// CEP:COST: 1 load, 1 store.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    /// CEP:SECURITY: none.
     pub fn next_input_age(&self) -> u32 {
         let age = self.input_age.get();
         self.input_age.set(age + 1);
@@ -822,14 +822,14 @@ impl<'a> SearchSpace<'a> {
     }
 }
 
-// CEP:WHAT: Runs the given-clause loop to a terminal outcome, converting capacity-family errors to GaveUp(MemoryBudget).
-// CEP:WHY: Design 20.2 and the GaveUpReason::MemoryBudget documentation fix the loop's contract: a capacity or storage budget (passive full, active full, arena exhausted, clause budget) ENDS the search as GaveUp with the reason named, never as Err - a bound firing is a legal bounded outcome (CEP&CC Law 6), not a structural failure; before CEP-1056 the loop propagated those errors (arena exhaustion during rule materialization surfaced as Err after the honest-kind fix, clause-store and active-set capacity as Err since Phase 3), so long-running saturations crashed instead of stopping (tests/bug_first_negative_selection.rs); the wrapper keeps the conversion in one place so every current and future `?` inside the loop is covered and saturate_with_avatar inherits the behavior through its inner saturate call.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(GaveUp(MemoryBudget)) when the inner loop returns a capacity-family SearchError; every other Err propagates; never panics.
-// CEP:ASSUMES: the inner loop's non-capacity errors are structural (corruption, caller bugs) and stay loud.
-// CEP:COST: one match per terminal error path; zero on Ok.
-// CEP:EVIDENCE: unit/hot/given_clause_test.rs::arena_exhaustion_gives_up_memory_budget; tests/bug_first_negative_selection.rs (CEP-1056 regression).
-// CEP:SECURITY: the memory bound stays the denial-of-service boundary (CEP&CC 22.10).
+/// CEP:WHAT: Runs the given-clause loop to a terminal outcome, converting capacity-family errors to GaveUp(MemoryBudget).
+/// CEP:WHY: Design 20.2 and the GaveUpReason::MemoryBudget documentation fix the loop's contract: a capacity or storage budget (passive full, active full, arena exhausted, clause budget) ENDS the search as GaveUp with the reason named, never as Err - a bound firing is a legal bounded outcome (CEP&CC Law 6), not a structural failure; before CEP-1056 the loop propagated those errors (arena exhaustion during rule materialization surfaced as Err after the honest-kind fix, clause-store and active-set capacity as Err since Phase 3), so long-running saturations crashed instead of stopping (tests/bug_first_negative_selection.rs); the wrapper keeps the conversion in one place so every current and future `?` inside the loop is covered and saturate_with_avatar inherits the behavior through its inner saturate call.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(GaveUp(MemoryBudget)) when the inner loop returns a capacity-family SearchError; every other Err propagates; never panics.
+/// CEP:ASSUMES: the inner loop's non-capacity errors are structural (corruption, caller bugs) and stay loud.
+/// CEP:COST: one match per terminal error path; zero on Ok.
+/// CEP:EVIDENCE: unit/hot/given_clause_test.rs::arena_exhaustion_gives_up_memory_budget; tests/bug_first_negative_selection.rs (CEP-1056 regression).
+/// CEP:SECURITY: the memory bound stays the denial-of-service boundary (CEP&CC 22.10).
 pub fn saturate<F: Fn(u64) -> bool>(
     space: &SearchSpace<'_>,
     context: &InferenceContext<'_>,
@@ -1820,14 +1820,14 @@ fn drain_buffer(
     Ok(DrainStatus::Drained)
 }
 
-// CEP:WHAT: Test probe for the forward-subsumption path (wraps forward_subsumed); pub because the integration tests live outside the crate, never called by production code.
-// CEP:WHY: The loop-internal helper is private; the database tests verify the filtered path (feature filter then matching) in isolation through this thin, documented projection - the loop-level behavior is covered by given_clause_test's forward_subsumption_discards; an internal SearchError is converted to false (the probe answers a yes/no question and the loop's own path surfaces the error loudly - the production forward_subsumed call has no such swallowing).
-// CEP:STATUS: complete
-// CEP:FAILURE: false on an internal error (test-surface behavior; production callers get the Err).
-// CEP:ASSUMES: the given clause is non-empty.
-// CEP:COST: as forward_subsumed.
-// CEP:EVIDENCE: unit/hot/search_db_test.rs::forward_subsumption_uses_filter.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Test probe for the forward-subsumption path (wraps forward_subsumed); pub because the integration tests live outside the crate, never called by production code.
+/// CEP:WHY: The loop-internal helper is private; the database tests verify the filtered path (feature filter then matching) in isolation through this thin, documented projection - the loop-level behavior is covered by given_clause_test's forward_subsumption_discards; an internal SearchError is converted to false (the probe answers a yes/no question and the loop's own path surfaces the error loudly - the production forward_subsumed call has no such swallowing).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: false on an internal error (test-surface behavior; production callers get the Err).
+/// CEP:ASSUMES: the given clause is non-empty.
+/// CEP:COST: as forward_subsumed.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::forward_subsumption_uses_filter.
+/// CEP:SECURITY: none.
 pub fn saturate_probe_forward(
     space: &SearchSpace<'_>,
     context: &InferenceContext<'_>,

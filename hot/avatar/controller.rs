@@ -323,7 +323,10 @@ pub enum AddOutcome {
     /// CEP:COST: enum value with payload.
     /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{split_inputs_create_components, split_derivations_cite_original}.
     /// CEP:SECURITY: none.
-    Split { original: u32 },
+    Split {
+        /// The original clause's record offset, retained inertly for proof reconstruction.
+        original: u32,
+    },
 }
 
 /// CEP:WHAT: The terminal outcome of the AVATAR saturation protocol.
@@ -618,14 +621,14 @@ pub struct AvatarController<'a> {
 }
 
 impl<'a> AvatarController<'a> {
-    // CEP:WHAT: Constructs the controller with explicit options (solver, table, bitset).
-    // CEP:WHY: CEP&CC 34.3 injectable capacities on the production path; validates sat_variables >= record_capacity and the bitset range before any allocation.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns InvalidOptions for inconsistent options and the wrapped table/solver errors for arena exhaustion.
-    // CEP:ASSUMES: the arena has room for all substructures.
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{controller_validates_solver_variables, split_inputs_create_components}.
-    // CEP:SECURITY: options validated before allocation.
+    /// CEP:WHAT: Constructs the controller with explicit options (solver, table, bitset).
+    /// CEP:WHY: CEP&CC 34.3 injectable capacities on the production path; validates sat_variables >= record_capacity and the bitset range before any allocation.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns InvalidOptions for inconsistent options and the wrapped table/solver errors for arena exhaustion.
+    /// CEP:ASSUMES: the arena has room for all substructures.
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{controller_validates_solver_variables, split_inputs_create_components}.
+    /// CEP:SECURITY: options validated before allocation.
     pub fn new_with(
         arena: &'a Arena,
         options: &AvatarOptions,
@@ -686,26 +689,26 @@ impl<'a> AvatarController<'a> {
         })
     }
 
-    // CEP:WHAT: Constructs the controller with production defaults.
-    // CEP:WHY: The production entry point; the capacities are the named constants (AvatarOptions::default).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as new_with.
-    // CEP:ASSUMES: the arena has about 8 MiB free beyond the search space.
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::split_inputs_create_components.
-    // CEP:SECURITY: as new_with.
+    /// CEP:WHAT: Constructs the controller with production defaults.
+    /// CEP:WHY: The production entry point; the capacities are the named constants (AvatarOptions::default).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as new_with.
+    /// CEP:ASSUMES: the arena has about 8 MiB free beyond the search space.
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::split_inputs_create_components.
+    /// CEP:SECURITY: as new_with.
     pub fn new(arena: &'a Arena) -> Result<AvatarController<'a>, ControllerError> {
         AvatarController::new_with(arena, &AvatarOptions::default())
     }
 
-    // CEP:WHAT: Adds one input clause: splits it when the gate passes, otherwise the plain Phase 3 path.
-    // CEP:WHY: Design 12.2 rule 1 with the Spec 12 section 7 degradation policy: the original record is created (Input derivation, never pushed to passive - inert by construction) so the components' AvatarSplit derivations cite it; each component is restandardized to its own dense namespace, canonicalized, interned (sharing assertion variables across splits), and its assertion literal joins the split's disjunction a1 or ... or an (a problem clause - permanent, never registry-reduced); table-full and word-full degradations keep the clause whole (sound).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates ControllerError on structural failures; degradation is NOT a failure (counted in stats.unsplit).
-    // CEP:ASSUMES: literal atoms were interned by the context's term store; the caller standardized the clause's variables densely; the space and the controller share one arena.
-    // CEP:COST: one split decision plus per-component restandardize/canonicalize/intern plus one solver add_clause.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{split_inputs_create_components, unsplittable_inputs_pass_through, split_derivations_cite_original}.
-    // CEP:SECURITY: all buffers bounded (kMaxClauseLiterals, kMaxSplitComponents).
+    /// CEP:WHAT: Adds one input clause: splits it when the gate passes, otherwise the plain Phase 3 path.
+    /// CEP:WHY: Design 12.2 rule 1 with the Spec 12 section 7 degradation policy: the original record is created (Input derivation, never pushed to passive - inert by construction) so the components' AvatarSplit derivations cite it; each component is restandardized to its own dense namespace, canonicalized, interned (sharing assertion variables across splits), and its assertion literal joins the split's disjunction a1 or ... or an (a problem clause - permanent, never registry-reduced); table-full and word-full degradations keep the clause whole (sound).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates ControllerError on structural failures; degradation is NOT a failure (counted in stats.unsplit).
+    /// CEP:ASSUMES: literal atoms were interned by the context's term store; the caller standardized the clause's variables densely; the space and the controller share one arena.
+    /// CEP:COST: one split decision plus per-component restandardize/canonicalize/intern plus one solver add_clause.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{split_inputs_create_components, unsplittable_inputs_pass_through, split_derivations_cite_original}.
+    /// CEP:SECURITY: all buffers bounded (kMaxClauseLiterals, kMaxSplitComponents).
     pub fn add_input_clause(
         &self,
         space: &SearchSpace<'_>,
@@ -826,14 +829,14 @@ impl<'a> AvatarController<'a> {
         }
     }
 
-    // CEP:WHAT: Materializes every unmaterialized component whose assertion variable is true under the current model; returns the activation count.
-    // CEP:WHY: Design 12.2 rule 3 (model-guided selection) under monotone activation (Spec 12 section 5): the component clause is created with the AvatarSplit derivation (parent = the first split's original), the literal component tags (CEP-1011), split_level = slot + 1, the selection flags, the weight, the next input age, and a passive push - the component enters the search exactly once.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates ControllerError; set_materialized is idempotent so a repeated activation is a no-op.
-    // CEP:ASSUMES: the solver just returned Satisfiable (model_value is meaningful); the space and controller share one arena.
-    // CEP:COST: O(components) scan plus O(literals) per activated component.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{model_activates_components, refutes_split_pigeonhole, split_derivations_cite_original}.
-    // CEP:SECURITY: all reads bounds-checked.
+    /// CEP:WHAT: Materializes every unmaterialized component whose assertion variable is true under the current model; returns the activation count.
+    /// CEP:WHY: Design 12.2 rule 3 (model-guided selection) under monotone activation (Spec 12 section 5): the component clause is created with the AvatarSplit derivation (parent = the first split's original), the literal component tags (CEP-1011), split_level = slot + 1, the selection flags, the weight, the next input age, and a passive push - the component enters the search exactly once.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates ControllerError; set_materialized is idempotent so a repeated activation is a no-op.
+    /// CEP:ASSUMES: the solver just returned Satisfiable (model_value is meaningful); the space and controller share one arena.
+    /// CEP:COST: O(components) scan plus O(literals) per activated component.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{model_activates_components, refutes_split_pigeonhole, split_derivations_cite_original}.
+    /// CEP:SECURITY: all reads bounds-checked.
     pub fn activate_under_model(
         &self,
         space: &SearchSpace<'_>,
@@ -919,14 +922,14 @@ impl<'a> AvatarController<'a> {
         Ok(activated)
     }
 
-    // CEP:WHAT: Collects the component slots used by a refutation's derivation ancestry; returns the count written to out.
-    // CEP:WHY: Design 12.2 rule 4: the conflict clause bans the conjunction of every component in the refutation's ancestry; the scan exploits monotonic clause ids (parents precede children) with one descending pass over the id range marking ancestors on the bitset and recording component clauses (split_level != 0) - Spec 12 section 5 proves the single pass correct.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns ControllerError::Avatar when a clause id exceeds the bitset capacity or a parent is unreadable.
-    // CEP:ASSUMES: refutation is a store-produced offset; out has at least component_count slots.
-    // CEP:COST: O(refutation id) bitset scan plus O(ancestry) record reads.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
-    // CEP:SECURITY: ids bounded by the bitset capacity.
+    /// CEP:WHAT: Collects the component slots used by a refutation's derivation ancestry; returns the count written to out.
+    /// CEP:WHY: Design 12.2 rule 4: the conflict clause bans the conjunction of every component in the refutation's ancestry; the scan exploits monotonic clause ids (parents precede children) with one descending pass over the id range marking ancestors on the bitset and recording component clauses (split_level != 0) - Spec 12 section 5 proves the single pass correct.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns ControllerError::Avatar when a clause id exceeds the bitset capacity or a parent is unreadable.
+    /// CEP:ASSUMES: refutation is a store-produced offset; out has at least component_count slots.
+    /// CEP:COST: O(refutation id) bitset scan plus O(ancestry) record reads.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    /// CEP:SECURITY: ids bounded by the bitset capacity.
     pub fn plan_conflict(
         &self,
         store: &ClauseStore<'_>,
@@ -1013,14 +1016,14 @@ impl<'a> AvatarController<'a> {
         Ok(deduped)
     }
 
-    // CEP:WHAT: Adds the conflict clause from the controller's conflict-slot buffer (the first `used` entries).
-    // CEP:WHY: Design 12.2 rule 4 and Spec 12 Lemma 2: inputs + the components of U entail false, so every original-problem model falsifies the all-true-U assignment - the clause not-a1 or ... or not-ak is entailed and excludes at least the current model; problem-clause semantics keep the ban permanent (no registry reduction); reading the controller's own buffer avoids a stack copy and any truncation (a truncated ban would be UNSOUND - it must cover every used slot or fail loudly).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns AvatarError::InvalidClause when used exceeds kMaxSatClauseLiterals (the abstraction cannot host the clause - a loud stop, never a silent subset ban) and propagates the solver error.
-    // CEP:ASSUMES: the buffer was filled by plan_conflict; entries are distinct slots < component_count.
-    // CEP:COST: O(used) literal construction plus one add_clause.
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
-    // CEP:SECURITY: literal count bounded by kMaxSatClauseLiterals.
+    /// CEP:WHAT: Adds the conflict clause from the controller's conflict-slot buffer (the first `used` entries).
+    /// CEP:WHY: Design 12.2 rule 4 and Spec 12 Lemma 2: inputs + the components of U entail false, so every original-problem model falsifies the all-true-U assignment - the clause not-a1 or ... or not-ak is entailed and excludes at least the current model; problem-clause semantics keep the ban permanent (no registry reduction); reading the controller's own buffer avoids a stack copy and any truncation (a truncated ban would be UNSOUND - it must cover every used slot or fail loudly).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns AvatarError::InvalidClause when used exceeds kMaxSatClauseLiterals (the abstraction cannot host the clause - a loud stop, never a silent subset ban) and propagates the solver error.
+    /// CEP:ASSUMES: the buffer was filled by plan_conflict; entries are distinct slots < component_count.
+    /// CEP:COST: O(used) literal construction plus one add_clause.
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    /// CEP:SECURITY: literal count bounded by kMaxSatClauseLiterals.
     pub fn add_conflict_from_buffer(&self, used: usize) -> Result<(), ControllerError> {
         if used > kMaxSatClauseLiterals as usize || used > self.conflict_slots.len() {
             return Err(ControllerError::Avatar(AvatarError::InvalidClause));
@@ -1040,14 +1043,14 @@ impl<'a> AvatarController<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Stages the FOL copy of the conflict clause from the controller's conflict-slot buffer (Spec 18 section 4): one stored SatLearn clause over 0-ary assertion atoms, anchored at the round's refutation.
-    // CEP:WHY: The SAT ban clause (add_conflict_from_buffer) lives in the abstraction; the FOL copy records the same proposition in the derivation DAG as a SatLearn lemma (all-negative assertion atoms, one parent: the round's refuting empty clause), where the certified kernel verifies its shape (Spec 19); the lemma is STAGED (stored, never pushed to the passive set - the assertion atoms are foreign to the first-order search), the staging is all-or-nothing (a partial ban would be unsound), and every skip is counted (Law 4).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Ok(None) on every skip path (learning disabled, budget exhausted, unnameable slot, count bound); Err propagates store failures; never panics.
-    // CEP:ASSUMES: the buffer was filled by plan_conflict; refutation_id is the refuting clause's store id; the caller reserved the assertion symbols and configured the controller with the block's base.
-    // CEP:COST: O(used) atom interns plus one new_clause.
-    // CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{conflict_lemma_staged_and_verifiable, conflict_lemma_budget_enforced, learning_disabled_by_default}.
-    // CEP:SECURITY: budgets bound the staging work.
+    /// CEP:WHAT: Stages the FOL copy of the conflict clause from the controller's conflict-slot buffer (Spec 18 section 4): one stored SatLearn clause over 0-ary assertion atoms, anchored at the round's refutation.
+    /// CEP:WHY: The SAT ban clause (add_conflict_from_buffer) lives in the abstraction; the FOL copy records the same proposition in the derivation DAG as a SatLearn lemma (all-negative assertion atoms, one parent: the round's refuting empty clause), where the certified kernel verifies its shape (Spec 19); the lemma is STAGED (stored, never pushed to the passive set - the assertion atoms are foreign to the first-order search), the staging is all-or-nothing (a partial ban would be unsound), and every skip is counted (Law 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Ok(None) on every skip path (learning disabled, budget exhausted, unnameable slot, count bound); Err propagates store failures; never panics.
+    /// CEP:ASSUMES: the buffer was filled by plan_conflict; refutation_id is the refuting clause's store id; the caller reserved the assertion symbols and configured the controller with the block's base.
+    /// CEP:COST: O(used) atom interns plus one new_clause.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{conflict_lemma_staged_and_verifiable, conflict_lemma_budget_enforced, learning_disabled_by_default}.
+    /// CEP:SECURITY: budgets bound the staging work.
     pub fn add_conflict_lemma_from_buffer(
         &self,
         space: &SearchSpace<'_>,
@@ -1111,14 +1114,14 @@ impl<'a> AvatarController<'a> {
         Ok(Some(record.id.0))
     }
 
-    // CEP:WHAT: Transfers the abstraction solver's new learnt clauses (registry entries beyond the monotone cursor) into FOL SatLearn clauses over assertion atoms (Spec 18 section 4).
-    // CEP:WHY: Bidirectional learning (design 18 Feature A): the SAT engine's conflict-driven lemmas are consequences of the abstraction's problem clauses, so their FOL copies are sound recorded introductions; the transfer policy keeps only small, high-quality learnts (kLearningMaxTransferLiterals, kLearningMaxTransferLbd) whose variables are all nameable component slots, every transferred clause enters the passive set (the search may use the assertion atoms), the cursor advances monotonically so each registry entry is considered at most once, and every skip is counted (Law 4); the transferred clause's derivation is parentless SatLearn (the SAT engine's own DRAT discipline covers the SAT-side derivation).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Ok on every skip path (counted in stats.learning_skipped); Err propagates store and passive failures; never panics.
-    // CEP:ASSUMES: called after an unconditional solve (Satisfiable); single-threaded; learning enabled by the caller's options.
-    // CEP:COST: O(new registry entries) header reads plus one new_clause + one passive push per transfer.
-    // CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{transfer_learnts_enter_passive, transfer_budget_enforced, transfer_policy_filters, learning_disabled_by_default}.
-    // CEP:SECURITY: budgets bound the transfer work.
+    /// CEP:WHAT: Transfers the abstraction solver's new learnt clauses (registry entries beyond the monotone cursor) into FOL SatLearn clauses over assertion atoms (Spec 18 section 4).
+    /// CEP:WHY: Bidirectional learning (design 18 Feature A): the SAT engine's conflict-driven lemmas are consequences of the abstraction's problem clauses, so their FOL copies are sound recorded introductions; the transfer policy keeps only small, high-quality learnts (kLearningMaxTransferLiterals, kLearningMaxTransferLbd) whose variables are all nameable component slots, every transferred clause enters the passive set (the search may use the assertion atoms), the cursor advances monotonically so each registry entry is considered at most once, and every skip is counted (Law 4); the transferred clause's derivation is parentless SatLearn (the SAT engine's own DRAT discipline covers the SAT-side derivation).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Ok on every skip path (counted in stats.learning_skipped); Err propagates store and passive failures; never panics.
+    /// CEP:ASSUMES: called after an unconditional solve (Satisfiable); single-threaded; learning enabled by the caller's options.
+    /// CEP:COST: O(new registry entries) header reads plus one new_clause + one passive push per transfer.
+    /// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::{transfer_learnts_enter_passive, transfer_budget_enforced, transfer_policy_filters, learning_disabled_by_default}.
+    /// CEP:SECURITY: budgets bound the transfer work.
     pub fn transfer_learnts(
         &self,
         space: &SearchSpace<'_>,
@@ -1246,14 +1249,14 @@ impl<'a> AvatarController<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the number of unmaterialized (waiting) components.
-    // CEP:WHY: The saturation decision (Spec 12 Theorem 3) and the rotation sweep need the waiting count.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: O(components).
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{saturates_when_waiting_drains, model_rotation_budget_enforced}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of unmaterialized (waiting) components.
+    /// CEP:WHY: The saturation decision (Spec 12 Theorem 3) and the rotation sweep need the waiting count.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: O(components).
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{saturates_when_waiting_drains, model_rotation_budget_enforced}.
+    /// CEP:SECURITY: none.
     pub fn waiting_count(&self) -> u32 {
         let mut waiting: u32 = 0;
         for slot in 0..self.components.component_count() {
@@ -1265,14 +1268,14 @@ impl<'a> AvatarController<'a> {
     }
 }
 
-// CEP:WHAT: Runs the AVATAR saturation protocol to a terminal outcome (design 12.2's four-rule loop over the Phase 3 engine).
-// CEP:WHY: Spec 12 section 5 fixes the protocol: round start solves the abstraction and activates model-true waiting components (rule 3); the inner saturate runs the given-clause loop - a direct Theorem (empty ancestry) terminates immediately, a component-ancestry Theorem adds the conflict clause and re-solves (rule 4): abstraction-unsat closes the case as Theorem (Theorem 1), a new model re-activates and the search continues (monotone: previously materialized components stay, a superset of the strict model-guided search - sound and complete, Theorem 2); Saturated with no waiting components is the honest saturation, Saturated with waiting components triggers the bounded rotation sweep (assumption solves per waiting slot; every slot unassertable proves saturation sound - Theorem 3), rotation-exhaustion past the budget is a loud GaveUp; every other GaveUp reason propagates; the should_stop callback is checked between rounds with the round counter (the CEP-1 driver ignores the counter for wall time; tests use iteration predicates - the dual use is the CEP-1005 discipline).
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates ControllerError on structural failures; GaveUp on every named budget; never panics.
-// CEP:ASSUMES: the space, context, options, and controller share one arena; inputs were added through controller.add_input_clause; the stop callback is deterministic for a fixed counter.
-// CEP:COST: one abstraction solve per round plus the Phase 3 loop costs per round plus O(ids) per conflict.
-// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{refutes_split_pigeonhole, direct_refutation_bypasses_avatar, conflict_round_budget_enforced, model_rotation_budget_enforced, saturates_when_waiting_drains}; property/avatar_property_test.rs::{avatar_agrees_with_plain_saturation, avatar_refutations_check}.
-// CEP:SECURITY: all budgets enforced (kAvatarMaxConflictRounds, kAvatarMaxModelRotations, the inner loop's budgets).
+/// CEP:WHAT: Runs the AVATAR saturation protocol to a terminal outcome (design 12.2's four-rule loop over the Phase 3 engine).
+/// CEP:WHY: Spec 12 section 5 fixes the protocol: round start solves the abstraction and activates model-true waiting components (rule 3); the inner saturate runs the given-clause loop - a direct Theorem (empty ancestry) terminates immediately, a component-ancestry Theorem adds the conflict clause and re-solves (rule 4): abstraction-unsat closes the case as Theorem (Theorem 1), a new model re-activates and the search continues (monotone: previously materialized components stay, a superset of the strict model-guided search - sound and complete, Theorem 2); Saturated with no waiting components is the honest saturation, Saturated with waiting components triggers the bounded rotation sweep (assumption solves per waiting slot; every slot unassertable proves saturation sound - Theorem 3), rotation-exhaustion past the budget is a loud GaveUp; every other GaveUp reason propagates; the should_stop callback is checked between rounds with the round counter (the CEP-1 driver ignores the counter for wall time; tests use iteration predicates - the dual use is the CEP-1005 discipline).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates ControllerError on structural failures; GaveUp on every named budget; never panics.
+/// CEP:ASSUMES: the space, context, options, and controller share one arena; inputs were added through controller.add_input_clause; the stop callback is deterministic for a fixed counter.
+/// CEP:COST: one abstraction solve per round plus the Phase 3 loop costs per round plus O(ids) per conflict.
+/// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::{refutes_split_pigeonhole, direct_refutation_bypasses_avatar, conflict_round_budget_enforced, model_rotation_budget_enforced, saturates_when_waiting_drains}; property/avatar_property_test.rs::{avatar_agrees_with_plain_saturation, avatar_refutations_check}.
+/// CEP:SECURITY: all budgets enforced (kAvatarMaxConflictRounds, kAvatarMaxModelRotations, the inner loop's budgets).
 pub fn saturate_with_avatar<F: Fn(u64) -> bool>(
     space: &SearchSpace<'_>,
     context: &InferenceContext<'_>,

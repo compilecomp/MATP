@@ -95,14 +95,14 @@ pub struct CandidateList {
 }
 
 impl CandidateList {
-    // CEP:WHAT: Constructs an empty list.
-    // CEP:WHY: One constructor fixes the initial state.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: O(1).
-    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::candidate_budget_enforced.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Constructs an empty list.
+    /// CEP:WHY: One constructor fixes the initial state.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: O(1).
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::candidate_budget_enforced.
+    /// CEP:SECURITY: none.
     pub fn new() -> CandidateList {
         CandidateList {
             literals: [Literal::new(TermPtr::invalid(), true); kMaxConjectureCandidates as usize],
@@ -110,14 +110,14 @@ impl CandidateList {
         }
     }
 
-    // CEP:WHAT: Appends one candidate unless the list is full or the atom is already present.
-    // CEP:WHY: The dedup-by-identity rule (hash-consed pointer equality) keeps the candidate set duplicate-free, and the cap is the deterministic prefix cut (Law 4: the harvest's stats report what was tried).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns false when the candidate was not appended (full or duplicate); the caller counts nothing.
-    // CEP:ASSUMES: the atom is interned.
-    // CEP:COST: O(count) identity checks.
-    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::{candidate_budget_enforced, enumeration_is_deterministic}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Appends one candidate unless the list is full or the atom is already present.
+    /// CEP:WHY: The dedup-by-identity rule (hash-consed pointer equality) keeps the candidate set duplicate-free, and the cap is the deterministic prefix cut (Law 4: the harvest's stats report what was tried).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns false when the candidate was not appended (full or duplicate); the caller counts nothing.
+    /// CEP:ASSUMES: the atom is interned.
+    /// CEP:COST: O(count) identity checks.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{candidate_budget_enforced, enumeration_is_deterministic}.
+    /// CEP:SECURITY: none.
     pub fn push(&mut self, literal: Literal) -> bool {
         if self.count >= kMaxConjectureCandidates as usize {
             return false;
@@ -173,14 +173,14 @@ fn is_instantiable_rule(rule: crate::ir::clause::InferenceRule) -> bool {
     !matches!(rule, Rule::ConjectureNegation | Rule::ConjectureLemma)
 }
 
-// CEP:WHAT: Collects the most recent derived positive unit equations into the window buffer, newest first.
-// CEP:WHY: Spec 16 section 3: the scan walks ids descending from the store's next id (deterministic direction), keeps a clause only when it is a single positive equality literal whose derivation rule passes the T1/T2 source filter, and stops when the window (kConjectureTransitivityWindow) is full; the caller reverses to ascending order, so the enumeration order is id-ascending regardless of the scan direction.
-// CEP:STATUS: complete
-// CEP:FAILURE: unreadable clauses stop the scan (the window keeps what it has; a corrupt store is the search's failure, not the harvest's).
-// CEP:ASSUMES: the store's id side table is consistent.
-// CEP:COST: O(ids scanned) with an early stop at the window bound.
-// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{transitivity_pairs_recent_units, enumeration_is_deterministic}.
-// CEP:SECURITY: bounded scan and buffer.
+/// CEP:WHAT: Collects the most recent derived positive unit equations into the window buffer, newest first.
+/// CEP:WHY: Spec 16 section 3: the scan walks ids descending from the store's next id (deterministic direction), keeps a clause only when it is a single positive equality literal whose derivation rule passes the T1/T2 source filter, and stops when the window (kConjectureTransitivityWindow) is full; the caller reverses to ascending order, so the enumeration order is id-ascending regardless of the scan direction.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: unreadable clauses stop the scan (the window keeps what it has; a corrupt store is the search's failure, not the harvest's).
+/// CEP:ASSUMES: the store's id side table is consistent.
+/// CEP:COST: O(ids scanned) with an early stop at the window bound.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{transitivity_pairs_recent_units, enumeration_is_deterministic}.
+/// CEP:SECURITY: bounded scan and buffer.
 pub fn collect_recent_units(space: &SearchSpace<'_>, context: &InferenceContext<'_>) -> UnitWindow {
     let mut window = UnitWindow {
         units: [UnitEquation {
@@ -350,14 +350,14 @@ fn instantiate_at(
     Some(applied)
 }
 
-// CEP:WHAT: Enumerates the candidate lemmas from the unit window: T1 per unit (ascending), T2 per ordered pair (older joined to newer, both chain directions in fixed order), then T3 per instantiable unit (both canonical patterns) when a datatype declaration is given.
-// CEP:WHY: Spec 16 section 4: the fixed template order and the fixed enumeration order make the candidate list a pure function of the window and the declaration (determinism); every join is hash-consed pointer identity; reflexive candidates (left == right) are skipped; duplicates are suppressed by atom identity; the kMaxConjectureCandidates cap cuts the list deterministically.
-// CEP:STATUS: complete
-// CEP:FAILURE: never returns Err: intern or substitution failures skip the individual candidate (counted by absence); the harvest's stats report what was tried.
-// CEP:ASSUMES: the window is ascending by id; the declaration (when given) is validated.
-// CEP:COST: O(window^2) for T2 plus O(window x variables) for T3; measured in bench CEP-BENCH-0037.
-// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{symmetry_candidates, transitivity_pairs_recent_units, constructor_instances_bounded, candidate_budget_enforced, enumeration_is_deterministic}.
-// CEP:SECURITY: bounded loops throughout.
+/// CEP:WHAT: Enumerates the candidate lemmas from the unit window: T1 per unit (ascending), T2 per ordered pair (older joined to newer, both chain directions in fixed order), then T3 per instantiable unit (both canonical patterns) when a datatype declaration is given.
+/// CEP:WHY: Spec 16 section 4: the fixed template order and the fixed enumeration order make the candidate list a pure function of the window and the declaration (determinism); every join is hash-consed pointer identity; reflexive candidates (left == right) are skipped; duplicates are suppressed by atom identity; the kMaxConjectureCandidates cap cuts the list deterministically.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: never returns Err: intern or substitution failures skip the individual candidate (counted by absence); the harvest's stats report what was tried.
+/// CEP:ASSUMES: the window is ascending by id; the declaration (when given) is validated.
+/// CEP:COST: O(window^2) for T2 plus O(window x variables) for T3; measured in bench CEP-BENCH-0037.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{symmetry_candidates, transitivity_pairs_recent_units, constructor_instances_bounded, candidate_budget_enforced, enumeration_is_deterministic}.
+/// CEP:SECURITY: bounded loops throughout.
 pub fn enumerate_candidates(
     space: &SearchSpace<'_>,
     context: &InferenceContext<'_>,

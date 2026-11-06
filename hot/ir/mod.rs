@@ -9,9 +9,13 @@
 // CEP:EVIDENCE: unit tests under tests/unit/hot; cold verifier tests/unit/cold/verifier_test.rs.
 // CEP:SECURITY: symbol IDs and term offsets are validated at every access.
 
+/// Clauses: inline-literal clause records, monotone ids, derivation steps, and the clause store.
 pub mod clause;
+/// Literals: positive and negative atoms over hash-consed terms with packed theory flags.
 pub mod literal;
+/// The frozen symbol table: kinds, sorts, arities, and the CEP-1 builder contract.
 pub mod symbol_table;
+/// Hash-consed terms: the term store, tags, offsets, and the term-error vocabulary.
 pub mod term;
 
 pub use clause::{

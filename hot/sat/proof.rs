@@ -332,14 +332,14 @@ pub struct ProofRecorder<'a> {
 }
 
 impl<'a> ProofRecorder<'a> {
-    // CEP:WHAT: Constructs the recorder with the default capacities.
-    // CEP:WHY: Production entry point; the named constants are the documented defaults.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns capacity errors when the buffers do not fit the arena.
-    // CEP:ASSUMES: the arena has room for (12 x steps + 8 x map + 4 x literals) bytes.
-    // CEP:COST: O(capacity) one-time allocation and clear.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::steps_recorded_in_order.
-    // CEP:SECURITY: capacities validated before allocation.
+    /// CEP:WHAT: Constructs the recorder with the default capacities.
+    /// CEP:WHY: Production entry point; the named constants are the documented defaults.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns capacity errors when the buffers do not fit the arena.
+    /// CEP:ASSUMES: the arena has room for (12 x steps + 8 x map + 4 x literals) bytes.
+    /// CEP:COST: O(capacity) one-time allocation and clear.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::steps_recorded_in_order.
+    /// CEP:SECURITY: capacities validated before allocation.
     pub fn new(arena: &'a Arena) -> Result<ProofRecorder<'a>, ProofError> {
         ProofRecorder::new_with(
             arena,
@@ -349,14 +349,14 @@ impl<'a> ProofRecorder<'a> {
         )
     }
 
-    // CEP:WHAT: Constructs the recorder with explicit capacities.
-    // CEP:WHY: CEP&CC 34.3: capacity and exhaustion tests must run at small, fast scales on the production code path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns capacity errors when the buffers do not fit; rejects zero capacities.
-    // CEP:ASSUMES: all capacities >= 1.
-    // CEP:COST: O(capacity) one-time.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::capacity_enforced; security/phase3_bounds_test.rs::proof_step_budget_enforced.
-    // CEP:SECURITY: bounds validated before allocation.
+    /// CEP:WHAT: Constructs the recorder with explicit capacities.
+    /// CEP:WHY: CEP&CC 34.3: capacity and exhaustion tests must run at small, fast scales on the production code path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns capacity errors when the buffers do not fit; rejects zero capacities.
+    /// CEP:ASSUMES: all capacities >= 1.
+    /// CEP:COST: O(capacity) one-time.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::capacity_enforced; security/phase3_bounds_test.rs::proof_step_budget_enforced.
+    /// CEP:SECURITY: bounds validated before allocation.
     pub fn new_with(
         arena: &'a Arena,
         step_capacity: u32,
@@ -399,14 +399,14 @@ impl<'a> ProofRecorder<'a> {
         })
     }
 
-    // CEP:WHAT: Records a clause addition: appends the step, the literals, and the map entry; returns the assigned proof id.
-    // CEP:WHY: S41: steps are emitted as clauses are added; the id assignment is dense and 1-based so LRAT lines are stable across the whole proof.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: capacity errors at any buffer bound; InvariantViolation-mapped StepBufferFull never occurs here - ordering violations surface as double-add of the same offset below.
-    // CEP:ASSUMES: offset was never added before; offsets arrive in ascending order; the caller registers the clause with the registry separately (the recorder does not touch the registry).
-    // CEP:COST: O(1) appends.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{steps_recorded_in_order, ids_are_monotonic, capacity_enforced}.
-    // CEP:SECURITY: capacity bounds.
+    /// CEP:WHAT: Records a clause addition: appends the step, the literals, and the map entry; returns the assigned proof id.
+    /// CEP:WHY: S41: steps are emitted as clauses are added; the id assignment is dense and 1-based so LRAT lines are stable across the whole proof.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: capacity errors at any buffer bound; InvariantViolation-mapped StepBufferFull never occurs here - ordering violations surface as double-add of the same offset below.
+    /// CEP:ASSUMES: offset was never added before; offsets arrive in ascending order; the caller registers the clause with the registry separately (the recorder does not touch the registry).
+    /// CEP:COST: O(1) appends.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{steps_recorded_in_order, ids_are_monotonic, capacity_enforced}.
+    /// CEP:SECURITY: capacity bounds.
     pub fn record_add(
         &self,
         clause_offset: u32,
@@ -415,14 +415,14 @@ impl<'a> ProofRecorder<'a> {
         self.record_clause_add(clause_offset, literals, ProofStepKind::Add)
     }
 
-    // CEP:WHAT: Records an axiom (problem-clause) addition: the map entry plus an AxiomAdd step.
-    // CEP:WHY: The checker seeds its database from axiom steps and verifies their one-to-one correspondence with the caller-supplied formula, while derived additions carry the RUP/RAT burden (Spec 11 section 3); the writer renders axioms as ordinary clause lines.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as record_add.
-    // CEP:ASSUMES: offset is a problem clause just added to the database.
-    // CEP:COST: as record_add.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{axiom_steps_match_formula, steps_recorded_in_order}; unit/cold/drat_checker_test.rs::axioms_seed_the_database.
-    // CEP:SECURITY: capacity bounds.
+    /// CEP:WHAT: Records an axiom (problem-clause) addition: the map entry plus an AxiomAdd step.
+    /// CEP:WHY: The checker seeds its database from axiom steps and verifies their one-to-one correspondence with the caller-supplied formula, while derived additions carry the RUP/RAT burden (Spec 11 section 3); the writer renders axioms as ordinary clause lines.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as record_add.
+    /// CEP:ASSUMES: offset is a problem clause just added to the database.
+    /// CEP:COST: as record_add.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{axiom_steps_match_formula, steps_recorded_in_order}; unit/cold/drat_checker_test.rs::axioms_seed_the_database.
+    /// CEP:SECURITY: capacity bounds.
     pub fn record_axiom_add(
         &self,
         clause_offset: u32,
@@ -480,14 +480,14 @@ impl<'a> ProofRecorder<'a> {
         Ok(proof_id)
     }
 
-    // CEP:WHAT: Records a clause deletion: reads the clause's literals from storage, resolves its proof id, and appends the step.
-    // CEP:WHY: S41: deletions are emitted as clauses are deleted; deletions need no DRAT justification but must mirror the database lifecycle for the checker; storing the literals supports plain DRAT deletion lines.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: UnmappedOffset when the clause was never added (bookkeeping divergence, loud); Storage on unreadable records; capacity errors at the bounds.
-    // CEP:ASSUMES: the offset was added through record_add and has not been deleted yet.
-    // CEP:COST: O(log map) id resolution plus O(length) literal copy.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{deletion_resolves_id, unmapped_deletion_rejected, capacity_enforced}.
-    // CEP:SECURITY: bounds-checked reads.
+    /// CEP:WHAT: Records a clause deletion: reads the clause's literals from storage, resolves its proof id, and appends the step.
+    /// CEP:WHY: S41: deletions are emitted as clauses are deleted; deletions need no DRAT justification but must mirror the database lifecycle for the checker; storing the literals supports plain DRAT deletion lines.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: UnmappedOffset when the clause was never added (bookkeeping divergence, loud); Storage on unreadable records; capacity errors at the bounds.
+    /// CEP:ASSUMES: the offset was added through record_add and has not been deleted yet.
+    /// CEP:COST: O(log map) id resolution plus O(length) literal copy.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{deletion_resolves_id, unmapped_deletion_rejected, capacity_enforced}.
+    /// CEP:SECURITY: bounds-checked reads.
     pub fn record_delete(
         &self,
         clause_offset: u32,
@@ -521,14 +521,14 @@ impl<'a> ProofRecorder<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Resolves the proof id of a clause offset.
-    // CEP:WHY: Binary search over the ascending map; also the surface the solver uses to check recording state.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Ok(None) when the offset was never added.
-    // CEP:ASSUMES: ascending-offset invariant.
-    // CEP:COST: O(log map).
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{ids_are_monotonic, deletion_resolves_id}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Resolves the proof id of a clause offset.
+    /// CEP:WHY: Binary search over the ascending map; also the surface the solver uses to check recording state.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Ok(None) when the offset was never added.
+    /// CEP:ASSUMES: ascending-offset invariant.
+    /// CEP:COST: O(log map).
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{ids_are_monotonic, deletion_resolves_id}.
+    /// CEP:SECURITY: none.
     pub fn proof_id_of(&self, clause_offset: u32) -> Option<u32> {
         let count = self.map_count.get() as usize;
         let mut low: usize = 0;
@@ -547,26 +547,26 @@ impl<'a> ProofRecorder<'a> {
         None
     }
 
-    // CEP:WHAT: Records an assumption unit addition (step only, no map entry, fresh id) and returns the id.
-    // CEP:WHY: solve_with_assumptions pushes assumptions as decision levels, not clauses, but a self-contained DRAT trace of an unsat-under-assumptions refutation needs the assumptions as unit clauses; the virtual step keeps the clause-offset namespace untouched (the map stays clause-only), and the returned id lets the epilogue record the matching deletion.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: capacity errors at the bounds.
-    // CEP:ASSUMES: called at assumption push time, before any step that depends on the assumption.
-    // CEP:COST: O(1) append.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{assumption_steps_pair_up, steps_recorded_in_order}.
-    // CEP:SECURITY: capacity bounds.
+    /// CEP:WHAT: Records an assumption unit addition (step only, no map entry, fresh id) and returns the id.
+    /// CEP:WHY: solve_with_assumptions pushes assumptions as decision levels, not clauses, but a self-contained DRAT trace of an unsat-under-assumptions refutation needs the assumptions as unit clauses; the virtual step keeps the clause-offset namespace untouched (the map stays clause-only), and the returned id lets the epilogue record the matching deletion.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: capacity errors at the bounds.
+    /// CEP:ASSUMES: called at assumption push time, before any step that depends on the assumption.
+    /// CEP:COST: O(1) append.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::{assumption_steps_pair_up, steps_recorded_in_order}.
+    /// CEP:SECURITY: capacity bounds.
     pub fn record_assumption_add(&self, literal: SatLiteral) -> Result<u32, ProofError> {
         self.append_step(ProofStepKind::AssumptionAdd, &[literal])
     }
 
-    // CEP:WHAT: Records the deletion of a previously recorded assumption unit (step only, by id).
-    // CEP:WHY: Assumptions are per-solve: the trace must remove them before the next incremental solve's steps, mirroring the solver's own cleanup.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: capacity errors at the bounds.
-    // CEP:ASSUMES: id came from record_assumption_add of the same literal.
-    // CEP:COST: O(1) append.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::assumption_steps_pair_up.
-    // CEP:SECURITY: capacity bounds.
+    /// CEP:WHAT: Records the deletion of a previously recorded assumption unit (step only, by id).
+    /// CEP:WHY: Assumptions are per-solve: the trace must remove them before the next incremental solve's steps, mirroring the solver's own cleanup.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: capacity errors at the bounds.
+    /// CEP:ASSUMES: id came from record_assumption_add of the same literal.
+    /// CEP:COST: O(1) append.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::assumption_steps_pair_up.
+    /// CEP:SECURITY: capacity bounds.
     pub fn record_assumption_delete(
         &self,
         proof_id: u32,
@@ -591,14 +591,14 @@ impl<'a> ProofRecorder<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Records the final empty-clause addition of a refutation and returns its id.
-    // CEP:WHY: A DRAT refutation ends with the empty clause; the solver emits it when it returns Unsatisfiable (level-0 conflict, falsified unit) or UnsatUnderAssumptions (root-region conflict with assumption units in the trace); the RUP justification is verified mechanically by the checker (Spec 11 section 4).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: capacity error at the step bound.
-    // CEP:ASSUMES: called exactly once, at the refuting return.
-    // CEP:COST: O(1) append.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::empty_clause_step_recorded; unit/cold/drat_checker_test.rs::refutation_proofs_verify.
-    // CEP:SECURITY: capacity bound.
+    /// CEP:WHAT: Records the final empty-clause addition of a refutation and returns its id.
+    /// CEP:WHY: A DRAT refutation ends with the empty clause; the solver emits it when it returns Unsatisfiable (level-0 conflict, falsified unit) or UnsatUnderAssumptions (root-region conflict with assumption units in the trace); the RUP justification is verified mechanically by the checker (Spec 11 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: capacity error at the step bound.
+    /// CEP:ASSUMES: called exactly once, at the refuting return.
+    /// CEP:COST: O(1) append.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::empty_clause_step_recorded; unit/cold/drat_checker_test.rs::refutation_proofs_verify.
+    /// CEP:SECURITY: capacity bound.
     pub fn record_empty_clause(&self) -> Result<u32, ProofError> {
         let proof_id = self.next_id.get();
         let step_index = self.step_count.get() as usize;
@@ -650,26 +650,26 @@ impl<'a> ProofRecorder<'a> {
         Ok(proof_id)
     }
 
-    // CEP:WHAT: Returns the number of recorded steps.
-    // CEP:WHY: Enumeration bound for the writer and checker.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::steps_recorded_in_order.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of recorded steps.
+    /// CEP:WHY: Enumeration bound for the writer and checker.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::steps_recorded_in_order.
+    /// CEP:SECURITY: none.
     pub fn step_count(&self) -> u32 {
         self.step_count.get()
     }
 
-    // CEP:WHAT: Returns the step record at an index.
-    // CEP:WHY: Read surface for the cold writer and checker; bounds-checked so forged indices fail loudly.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None for out-of-range indices (a read API, not a mutation; None is the honest answer, not a panic).
-    // CEP:ASSUMES: index < step_count.
-    // CEP:COST: 1 bounds check.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::steps_recorded_in_order.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the step record at an index.
+    /// CEP:WHY: Read surface for the cold writer and checker; bounds-checked so forged indices fail loudly.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None for out-of-range indices (a read API, not a mutation; None is the honest answer, not a panic).
+    /// CEP:ASSUMES: index < step_count.
+    /// CEP:COST: 1 bounds check.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::steps_recorded_in_order.
+    /// CEP:SECURITY: bounds-checked.
     pub fn step(&self, index: u32) -> Option<ProofStep> {
         let slot = index as usize;
         if slot >= self.step_count.get() as usize {
@@ -678,14 +678,14 @@ impl<'a> ProofRecorder<'a> {
         Some(self.steps[slot].get())
     }
 
-    // CEP:WHAT: Returns the i-th literal of a step.
-    // CEP:WHY: Read surface for the writer and checker.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns None for out-of-extent indices.
-    // CEP:ASSUMES: step came from step(); index < step.literal_count.
-    // CEP:COST: 1 bounds check.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs::literals_stored_verbatim.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the i-th literal of a step.
+    /// CEP:WHY: Read surface for the writer and checker.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns None for out-of-extent indices.
+    /// CEP:ASSUMES: step came from step(); index < step.literal_count.
+    /// CEP:COST: 1 bounds check.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs::literals_stored_verbatim.
+    /// CEP:SECURITY: bounds-checked.
     pub fn step_literal(&self, step: ProofStep, index: u32) -> Option<SatLiteral> {
         let slot = step.literal_start as usize + index as usize;
         if index >= step.literal_count || slot >= self.literals.len() {

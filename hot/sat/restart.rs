@@ -144,14 +144,14 @@ pub struct RestartScheduler {
 }
 
 impl RestartScheduler {
-    // CEP:WHAT: Constructs a scheduler with the first threshold of its policy.
-    // CEP:WHY: The first Luby interval is 1 x base and the first geometric interval is base, so both policies share the same initial threshold (design 11.5).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: kSatRestartBaseInterval >= 1 (statically asserted in config).
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_restart_test.rs::{luby_thresholds_scale_base, geometric_intervals_grow}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Constructs a scheduler with the first threshold of its policy.
+    /// CEP:WHY: The first Luby interval is 1 x base and the first geometric interval is base, so both policies share the same initial threshold (design 11.5).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: kSatRestartBaseInterval >= 1 (statically asserted in config).
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::{luby_thresholds_scale_base, geometric_intervals_grow}.
+    /// CEP:SECURITY: none.
     pub fn new(policy: RestartPolicy) -> RestartScheduler {
         let base = kSatRestartBaseInterval as u64;
         RestartScheduler {
@@ -162,63 +162,63 @@ impl RestartScheduler {
         }
     }
 
-    // CEP:WHAT: Returns the configured policy.
-    // CEP:WHY: Diagnostics and solver construction cross-checks.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_restart_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the configured policy.
+    /// CEP:WHY: Diagnostics and solver construction cross-checks.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_restart_test.rs.
+    /// CEP:SECURITY: none.
     pub fn policy(&self) -> RestartPolicy {
         self.policy
     }
 
-    // CEP:WHAT: Returns the current conflict threshold.
-    // CEP:WHY: Test introspection of the schedule.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_restart_test.rs::{luby_thresholds_scale_base, geometric_intervals_grow}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the current conflict threshold.
+    /// CEP:WHY: Test introspection of the schedule.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::{luby_thresholds_scale_base, geometric_intervals_grow}.
+    /// CEP:SECURITY: none.
     pub fn threshold(&self) -> u64 {
         self.threshold.get()
     }
 
-    // CEP:WHAT: Records one analyzed conflict.
-    // CEP:WHY: The solver calls this once per conflict so the firing condition stays a pure compare.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (saturating).
-    // CEP:ASSUMES: called at most once per conflict.
-    // CEP:COST: 1 add.
-    // CEP:EVIDENCE: unit/hot/sat_restart_test.rs::restart_fires_at_threshold.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Records one analyzed conflict.
+    /// CEP:WHY: The solver calls this once per conflict so the firing condition stays a pure compare.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (saturating).
+    /// CEP:ASSUMES: called at most once per conflict.
+    /// CEP:COST: 1 add.
+    /// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::restart_fires_at_threshold.
+    /// CEP:SECURITY: none.
     pub fn note_conflict(&self) {
         let next = self.conflicts_since_restart.get().saturating_add(1);
         self.conflicts_since_restart.set(next);
     }
 
-    // CEP:WHAT: Returns true when the restart condition is met.
-    // CEP:WHY: The per-conflict firing test (design 11.1 S16).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: the solver acts on true immediately.
-    // CEP:COST: 1 compare.
-    // CEP:EVIDENCE: unit/hot/sat_restart_test.rs::restart_fires_at_threshold.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when the restart condition is met.
+    /// CEP:WHY: The per-conflict firing test (design 11.1 S16).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the solver acts on true immediately.
+    /// CEP:COST: 1 compare.
+    /// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::restart_fires_at_threshold.
+    /// CEP:SECURITY: none.
     pub fn should_restart(&self) -> bool {
         self.conflicts_since_restart.get() >= self.threshold.get()
     }
 
-    // CEP:WHAT: Advances the schedule after a performed restart.
-    // CEP:WHY: Design 11.5: the interval sequence advances (Luby index or geometric factor) and the conflict counter resets; saturating arithmetic keeps the threshold finite forever.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: called exactly once per restart.
-    // CEP:COST: O(log k) for the Luby recomputation.
-    // CEP:EVIDENCE: unit/hot/sat_restart_test.rs::{luby_thresholds_scale_base, geometric_intervals_grow, saturating_counts_are_safe}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Advances the schedule after a performed restart.
+    /// CEP:WHY: Design 11.5: the interval sequence advances (Luby index or geometric factor) and the conflict counter resets; saturating arithmetic keeps the threshold finite forever.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: called exactly once per restart.
+    /// CEP:COST: O(log k) for the Luby recomputation.
+    /// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::{luby_thresholds_scale_base, geometric_intervals_grow, saturating_counts_are_safe}.
+    /// CEP:SECURITY: none.
     pub fn record_restart(&self) {
         let done = self.restarts_done.get();
         self.conflicts_since_restart.set(0);
@@ -245,27 +245,27 @@ impl RestartScheduler {
         self.threshold.set(next_threshold);
     }
 
-    // CEP:WHAT: Returns the number of restarts performed.
-    // CEP:WHY: Diagnostics and solver tests.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of restarts performed.
+    /// CEP:WHY: Diagnostics and solver tests.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero.
+    /// CEP:SECURITY: none.
     pub fn restarts_done(&self) -> u32 {
         self.restarts_done.get()
     }
 }
 
-// CEP:WHAT: Computes the canonical Luby sequence value at a 1-based index: 1, 1, 2, 1, 1, 2, 4, 1, ...
-// CEP:WHY: Design 11.5 pins this exact sequence; the iterative block-finding formulation (Luby, Sinclair & Zuckerman 1993, standard SAT-solver presentation) avoids recursion and floating point so the schedule is integer-deterministic.
-// CEP:STATUS: complete
-// CEP:FAILURE: none (index 0 is treated as index 1, documented; values saturate at the u64 shift bound).
-// CEP:ASSUMES: index >= 1 in intended use.
-// CEP:COST: O(log index).
-// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::luby_sequence_matches_design.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Computes the canonical Luby sequence value at a 1-based index: 1, 1, 2, 1, 1, 2, 4, 1, ...
+/// CEP:WHY: Design 11.5 pins this exact sequence; the iterative block-finding formulation (Luby, Sinclair & Zuckerman 1993, standard SAT-solver presentation) avoids recursion and floating point so the schedule is integer-deterministic.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none (index 0 is treated as index 1, documented; values saturate at the u64 shift bound).
+/// CEP:ASSUMES: index >= 1 in intended use.
+/// CEP:COST: O(log index).
+/// CEP:EVIDENCE: unit/hot/sat_restart_test.rs::luby_sequence_matches_design.
+/// CEP:SECURITY: none.
 pub fn luby_value(index: u32) -> u64 {
     if index == 0 {
         return 1;

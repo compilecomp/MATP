@@ -38,14 +38,14 @@ pub const kStructuralClauseCount: u32 = 2;
 /// CEP:SECURITY: none.
 pub const kWellFoundedClauseCount: u32 = 2;
 
-// CEP:WHAT: Literal count of the well-founded scheme's second clause {~p(c), p(X)}.
-// CEP:WHY: The literal count is a named value at the construction site (CEP&CC 11.3) instead of a bare 2.
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: Spec 15 section 4 fixes the two-literal shape.
-// CEP:COST: compile-time only.
-// CEP:EVIDENCE: unit/hot/induction_test.rs::well_founded_scheme_clauses_match_clausification.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Literal count of the well-founded scheme's second clause {~p(c), p(X)}.
+/// CEP:WHY: The literal count is a named value at the construction site (CEP&CC 11.3) instead of a bare 2.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: Spec 15 section 4 fixes the two-literal shape.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::well_founded_scheme_clauses_match_clausification.
+/// CEP:SECURITY: none.
 pub const kWellFoundedSecondClauseLiterals: usize = 2;
 
 /// CEP:WHAT: Maximum literals of any scheme clause (the structural and strong clauses carry at most three).
@@ -58,14 +58,14 @@ pub const kWellFoundedSecondClauseLiterals: usize = 2;
 /// CEP:SECURITY: none.
 pub const kSchemeLiterals: usize = 3;
 
-// CEP:WHAT: Builds one clause of the structural induction scheme for one unary predicate.
-// CEP:WHY: Spec 15 section 3: clause 0 is {~p(z), p(a), p(X)} (the base disjunct with the witness's goal side), clause 1 is {~p(z), ~p(s(a)), p(X)} (the step disjunct with the negated successor goal); both share the witness a (the declaration's skolem) and the universally quantified conclusion variable X (var 0); interning is hash-consed so p(z) is shared between the two clauses.
-// CEP:STATUS: complete
-// CEP:FAILURE: TermConstruction on intern failure.
-// CEP:ASSUMES: clause_index < kStructuralClauseCount; the declaration is validated.
-// CEP:COST: four interns (p(z), p(a), p(s(a)), p(X); z/a terms shared or trivial) per clause.
-// CEP:EVIDENCE: unit/hot/induction_test.rs::structural_scheme_clauses_match_clausification; property/induction_property_test.rs::schemes_match_hand_clausification.
-// CEP:SECURITY: bounds-checked interns.
+/// CEP:WHAT: Builds one clause of the structural induction scheme for one unary predicate.
+/// CEP:WHY: Spec 15 section 3: clause 0 is {~p(z), p(a), p(X)} (the base disjunct with the witness's goal side), clause 1 is {~p(z), ~p(s(a)), p(X)} (the step disjunct with the negated successor goal); both share the witness a (the declaration's skolem) and the universally quantified conclusion variable X (var 0); interning is hash-consed so p(z) is shared between the two clauses.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: TermConstruction on intern failure.
+/// CEP:ASSUMES: clause_index < kStructuralClauseCount; the declaration is validated.
+/// CEP:COST: four interns (p(z), p(a), p(s(a)), p(X); z/a terms shared or trivial) per clause.
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::structural_scheme_clauses_match_clausification; property/induction_property_test.rs::schemes_match_hand_clausification.
+/// CEP:SECURITY: bounds-checked interns.
 pub fn structural_scheme_literals(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,
@@ -97,14 +97,14 @@ pub fn structural_scheme_literals(
     Ok((literals, kSchemeLiterals))
 }
 
-// CEP:WHAT: Builds one clause of the well-founded (strong) induction scheme for one unary predicate and declared well-order.
-// CEP:WHY: Spec 15 section 4: clause 0 is {~lt(Y,c), p(Y), p(X)} (the minimal-counterexample side: every lt-smaller element satisfies p), clause 1 is {~p(c), p(X)} (the counterexample side); the witness c is the declaration's skolem; Y is var 0 and X is var 1 in clause 0, X is var 0 in clause 1 (variable numbering fixed by the spec).
-// CEP:STATUS: complete
-// CEP:FAILURE: TermConstruction on intern failure.
-// CEP:ASSUMES: clause_index < kWellFoundedClauseCount; the declaration is validated.
-// CEP:COST: three to four interns per clause.
-// CEP:EVIDENCE: unit/hot/induction_test.rs::well_founded_scheme_clauses_match_clausification; property/induction_property_test.rs::schemes_match_hand_clausification.
-// CEP:SECURITY: bounds-checked interns.
+/// CEP:WHAT: Builds one clause of the well-founded (strong) induction scheme for one unary predicate and declared well-order.
+/// CEP:WHY: Spec 15 section 4: clause 0 is {~lt(Y,c), p(Y), p(X)} (the minimal-counterexample side: every lt-smaller element satisfies p), clause 1 is {~p(c), p(X)} (the counterexample side); the witness c is the declaration's skolem; Y is var 0 and X is var 1 in clause 0, X is var 0 in clause 1 (variable numbering fixed by the spec).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: TermConstruction on intern failure.
+/// CEP:ASSUMES: clause_index < kWellFoundedClauseCount; the declaration is validated.
+/// CEP:COST: three to four interns per clause.
+/// CEP:EVIDENCE: unit/hot/induction_test.rs::well_founded_scheme_clauses_match_clausification; property/induction_property_test.rs::schemes_match_hand_clausification.
+/// CEP:SECURITY: bounds-checked interns.
 pub fn well_founded_scheme_literals(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,

@@ -33,14 +33,14 @@ fn term_error(error: TermError) -> InferenceError {
     InferenceError::from(error)
 }
 
-// CEP:WHAT: Rebuilds one term with every variable index shifted by offset (standardize-apart).
-// CEP:WHY: Spec 02 section 5 and Spec 07 section 2: premises share one substitution namespace; the shift is the renaming bijorphism; hash-consed re-intern keeps structure sharing.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError on intern failure or shifted indices past the namespace bound.
-// CEP:ASSUMES: term interned by the store; offset + every variable index < kMaxVariablesPerClause.
-// CEP:COST: O(term nodes) with one intern per node.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{rename_shifts_variables, rename_preserves_structure}.
-// CEP:SECURITY: depth-bounded recursion.
+/// CEP:WHAT: Rebuilds one term with every variable index shifted by offset (standardize-apart).
+/// CEP:WHY: Spec 02 section 5 and Spec 07 section 2: premises share one substitution namespace; the shift is the renaming bijorphism; hash-consed re-intern keeps structure sharing.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError on intern failure or shifted indices past the namespace bound.
+/// CEP:ASSUMES: term interned by the store; offset + every variable index < kMaxVariablesPerClause.
+/// CEP:COST: O(term nodes) with one intern per node.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{rename_shifts_variables, rename_preserves_structure}.
+/// CEP:SECURITY: depth-bounded recursion.
 pub fn rename_apart(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,
@@ -103,14 +103,14 @@ pub fn rename_apart(
     }
 }
 
-// CEP:WHAT: Renames a clause's literals into a target variable window and returns the distinct-variable count of the original.
-// CEP:WHY: The generator renames the left premise into [0, vars(left)) implicitly (input clauses are stored dense) and the right premise into [vars(left), vars(left) + vars(right)); the count drives the namespace bound check.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError; VariableBudgetExceeded when the shifted window would leave the namespace.
-// CEP:ASSUMES: literals belong to one clause with a dense variable namespace.
-// CEP:COST: O(total term nodes).
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{premises_renamed_apart, namespace_budget_enforced}.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Renames a clause's literals into a target variable window and returns the distinct-variable count of the original.
+/// CEP:WHY: The generator renames the left premise into [0, vars(left)) implicitly (input clauses are stored dense) and the right premise into [vars(left), vars(left) + vars(right)); the count drives the namespace bound check.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError; VariableBudgetExceeded when the shifted window would leave the namespace.
+/// CEP:ASSUMES: literals belong to one clause with a dense variable namespace.
+/// CEP:COST: O(total term nodes).
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{premises_renamed_apart, namespace_budget_enforced}.
+/// CEP:SECURITY: none.
 pub fn rename_clause_apart(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,
@@ -138,14 +138,14 @@ pub fn rename_clause_apart(
     Ok(variables)
 }
 
-// CEP:WHAT: Counts the distinct variable indices of a clause.
-// CEP:WHY: The namespace bound (vars(left) + vars(right) <= kMaxInferenceVariables) needs the exact count; the dense-index assumption makes a fixed bool table exact and allocation-free.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError on unreadable terms.
-// CEP:ASSUMES: variable indices are dense per-clause (store discipline).
-// CEP:COST: O(total term nodes).
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{premises_renamed_apart, namespace_budget_enforced}.
-// CEP:SECURITY: depth-bounded recursion.
+/// CEP:WHAT: Counts the distinct variable indices of a clause.
+/// CEP:WHY: The namespace bound (vars(left) + vars(right) <= kMaxInferenceVariables) needs the exact count; the dense-index assumption makes a fixed bool table exact and allocation-free.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError on unreadable terms.
+/// CEP:ASSUMES: variable indices are dense per-clause (store discipline).
+/// CEP:COST: O(total term nodes).
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{premises_renamed_apart, namespace_budget_enforced}.
+/// CEP:SECURITY: depth-bounded recursion.
 pub fn count_clause_variables(
     terms: &TermStore<'_>,
     literals: &[Literal],
@@ -190,14 +190,14 @@ fn count_variables(
     Ok(())
 }
 
-// CEP:WHAT: Applies the substitution to one literal's atom and keeps its polarity.
-// CEP:WHY: Conclusion materialization: every rule applies its MGU to the surviving premise literals; flags (selected, maximal) are reset by construction (Literal::new defaults) because the conclusion's flags are recomputed at clause creation.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError from application (depth cycles, unreadable terms).
-// CEP:ASSUMES: the substitution is the rule's MGU; the atom was interned by the store.
-// CEP:COST: one substitution application per literal.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{resolvent_applies_mgu, factoring_applies_mgu}; bench CEP-BENCH-0010.
-// CEP:SECURITY: depth-bounded application.
+/// CEP:WHAT: Applies the substitution to one literal's atom and keeps its polarity.
+/// CEP:WHY: Conclusion materialization: every rule applies its MGU to the surviving premise literals; flags (selected, maximal) are reset by construction (Literal::new defaults) because the conclusion's flags are recomputed at clause creation.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError from application (depth cycles, unreadable terms).
+/// CEP:ASSUMES: the substitution is the rule's MGU; the atom was interned by the store.
+/// CEP:COST: one substitution application per literal.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{resolvent_applies_mgu, factoring_applies_mgu}; bench CEP-BENCH-0010.
+/// CEP:SECURITY: depth-bounded application.
 pub fn apply_literal(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,
@@ -210,14 +210,14 @@ pub fn apply_literal(
     Ok(Literal::new(atom, literal.is_positive()))
 }
 
-// CEP:WHAT: Restores the substitution trail to entry_depth when result is an error, then passes the result through (CEP-1050).
-// CEP:WHY: Post-unify materialization can fail (DepthExceeded, WeightExceeded, ArenaFull) while the MGU's bindings are still on the trail; the generator's bound-error drop policy (CEP-1050) resumes the search after dropping the candidate, so a polluted trail would corrupt every later attempt (a later unify would hit already-bound variables); one wrapper keeps the restore discipline at a single point instead of at every materialization call site.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok passes through untouched; Err unwinds to entry_depth first (the depth observed before the rule's unification), then propagates.
-// CEP:ASSUMES: entry_depth was observed via trail_depth() before the rule extended the substitution; no other bindings were made after the failing call.
-// CEP:COST: one trail_depth compare on success; one undo_to on failure.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
-// CEP:SECURITY: the undo loop is internally clamped (Spec 02 section 4).
+/// CEP:WHAT: Restores the substitution trail to entry_depth when result is an error, then passes the result through (CEP-1050).
+/// CEP:WHY: Post-unify materialization can fail (DepthExceeded, WeightExceeded, ArenaFull) while the MGU's bindings are still on the trail; the generator's bound-error drop policy (CEP-1050) resumes the search after dropping the candidate, so a polluted trail would corrupt every later attempt (a later unify would hit already-bound variables); one wrapper keeps the restore discipline at a single point instead of at every materialization call site.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok passes through untouched; Err unwinds to entry_depth first (the depth observed before the rule's unification), then propagates.
+/// CEP:ASSUMES: entry_depth was observed via trail_depth() before the rule extended the substitution; no other bindings were made after the failing call.
+/// CEP:COST: one trail_depth compare on success; one undo_to on failure.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
+/// CEP:SECURITY: the undo loop is internally clamped (Spec 02 section 4).
 pub fn restore_trail<T>(
     substitution: &Substitution<'_>,
     entry_depth: u32,
@@ -232,14 +232,14 @@ pub fn restore_trail<T>(
     }
 }
 
-// CEP:WHAT: Applies the substitution to one term and unwinds the trail to entry_depth on failure (CEP-1050).
-// CEP:WHY: The applied-side reads inside the rules (demodulation's oriented sides, superposition's applied left/right and target) run after the matcher or MGU bound the trail; a failing application must not leak those bindings into the next attempt under the generator's drop-and-resume policy.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError with the trail restored to entry_depth.
-// CEP:ASSUMES: entry_depth observed before the rule's unification.
-// CEP:COST: one application plus the restore on failure.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
-// CEP:SECURITY: depth-bounded application.
+/// CEP:WHAT: Applies the substitution to one term and unwinds the trail to entry_depth on failure (CEP-1050).
+/// CEP:WHY: The applied-side reads inside the rules (demodulation's oriented sides, superposition's applied left/right and target) run after the matcher or MGU bound the trail; a failing application must not leak those bindings into the next attempt under the generator's drop-and-resume policy.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError with the trail restored to entry_depth.
+/// CEP:ASSUMES: entry_depth observed before the rule's unification.
+/// CEP:COST: one application plus the restore on failure.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
+/// CEP:SECURITY: depth-bounded application.
 pub fn apply_unwind(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,
@@ -253,14 +253,14 @@ pub fn apply_unwind(
     restore_trail(substitution, entry_depth, applied)
 }
 
-// CEP:WHAT: Applies the substitution to one literal and unwinds the trail to entry_depth on failure (CEP-1050).
-// CEP:WHY: Conclusion materialization under the drop-and-resume policy: a failing apply_literal inside a rule must restore the pre-unification trail so the generator's next attempt starts clean.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError with the trail restored to entry_depth.
-// CEP:ASSUMES: entry_depth observed before the rule's unification.
-// CEP:COST: one application plus the restore on failure.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
-// CEP:SECURITY: depth-bounded application.
+/// CEP:WHAT: Applies the substitution to one literal and unwinds the trail to entry_depth on failure (CEP-1050).
+/// CEP:WHY: Conclusion materialization under the drop-and-resume policy: a failing apply_literal inside a rule must restore the pre-unification trail so the generator's next attempt starts clean.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError with the trail restored to entry_depth.
+/// CEP:ASSUMES: entry_depth observed before the rule's unification.
+/// CEP:COST: one application plus the restore on failure.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::materialization_failure_unwinds_trail.
+/// CEP:SECURITY: depth-bounded application.
 pub fn apply_literal_unwind(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,
@@ -272,14 +272,14 @@ pub fn apply_literal_unwind(
     restore_trail(substitution, entry_depth, applied)
 }
 
-// CEP:WHAT: Remaps one term's variable indices through a first-occurrence dense mapping and rebuilds it.
-// CEP:WHY: Conclusions of inter-clause rules live in the shared standardize-apart namespace [0, vars(left) + vars(right)), which can have gaps (premises rarely use every index); storing a gapped clause breaks the dense-namespace discipline that rename_clause_apart's offset arithmetic relies on (a later rename could collide variables), so every stored conclusion is restandardized to a dense [0, n) namespace first (Spec 07 section 2's storage half).
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError on intern failure or depth exhaustion; VariableBudgetExceeded when the dense namespace would exceed the bound.
-// CEP:ASSUMES: atom interned by the store; mapping slots below the current next index hold assigned targets, others are unassigned.
-// CEP:COST: O(term nodes) with one intern per node.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::conclusions_restandardized.
-// CEP:SECURITY: depth-bounded recursion.
+/// CEP:WHAT: Remaps one term's variable indices through a first-occurrence dense mapping and rebuilds it.
+/// CEP:WHY: Conclusions of inter-clause rules live in the shared standardize-apart namespace [0, vars(left) + vars(right)), which can have gaps (premises rarely use every index); storing a gapped clause breaks the dense-namespace discipline that rename_clause_apart's offset arithmetic relies on (a later rename could collide variables), so every stored conclusion is restandardized to a dense [0, n) namespace first (Spec 07 section 2's storage half).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError on intern failure or depth exhaustion; VariableBudgetExceeded when the dense namespace would exceed the bound.
+/// CEP:ASSUMES: atom interned by the store; mapping slots below the current next index hold assigned targets, others are unassigned.
+/// CEP:COST: O(term nodes) with one intern per node.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::conclusions_restandardized.
+/// CEP:SECURITY: depth-bounded recursion.
 pub fn remap_variables(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,
@@ -348,14 +348,14 @@ pub fn remap_variables(
     }
 }
 
-// CEP:WHAT: Restandardizes a conclusion's literals into a dense [0, n) variable namespace in place.
-// CEP:WHY: The storage half of the standardize-apart discipline (Spec 07 section 2): flags ride along (the conclusion's flags are recomputed by the caller after storage anyway); the returned count is the dense variable count.
-// CEP:STATUS: complete
-// CEP:FAILURE: propagates InferenceError.
-// CEP:ASSUMES: literals are rule conclusions over the shared namespace; count <= buffer length.
-// CEP:COST: O(total term nodes).
-// CEP:EVIDENCE: unit/hot/inference_test.rs::conclusions_restandardized.
-// CEP:SECURITY: depth-bounded.
+/// CEP:WHAT: Restandardizes a conclusion's literals into a dense [0, n) variable namespace in place.
+/// CEP:WHY: The storage half of the standardize-apart discipline (Spec 07 section 2): flags ride along (the conclusion's flags are recomputed by the caller after storage anyway); the returned count is the dense variable count.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: propagates InferenceError.
+/// CEP:ASSUMES: literals are rule conclusions over the shared namespace; count <= buffer length.
+/// CEP:COST: O(total term nodes).
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::conclusions_restandardized.
+/// CEP:SECURITY: depth-bounded.
 pub fn restandardize_clause(
     terms: &TermStore<'_>,
     symbols: &SymbolTable<'_>,

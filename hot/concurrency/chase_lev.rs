@@ -106,14 +106,14 @@ pub struct WorkStealingDeque<'a> {
 }
 
 impl<'a> WorkStealingDeque<'a> {
-    // CEP:WHAT: Binds the deque to caller-supplied storage, validating the power-of-two ring.
-    // CEP:WHY: The hot crate is storage-agnostic (no allocation, design 4.1); the CEP-1 caller allocates the ring and cursors, and construction rejects non-power-of-two rings before any masking (CEP&CC Law 3 - the invariant is checked, not assumed).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns InvalidStorage for zero-length or non-power-of-two rings.
-    // CEP:ASSUMES: the ring and cursors outlive every handle; the ring is zero-initialized; top and bottom start at 0.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{rejects_non_power_of_two, owner_fifo_order}.
-    // CEP:SECURITY: validation before use.
+    /// CEP:WHAT: Binds the deque to caller-supplied storage, validating the power-of-two ring.
+    /// CEP:WHY: The hot crate is storage-agnostic (no allocation, design 4.1); the CEP-1 caller allocates the ring and cursors, and construction rejects non-power-of-two rings before any masking (CEP&CC Law 3 - the invariant is checked, not assumed).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns InvalidStorage for zero-length or non-power-of-two rings.
+    /// CEP:ASSUMES: the ring and cursors outlive every handle; the ring is zero-initialized; top and bottom start at 0.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{rejects_non_power_of_two, owner_fifo_order}.
+    /// CEP:SECURITY: validation before use.
     pub fn new(
         buffer: &'a [AtomicU64],
         top: &'a AtomicI64,
@@ -130,14 +130,14 @@ impl<'a> WorkStealingDeque<'a> {
         })
     }
 
-    // CEP:WHAT: Owner push: appends one payload word at the bottom end.
-    // CEP:WHY: Design 19.3 owner operation; ordering (CEP&CC 8.43): the slot store is Relaxed (the owner exclusively owns the slot until publication - thieves cannot reach index b before bottom advances), bottom's fetch_add is Release (publishes the slot: a thief's subsequent Acquire load of bottom that observes b+1 also observes the slot write; failure point: none - the fetch_add never fails; ABA: irrelevant - bottom is monotonic and the slot is written before publication; lifetime: the caller guarantees the ring outlives all handles).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns Full when bottom - top reached the ring capacity (the owner drains before retrying - never blocks, never drops silently... the caller counts drops).
-    // CEP:ASSUMES: called by the owner thread only.
-    // CEP:COST: 1 Relaxed load + 1 Relaxed store + 1 Release fetch_add; bench CEP-BENCH-0033.
-    // CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{owner_fifo_order, capacity_enforced}; property/concurrency_property_test.rs::deque_conserves_elements_under_threads.
-    // CEP:SECURITY: masked write; capacity bound enforced before the slot write.
+    /// CEP:WHAT: Owner push: appends one payload word at the bottom end.
+    /// CEP:WHY: Design 19.3 owner operation; ordering (CEP&CC 8.43): the slot store is Relaxed (the owner exclusively owns the slot until publication - thieves cannot reach index b before bottom advances), bottom's fetch_add is Release (publishes the slot: a thief's subsequent Acquire load of bottom that observes b+1 also observes the slot write; failure point: none - the fetch_add never fails; ABA: irrelevant - bottom is monotonic and the slot is written before publication; lifetime: the caller guarantees the ring outlives all handles).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Full when bottom - top reached the ring capacity (the owner drains before retrying - never blocks, never drops silently... the caller counts drops).
+    /// CEP:ASSUMES: called by the owner thread only.
+    /// CEP:COST: 1 Relaxed load + 1 Relaxed store + 1 Release fetch_add; bench CEP-BENCH-0033.
+    /// CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{owner_fifo_order, capacity_enforced}; property/concurrency_property_test.rs::deque_conserves_elements_under_threads.
+    /// CEP:SECURITY: masked write; capacity bound enforced before the slot write.
     pub fn push(&self, value: u64) -> Result<(), DequeError> {
         // CEP:WHAT: Bottom snapshot and capacity check.
         // CEP:WHY: Relaxed load suffices: the owner is the only writer of bottom's advance in push, and the capacity check only needs a lower bound of top's progress (a stale-smaller top would overestimate fullness - safe direction).
@@ -165,14 +165,14 @@ impl<'a> WorkStealingDeque<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Owner pop: takes the most recently pushed element (LIFO from the bottom end).
-    // CEP:WHY: Design 19.3 owner operation; ordering (CEP&CC 8.43): the SeqCst fetch_sub of bottom makes the removal visible to thieves before the owner reads the slot when racing for the last element (the SeqCst total order with steal's SeqCst top CAS is exactly what prevents both sides taking the last element - the linearization point of the race is the top CAS); top's Acquire load pairs with a winning thief's SeqCst CAS (success order) release semantics; the slot load is Relaxed (thieves never write slots); failure points: the last-element CAS may lose to a thief (returns None - the element was stolen, not lost); ABA: the top CAS compares full cursor values and cursors are monotonic.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns Ok(None) when empty or when the last element was stolen by a thief.
-    // CEP:ASSUMES: called by the owner thread only.
-    // CEP:COST: 1 SeqCst RMW + 1 Acquire load (+1 SeqCst CAS in the last-element window); bench CEP-BENCH-0033.
-    // CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{owner_fifo_order, pop_and_steal_split_elements, last_element_race_never_duplicated, cursor_monotonicity}; property/concurrency_property_test.rs::deque_conserves_elements_under_threads.
-    // CEP:SECURITY: masked read; the empty check never underflows (t <= b invariant).
+    /// CEP:WHAT: Owner pop: takes the most recently pushed element (LIFO from the bottom end).
+    /// CEP:WHY: Design 19.3 owner operation; ordering (CEP&CC 8.43): the SeqCst fetch_sub of bottom makes the removal visible to thieves before the owner reads the slot when racing for the last element (the SeqCst total order with steal's SeqCst top CAS is exactly what prevents both sides taking the last element - the linearization point of the race is the top CAS); top's Acquire load pairs with a winning thief's SeqCst CAS (success order) release semantics; the slot load is Relaxed (thieves never write slots); failure points: the last-element CAS may lose to a thief (returns None - the element was stolen, not lost); ABA: the top CAS compares full cursor values and cursors are monotonic.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Ok(None) when empty or when the last element was stolen by a thief.
+    /// CEP:ASSUMES: called by the owner thread only.
+    /// CEP:COST: 1 SeqCst RMW + 1 Acquire load (+1 SeqCst CAS in the last-element window); bench CEP-BENCH-0033.
+    /// CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{owner_fifo_order, pop_and_steal_split_elements, last_element_race_never_duplicated, cursor_monotonicity}; property/concurrency_property_test.rs::deque_conserves_elements_under_threads.
+    /// CEP:SECURITY: masked read; the empty check never underflows (t <= b invariant).
     pub fn pop(&self) -> Result<Option<u64>, DequeError> {
         // CEP:WHAT: Reserve the bottom slot by decrementing bottom.
         // CEP:WHY: SeqCst fetch_sub: the decrement must be globally ordered with thieves' top CAS so the last element is taken exactly once (Chase-Lev's central synchronization requirement, Spec 13 section 3).
@@ -234,14 +234,14 @@ impl<'a> WorkStealingDeque<'a> {
         }
     }
 
-    // CEP:WHAT: Thief steal: takes the oldest element (FIFO from the top end).
-    // CEP:WHY: Design 19.3 thief operation (imports take the oldest pending share first); ordering (CEP&CC 8.43): top's Acquire load pairs with the owner's Release bottom publishes and winning CASes; bottom's Acquire load pairs with push's Release fetch_add (observing b means every published slot write below b is visible); the slot load is Relaxed (visibility is carried by the bottom/top Acquire chain); the re-read of top before the CAS closes the ABA window (a changed top means another thief claimed the slot - retry with the fresh cursor; cursor values are monotonic so a wrapped ring slot carries a different full-cursor value); failure points: the CAS may lose (retry within the budget, then None); lifetime: caller-owned storage.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns Ok(None) when empty, already stolen, or the retry budget is exhausted (never a wrong element).
-    // CEP:ASSUMES: called by any non-owner thread (and never concurrently with itself on the same handle's call stack).
-    // CEP:COST: 2 Acquire loads + 1 Relaxed load + 1 SeqCst CAS per attempt; bench CEP-BENCH-0033.
-    // CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{steal_returns_empty_when_idle, pop_and_steal_split_elements, last_element_race_never_duplicated}; property/concurrency_property_test.rs::{deque_conserves_elements_under_threads, exactly_once_delivery}.
-    // CEP:SECURITY: masked read; the retry budget bounds spinning.
+    /// CEP:WHAT: Thief steal: takes the oldest element (FIFO from the top end).
+    /// CEP:WHY: Design 19.3 thief operation (imports take the oldest pending share first); ordering (CEP&CC 8.43): top's Acquire load pairs with the owner's Release bottom publishes and winning CASes; bottom's Acquire load pairs with push's Release fetch_add (observing b means every published slot write below b is visible); the slot load is Relaxed (visibility is carried by the bottom/top Acquire chain); the re-read of top before the CAS closes the ABA window (a changed top means another thief claimed the slot - retry with the fresh cursor; cursor values are monotonic so a wrapped ring slot carries a different full-cursor value); failure points: the CAS may lose (retry within the budget, then None); lifetime: caller-owned storage.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Ok(None) when empty, already stolen, or the retry budget is exhausted (never a wrong element).
+    /// CEP:ASSUMES: called by any non-owner thread (and never concurrently with itself on the same handle's call stack).
+    /// CEP:COST: 2 Acquire loads + 1 Relaxed load + 1 SeqCst CAS per attempt; bench CEP-BENCH-0033.
+    /// CEP:EVIDENCE: unit/hot/chase_lev_test.rs::{steal_returns_empty_when_idle, pop_and_steal_split_elements, last_element_race_never_duplicated}; property/concurrency_property_test.rs::{deque_conserves_elements_under_threads, exactly_once_delivery}.
+    /// CEP:SECURITY: masked read; the retry budget bounds spinning.
     pub fn steal(&self) -> Result<Option<u64>, DequeError> {
         // CEP:WHAT: Attempt budget of one steal call.
         // CEP:WHY: Persistent contention must return (None) rather than spin - the caller re-steals on its next drain (Spec 13 section 3).
@@ -297,14 +297,14 @@ impl<'a> WorkStealingDeque<'a> {
         }
     }
 
-    // CEP:WHAT: Returns the current element count (approximate under concurrency).
-    // CEP:WHY: Diagnostics and the export/drain heuristics; the value is a lower bound only under concurrent steals (design 19.5: scheduling-dependent observations are fine for diagnostics, never for soundness).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (saturates at zero on transient negative differences).
-    // CEP:ASSUMES: exact on the owner thread when no thief is active.
-    // CEP:COST: 2 loads.
-    // CEP:EVIDENCE: unit/hot/chase_lev_test.rs::owner_fifo_order.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the current element count (approximate under concurrency).
+    /// CEP:WHY: Diagnostics and the export/drain heuristics; the value is a lower bound only under concurrent steals (design 19.5: scheduling-dependent observations are fine for diagnostics, never for soundness).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (saturates at zero on transient negative differences).
+    /// CEP:ASSUMES: exact on the owner thread when no thief is active.
+    /// CEP:COST: 2 loads.
+    /// CEP:EVIDENCE: unit/hot/chase_lev_test.rs::owner_fifo_order.
+    /// CEP:SECURITY: none.
     pub fn len(&self) -> u64 {
         let b = self.bottom.load(Ordering::Acquire);
         let t = self.top.load(Ordering::Acquire);
@@ -315,14 +315,14 @@ impl<'a> WorkStealingDeque<'a> {
         }
     }
 
-    // CEP:WHAT: Returns whether the deque is (approximately) empty.
-    // CEP:WHY: Drain-loop condition convenience.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: as len.
-    // CEP:COST: as len.
-    // CEP:EVIDENCE: unit/hot/chase_lev_test.rs::steal_returns_empty_when_idle.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns whether the deque is (approximately) empty.
+    /// CEP:WHY: Drain-loop condition convenience.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: as len.
+    /// CEP:COST: as len.
+    /// CEP:EVIDENCE: unit/hot/chase_lev_test.rs::steal_returns_empty_when_idle.
+    /// CEP:SECURITY: none.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

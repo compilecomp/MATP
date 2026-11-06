@@ -152,28 +152,28 @@ const kPayloadOffsetMask: u64 = 0xFFFF_FFFF;
 // CEP:SECURITY: none.
 const kPayloadLiteralMask: u64 = 0xFFFF;
 
-// CEP:WHAT: Packs a clause offset, a literal index, and the unit-equation flag into one u64 tree payload.
-// CEP:WHY: The discrimination tree's payload is a bare u64; the packing (offset in the low 32 bits, literal index in bits 32..48, unit flag in bit 48) keeps one tree for all literals without a side table, and the helpers make the layout explicit and auditable (CEP&CC 11.3).
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: offsets below 2^32 (arena capacity), literal indices below 2^16 (kMaxClauseLiterals).
-// CEP:COST: constant.
-// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_trees_updated, rule_tree_indexes_units}; unit/hot/inference_test.rs::resolution_candidates_retrieved.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Packs a clause offset, a literal index, and the unit-equation flag into one u64 tree payload.
+/// CEP:WHY: The discrimination tree's payload is a bare u64; the packing (offset in the low 32 bits, literal index in bits 32..48, unit flag in bit 48) keeps one tree for all literals without a side table, and the helpers make the layout explicit and auditable (CEP&CC 11.3).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: offsets below 2^32 (arena capacity), literal indices below 2^16 (kMaxClauseLiterals).
+/// CEP:COST: constant.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_trees_updated, rule_tree_indexes_units}; unit/hot/inference_test.rs::resolution_candidates_retrieved.
+/// CEP:SECURITY: none.
 pub fn pack_payload(offset: u32, literal_index: u16, unit: bool) -> u64 {
     (offset as u64)
         | ((literal_index as u64) << kPayloadLiteralShift)
         | (u64::from(unit) << kPayloadUnitShift)
 }
 
-// CEP:WHAT: Unpacks a tree payload.
-// CEP:WHY: The generator and subsumption checks decode candidates.
-// CEP:STATUS: complete
-// CEP:FAILURE: none.
-// CEP:ASSUMES: payload came from pack_payload.
-// CEP:COST: constant.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::resolution_candidates_retrieved.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Unpacks a tree payload.
+/// CEP:WHY: The generator and subsumption checks decode candidates.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: payload came from pack_payload.
+/// CEP:COST: constant.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::resolution_candidates_retrieved.
+/// CEP:SECURITY: none.
 pub fn unpack_payload(payload: u64) -> (u32, u16, bool) {
     (
         (payload & kPayloadOffsetMask) as u32,
@@ -271,14 +271,14 @@ pub struct ActiveSet<'a> {
 }
 
 impl<'a> ActiveSet<'a> {
-    // CEP:WHAT: Constructs the active set with the default capacities.
-    // CEP:WHY: Production entry point.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns capacity errors when the arrays do not fit the arena.
-    // CEP:ASSUMES: arena has room for the slot array, two trees, and the pool (about 120 MiB at the maximum caps; tests size arenas accordingly).
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::active_insert_delete.
-    // CEP:SECURITY: capacities validated before allocation.
+    /// CEP:WHAT: Constructs the active set with the default capacities.
+    /// CEP:WHY: Production entry point.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns capacity errors when the arrays do not fit the arena.
+    /// CEP:ASSUMES: arena has room for the slot array, two trees, and the pool (about 120 MiB at the maximum caps; tests size arenas accordingly).
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::active_insert_delete.
+    /// CEP:SECURITY: capacities validated before allocation.
     pub fn new(arena: &'a Arena) -> Result<ActiveSet<'a>, ActiveError> {
         ActiveSet::new_with(
             arena,
@@ -289,14 +289,14 @@ impl<'a> ActiveSet<'a> {
         )
     }
 
-    // CEP:WHAT: Constructs the active set with explicit capacities.
-    // CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns capacity errors on exhaustion; rejects zero capacities.
-    // CEP:ASSUMES: all capacities >= 1; tree caps >= 1 node (the root).
-    // CEP:COST: O(capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_capacity_enforced, active_trees_updated}; security/phase3_bounds_test.rs::active_capacity_enforced.
-    // CEP:SECURITY: bounds validated.
+    /// CEP:WHAT: Constructs the active set with explicit capacities.
+    /// CEP:WHY: CEP&CC 34.3: capacity tests at small scales on the production path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns capacity errors on exhaustion; rejects zero capacities.
+    /// CEP:ASSUMES: all capacities >= 1; tree caps >= 1 node (the root).
+    /// CEP:COST: O(capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_capacity_enforced, active_trees_updated}; security/phase3_bounds_test.rs::active_capacity_enforced.
+    /// CEP:SECURITY: bounds validated.
     pub fn new_with(
         arena: &'a Arena,
         slot_capacity: u32,
@@ -325,14 +325,14 @@ impl<'a> ActiveSet<'a> {
         })
     }
 
-    // CEP:WHAT: Inserts a clause into the active set: builds the feature vector, indexes every literal into the atom tree, indexes positive equations' left sides into the rule tree, and appends the slot; returns the slot index.
-    // CEP:WHY: Design 8.4: insertion into all indexes happens exactly when the clause moves from passive to active (design 9.5), so every later query sees a consistent index set.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates ActiveError at any capacity.
-    // CEP:ASSUMES: the clause is live in the store with at least one literal (the empty clause never becomes active).
-    // CEP:COST: O(literals x depth) plus the feature build.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated, rule_tree_indexes_units}.
-    // CEP:SECURITY: capacities enforced.
+    /// CEP:WHAT: Inserts a clause into the active set: builds the feature vector, indexes every literal into the atom tree, indexes positive equations' left sides into the rule tree, and appends the slot; returns the slot index.
+    /// CEP:WHY: Design 8.4: insertion into all indexes happens exactly when the clause moves from passive to active (design 9.5), so every later query sees a consistent index set.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates ActiveError at any capacity.
+    /// CEP:ASSUMES: the clause is live in the store with at least one literal (the empty clause never becomes active).
+    /// CEP:COST: O(literals x depth) plus the feature build.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated, rule_tree_indexes_units}.
+    /// CEP:SECURITY: capacities enforced.
     pub fn insert(
         &self,
         terms: &TermStore<'_>,
@@ -370,14 +370,14 @@ impl<'a> ActiveSet<'a> {
         Ok(next as u32)
     }
 
-    // CEP:WHAT: Removes a clause from the active set by slot index: deletes every tree payload, then swap-removes the slot.
-    // CEP:WHY: Backward subsumption and later given-clause processing remove clauses; the tree deletes re-read the literals through the store so the caller passes no clause copy; swap-remove keeps the array dense.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: InvalidSlot for out-of-range slot indices; Store for unreadable clause records; Tree propagates tree-delete failures.
-    // CEP:ASSUMES: the slot is live; the clause record is readable.
-    // CEP:COST: O(literals x depth).
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated}; unit/hot/given_clause_test.rs::backward_subsumption_removes.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Removes a clause from the active set by slot index: deletes every tree payload, then swap-removes the slot.
+    /// CEP:WHY: Backward subsumption and later given-clause processing remove clauses; the tree deletes re-read the literals through the store so the caller passes no clause copy; swap-remove keeps the array dense.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: InvalidSlot for out-of-range slot indices; Store for unreadable clause records; Tree propagates tree-delete failures.
+    /// CEP:ASSUMES: the slot is live; the clause record is readable.
+    /// CEP:COST: O(literals x depth).
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, active_trees_updated}; unit/hot/given_clause_test.rs::backward_subsumption_removes.
+    /// CEP:SECURITY: none.
     pub fn remove(
         &self,
         terms: &TermStore<'_>,
@@ -426,14 +426,14 @@ impl<'a> ActiveSet<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Returns the live slot record at an index.
-    // CEP:WHY: Scans (superposition-from, backward subsumption) and tests read slots.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Ok(None) for out-of-range indices.
-    // CEP:ASSUMES: index < count.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, forward_subsumption_uses_filter}.
-    // CEP:SECURITY: bounds-checked.
+    /// CEP:WHAT: Returns the live slot record at an index.
+    /// CEP:WHY: Scans (superposition-from, backward subsumption) and tests read slots.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Ok(None) for out-of-range indices.
+    /// CEP:ASSUMES: index < count.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::{active_insert_delete, forward_subsumption_uses_filter}.
+    /// CEP:SECURITY: bounds-checked.
     pub fn slot(&self, index: u32) -> Option<ActiveSlot> {
         let slot = index as usize;
         if slot >= self.count.get() as usize {
@@ -442,62 +442,62 @@ impl<'a> ActiveSet<'a> {
         Some(self.slots[slot].get())
     }
 
-    // CEP:WHAT: Returns the number of live slots.
-    // CEP:WHY: Scan bounds and diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::active_insert_delete.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of live slots.
+    /// CEP:WHY: Scan bounds and diagnostics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::active_insert_delete.
+    /// CEP:SECURITY: none.
     pub fn len(&self) -> u32 {
         self.count.get()
     }
 
-    // CEP:WHAT: Returns whether the active set holds no clauses.
-    // CEP:WHY: The len/is_empty pair discipline (CEP&CC lint); the loop's saturation path and the tests read it.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::active_insert_delete.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns whether the active set holds no clauses.
+    /// CEP:WHY: The len/is_empty pair discipline (CEP&CC lint); the loop's saturation path and the tests read it.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::active_insert_delete.
+    /// CEP:SECURITY: none.
     pub fn is_empty(&self) -> bool {
         self.count.get() == 0
     }
 
-    // CEP:WHAT: Returns the atom tree for candidate retrieval.
-    // CEP:WHY: The generator and subsumption checks query it.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: read-only use.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/inference_test.rs::resolution_candidates_retrieved; unit/hot/given_clause_test.rs::{forward_subsumption_discards, backward_subsumption_removes}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the atom tree for candidate retrieval.
+    /// CEP:WHY: The generator and subsumption checks query it.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: read-only use.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/inference_test.rs::resolution_candidates_retrieved; unit/hot/given_clause_test.rs::{forward_subsumption_discards, backward_subsumption_removes}.
+    /// CEP:SECURITY: none.
     pub fn atom_tree(&self) -> &DiscriminationTree<'a> {
         &self.atom_tree
     }
 
-    // CEP:WHAT: Returns the rule tree for rewriting retrieval.
-    // CEP:WHY: The demodulation scan of simplify_given queries it with subterms of the given clause's literal atoms (the inter-clause inference phases scan the active array directly; ticket CEP-1027 tracks indexed retrieval).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: read-only use.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_simplifies.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the rule tree for rewriting retrieval.
+    /// CEP:WHY: The demodulation scan of simplify_given queries it with subterms of the given clause's literal atoms (the inter-clause inference phases scan the active array directly; ticket CEP-1027 tracks indexed retrieval).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: read-only use.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_simplifies.
+    /// CEP:SECURITY: none.
     pub fn rule_tree(&self) -> &DiscriminationTree<'a> {
         &self.rule_tree
     }
 
-    // CEP:WHAT: Returns the feature-vector pool.
-    // CEP:WHY: The subsumption pre-filter reads vectors through it.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: read-only use.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/search_db_test.rs::forward_subsumption_uses_filter.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the feature-vector pool.
+    /// CEP:WHY: The subsumption pre-filter reads vectors through it.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: read-only use.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/search_db_test.rs::forward_subsumption_uses_filter.
+    /// CEP:SECURITY: none.
     pub fn features(&self) -> &FeatureVectorIndex<'a> {
         &self.features
     }

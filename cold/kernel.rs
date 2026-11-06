@@ -73,14 +73,14 @@ pub struct KernelOptions {
 }
 
 impl KernelOptions {
-    // CEP:WHAT: The production options: the empty assertion vocabulary.
-    // CEP:WHY: Whole-proof verification of a refutation never meets a SatLearn step under the current protocol (staged lemmas are children of the refutation, Spec 18 section 3), so the empty range is the safe default; any SatLearn step that does appear is rejected as BrokenSatLearn.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: The production options: the empty assertion vocabulary.
+    /// CEP:WHY: Whole-proof verification of a refutation never meets a SatLearn step under the current protocol (staged lemmas are children of the refutation, Spec 18 section 3), so the empty range is the safe default; any SatLearn step that does appear is rejected as BrokenSatLearn.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
+    /// CEP:SECURITY: none.
     pub fn production() -> KernelOptions {
         KernelOptions {
             assertion_base: 0,
@@ -376,14 +376,14 @@ fn read_literals(
     Some(literals)
 }
 
-// CEP:WHAT: Walks the derivation DAG from the refutation and collects the reachable clause ids, ascending.
-// CEP:WHY: Design 18.2 step 1-2: traverse from the empty clause to the axioms and prune everything unreachable; parents are strictly older than children (monotonic ids, Spec 14 section 2), so one descending pass marks the ancestry exactly and a parent-above-child violation is a corrupted derivation (NonMonotonicDerivation); the kernel owns the walk and the TSTP writer delegates to it (Spec 19 section 3).
-// CEP:STATUS: complete
-// CEP:FAILURE: Err((offending id, NonMonotonicDerivation)) for a parent id not strictly below its child, Err((offending id, UnreadableClause)) for an unresolvable id.
-// CEP:ASSUMES: refutation is a store-produced offset; the store has an id side table.
-// CEP:COST: O(max id) scan plus O(ancestry) record reads.
-// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_non_monotonic_derivation}; unit/cold/tstp_test.rs::{proof_walk_resolves_parents, cycle_detected, prunes_unreachable_steps}.
-// CEP:SECURITY: all reads bounds-checked.
+/// CEP:WHAT: Walks the derivation DAG from the refutation and collects the reachable clause ids, ascending.
+/// CEP:WHY: Design 18.2 step 1-2: traverse from the empty clause to the axioms and prune everything unreachable; parents are strictly older than children (monotonic ids, Spec 14 section 2), so one descending pass marks the ancestry exactly and a parent-above-child violation is a corrupted derivation (NonMonotonicDerivation); the kernel owns the walk and the TSTP writer delegates to it (Spec 19 section 3).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Err((offending id, NonMonotonicDerivation)) for a parent id not strictly below its child, Err((offending id, UnreadableClause)) for an unresolvable id.
+/// CEP:ASSUMES: refutation is a store-produced offset; the store has an id side table.
+/// CEP:COST: O(max id) scan plus O(ancestry) record reads.
+/// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_non_monotonic_derivation}; unit/cold/tstp_test.rs::{proof_walk_resolves_parents, cycle_detected, prunes_unreachable_steps}.
+/// CEP:SECURITY: all reads bounds-checked.
 pub fn walk_proof_dag(
     store: &ClauseStore<'_>,
     refutation: u32,
@@ -1106,14 +1106,14 @@ fn verify_step(
     }
 }
 
-// CEP:WHAT: Verifies the whole proof reachable from the refutation under the given replay budget.
-// CEP:WHY: Spec 19 section 3: walk, then verify every reachable step in ascending id order (parents precede children); the walk charges one unit per id and every replayed attempt charges one unit; exhaustion is an error, a failed step is a rejection naming it.
-// CEP:STATUS: complete
-// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted) when the budget runs out; Ok(Invalid { .. }) names the rejected step.
-// CEP:ASSUMES: the context's substitution is at baseline depth (every replay unwinds per attempt); budget >= 1.
-// CEP:COST: O(walk) + O(charged attempts) bounded by the budget.
-// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_budget_exhaustion}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
-// CEP:SECURITY: bounded verification work (CEP&CC 22.10).
+/// CEP:WHAT: Verifies the whole proof reachable from the refutation under the given replay budget.
+/// CEP:WHY: Spec 19 section 3: walk, then verify every reachable step in ascending id order (parents precede children); the walk charges one unit per id and every replayed attempt charges one unit; exhaustion is an error, a failed step is a rejection naming it.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted) when the budget runs out; Ok(Invalid { .. }) names the rejected step.
+/// CEP:ASSUMES: the context's substitution is at baseline depth (every replay unwinds per attempt); budget >= 1.
+/// CEP:COST: O(walk) + O(charged attempts) bounded by the budget.
+/// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_budget_exhaustion}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
+/// CEP:SECURITY: bounded verification work (CEP&CC 22.10).
 pub fn verify_refutation_with_budget(
     context: &InferenceContext<'_>,
     store: &ClauseStore<'_>,
@@ -1129,14 +1129,14 @@ pub fn verify_refutation_with_budget(
     )
 }
 
-// CEP:WHAT: Verifies the whole proof reachable from the refutation under the given budget and verification options.
-// CEP:WHY: The options-aware generalization of verify_refutation_with_budget (Spec 19 section 3): the SatLearn vocabulary is the caller's reserved range; the production wrapper passes the empty range.
-// CEP:STATUS: complete
-// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted) when the budget runs out; Ok(Invalid { .. }) names the rejected step.
-// CEP:ASSUMES: the context's substitution is at baseline depth (every replay unwinds per attempt); budget >= 1.
-// CEP:COST: O(walk) + O(charged attempts) bounded by the budget.
-// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_budget_exhaustion}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
-// CEP:SECURITY: bounded verification work (CEP&CC 22.10).
+/// CEP:WHAT: Verifies the whole proof reachable from the refutation under the given budget and verification options.
+/// CEP:WHY: The options-aware generalization of verify_refutation_with_budget (Spec 19 section 3): the SatLearn vocabulary is the caller's reserved range; the production wrapper passes the empty range.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted) when the budget runs out; Ok(Invalid { .. }) names the rejected step.
+/// CEP:ASSUMES: the context's substitution is at baseline depth (every replay unwinds per attempt); budget >= 1.
+/// CEP:COST: O(walk) + O(charged attempts) bounded by the budget.
+/// CEP:EVIDENCE: unit/cold/kernel_test.rs::{accepts_loop_refutation, rejects_budget_exhaustion}; property/tstp_property_test.rs::{every_refutation_formats_and_checks, corrupted_proof_rejected}.
+/// CEP:SECURITY: bounded verification work (CEP&CC 22.10).
 pub fn verify_refutation_with_options(
     context: &InferenceContext<'_>,
     store: &ClauseStore<'_>,
@@ -1161,14 +1161,14 @@ pub fn verify_refutation_with_options(
     Ok(KernelVerdict::Valid)
 }
 
-// CEP:WHAT: Verifies ONE derivation step (existence and rule replay) under the given budget.
-// CEP:WHY: Diagnostics and the clause-learning tests verify a staged lemma outside a whole-proof walk (Spec 18 section 6); the same arms run, so a step verdict equals the step's verdict inside a full verification.
-// CEP:STATUS: complete
-// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted); Ok(Invalid { .. }) names the rejection.
-// CEP:ASSUMES: id is a valid store id; the context's substitution is at baseline depth.
-// CEP:COST: one unit per replay attempt bounded by the budget.
-// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
-// CEP:SECURITY: bounded verification work.
+/// CEP:WHAT: Verifies ONE derivation step (existence and rule replay) under the given budget.
+/// CEP:WHY: Diagnostics and the clause-learning tests verify a staged lemma outside a whole-proof walk (Spec 18 section 6); the same arms run, so a step verdict equals the step's verdict inside a full verification.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted); Ok(Invalid { .. }) names the rejection.
+/// CEP:ASSUMES: id is a valid store id; the context's substitution is at baseline depth.
+/// CEP:COST: one unit per replay attempt bounded by the budget.
+/// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
+/// CEP:SECURITY: bounded verification work.
 pub fn verify_clause_step(
     context: &InferenceContext<'_>,
     store: &ClauseStore<'_>,
@@ -1178,14 +1178,14 @@ pub fn verify_clause_step(
     verify_clause_step_with_options(context, store, id, budget, &KernelOptions::production())
 }
 
-// CEP:WHAT: Verifies ONE derivation step under the given budget and verification options.
-// CEP:WHY: The options-aware single-step verifier: the clause-learning diagnostics pass the controller's configured assertion range so a staged lemma verifies against the vocabulary it was staged in (Spec 18 section 5); the production wrapper passes the empty range.
-// CEP:STATUS: complete
-// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted); Ok(Invalid { .. }) names the rejection.
-// CEP:ASSUMES: id is a valid store id; the context's substitution is at baseline depth.
-// CEP:COST: one unit per replay attempt bounded by the budget.
-// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable; unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
-// CEP:SECURITY: bounded verification work.
+/// CEP:WHAT: Verifies ONE derivation step under the given budget and verification options.
+/// CEP:WHY: The options-aware single-step verifier: the clause-learning diagnostics pass the controller's configured assertion range so a staged lemma verifies against the vocabulary it was staged in (Spec 18 section 5); the production wrapper passes the empty range.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Err(KernelError::ReplayBudgetExhausted); Ok(Invalid { .. }) names the rejection.
+/// CEP:ASSUMES: id is a valid store id; the context's substitution is at baseline depth.
+/// CEP:COST: one unit per replay attempt bounded by the budget.
+/// CEP:EVIDENCE: unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable; unit/cold/kernel_test.rs::forged_sat_learn_rejected_outside_vocabulary.
+/// CEP:SECURITY: bounded verification work.
 pub fn verify_clause_step_with_options(
     context: &InferenceContext<'_>,
     store: &ClauseStore<'_>,

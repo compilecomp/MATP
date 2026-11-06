@@ -22,14 +22,14 @@ use super::factoring::equality_sides;
 use super::superposition::{replace_at, subterm_at};
 use super::{InferenceContext, InferenceError};
 
-// CEP:WHAT: Result of one demodulation attempt.
-// CEP:WHY: Shared no-inference / conclusion vocabulary.
-// CEP:STATUS: complete
-// CEP:FAILURE: none; a vocabulary type.
-// CEP:ASSUMES: none.
-// CEP:COST: enum copy.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{demodulation_rewrites_terms, demodulation_requires_orientation}.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Result of one demodulation attempt.
+/// CEP:WHY: Shared no-inference / conclusion vocabulary.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a vocabulary type.
+/// CEP:ASSUMES: none.
+/// CEP:COST: enum copy.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{demodulation_rewrites_terms, demodulation_requires_orientation}.
+/// CEP:SECURITY: none.
 pub enum DemodulationOutcome {
     /// CEP:WHAT: No rewrite applied.
     /// CEP:WHY: Failed match, orientation, or decrease.
@@ -51,14 +51,14 @@ pub enum DemodulationOutcome {
     Rewritten(usize),
 }
 
-// CEP:WHAT: Attempts to rewrite literals[literal_index]'s atom at the position path with the oriented unit equation (rule_left = rule_right), copying the clause with the single rewritten literal into out.
-// CEP:WHY: Spec 07 section 7: the rule's left side must MATCH the target subterm (sigma instantiates only the rule's variables), the rule must be oriented rule_left strictly greater than rule_right (checked on the applied sides when sigma is non-empty), the target must be a non-variable, and the rewritten atom must be strictly smaller than the original atom (termination).
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) on failed conditions (the matcher is unwound first, Spec 02 section 4); Err on structural failures or an over-long output, with the trail restored to the entry depth (CEP-1050: the applied-side reads and the rebuild unwind through the restore helpers), so the generator's drop-and-resume policy can skip the candidate safely.
-// CEP:ASSUMES: rule_left and rule_right are the sides of a positive unit equation; out holds kMaxClauseLiterals slots.
-// CEP:COST: one matching pass, one comparison, one rebuild.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{demodulation_rewrites_terms, demodulation_requires_orientation, demodulation_requires_decrease}; property/inference_property_test.rs::demodulation_is_sound.
-// CEP:SECURITY: depth-bounded recursion.
+/// CEP:WHAT: Attempts to rewrite literals[literal_index]'s atom at the position path with the oriented unit equation (rule_left = rule_right), copying the clause with the single rewritten literal into out.
+/// CEP:WHY: Spec 07 section 7: the rule's left side must MATCH the target subterm (sigma instantiates only the rule's variables), the rule must be oriented rule_left strictly greater than rule_right (checked on the applied sides when sigma is non-empty), the target must be a non-variable, and the rewritten atom must be strictly smaller than the original atom (termination).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(None) on failed conditions (the matcher is unwound first, Spec 02 section 4); Err on structural failures or an over-long output, with the trail restored to the entry depth (CEP-1050: the applied-side reads and the rebuild unwind through the restore helpers), so the generator's drop-and-resume policy can skip the candidate safely.
+/// CEP:ASSUMES: rule_left and rule_right are the sides of a positive unit equation; out holds kMaxClauseLiterals slots.
+/// CEP:COST: one matching pass, one comparison, one rebuild.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{demodulation_rewrites_terms, demodulation_requires_orientation, demodulation_requires_decrease}; property/inference_property_test.rs::demodulation_is_sound.
+/// CEP:SECURITY: depth-bounded recursion.
 pub fn demodulate(
     context: &InferenceContext<'_>,
     literals: &[Literal],
@@ -149,14 +149,14 @@ pub fn demodulate(
     Ok(DemodulationOutcome::Rewritten(literals.len()))
 }
 
-// CEP:WHAT: Reads the two sides of a positive unit equation literal, or None when the literal is not a positive equality.
-// CEP:WHY: The demodulation rule source is the active set's unit equations; one shared reader keeps the tag and polarity check in one place.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) for non-equation or negative literals.
-// CEP:ASSUMES: the literal is store-interned.
-// CEP:COST: one view read.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::demodulation_rewrites_terms.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Reads the two sides of a positive unit equation literal, or None when the literal is not a positive equality.
+/// CEP:WHY: The demodulation rule source is the active set's unit equations; one shared reader keeps the tag and polarity check in one place.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(None) for non-equation or negative literals.
+/// CEP:ASSUMES: the literal is store-interned.
+/// CEP:COST: one view read.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::demodulation_rewrites_terms.
+/// CEP:SECURITY: none.
 pub fn unit_equation_sides(
     context: &InferenceContext<'_>,
     literal: Literal,

@@ -179,14 +179,14 @@ pub struct Substitution<'a> {
 }
 
 impl<'a> Substitution<'a> {
-    // CEP:WHAT: Constructs an empty substitution over the shared arena.
-    // CEP:WHY: Fixed arrays live inline (no allocation at all, stricter than design 5.5 requires); initialization clears every slot deterministically.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: arena outlives the substitution.
-    // CEP:COST: constant-time clear of 256 + 16384 bytes on the stack.
-    // CEP:EVIDENCE: unit/hot/substitution_test.rs::initial_state_is_unbound.
-    // CEP:SECURITY: no uninitialized reads: every slot is written before any read.
+    /// CEP:WHAT: Constructs an empty substitution over the shared arena.
+    /// CEP:WHY: Fixed arrays live inline (no allocation at all, stricter than design 5.5 requires); initialization clears every slot deterministically.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: arena outlives the substitution.
+    /// CEP:COST: constant-time clear of 256 + 16384 bytes on the stack.
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs::initial_state_is_unbound.
+    /// CEP:SECURITY: no uninitialized reads: every slot is written before any read.
     pub fn new(arena: &'a Arena) -> Substitution<'a> {
         let bindings = core::array::from_fn(|_| Cell::new(kInvalidTermOffset));
         let trail = core::array::from_fn(|_| Cell::new(0));
@@ -198,14 +198,14 @@ impl<'a> Substitution<'a> {
         }
     }
 
-    // CEP:WHAT: Binds a variable to a term, recording the binding on the undo trail.
-    // CEP:WHY: Design 5.5 storage discipline; the trail entry is what makes speculative unification (Phase 2) backtrackable (design 8.2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns VariableOutOfRange for illegal indices and TrailFull when the trail is exhausted; binding an already-bound variable is refused with VariableOutOfRange to keep the discipline explicit (overwrite must be preceded by undo).
-    // CEP:ASSUMES: variable IDs are dense per-clause indices; the caller respects the bind/undo discipline.
-    // CEP:COST: 3 compares + 2 stores.
-    // CEP:EVIDENCE: unit/hot/substitution_test.rs::{lookup_after_bind, double_bind_refused, trail_undo_restores_state}.
-    // CEP:SECURITY: index and depth bounds-checked.
+    /// CEP:WHAT: Binds a variable to a term, recording the binding on the undo trail.
+    /// CEP:WHY: Design 5.5 storage discipline; the trail entry is what makes speculative unification (Phase 2) backtrackable (design 8.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns VariableOutOfRange for illegal indices and TrailFull when the trail is exhausted; binding an already-bound variable is refused with VariableOutOfRange to keep the discipline explicit (overwrite must be preceded by undo).
+    /// CEP:ASSUMES: variable IDs are dense per-clause indices; the caller respects the bind/undo discipline.
+    /// CEP:COST: 3 compares + 2 stores.
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs::{lookup_after_bind, double_bind_refused, trail_undo_restores_state}.
+    /// CEP:SECURITY: index and depth bounds-checked.
     pub fn bind(&self, variable: u32, term: TermPtr) -> Result<(), SubstitutionError> {
         if variable >= kMaxVariablesPerClause {
             return Err(SubstitutionError::VariableOutOfRange);
@@ -223,16 +223,16 @@ impl<'a> Substitution<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Looks up the binding of a variable.
-    // CEP:WHY: The hottest substitution operation (design 8.2 OPT-0 requirement); must be a bounds check and a load.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns VariableOutOfRange for illegal indices; unbound variables yield None.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1.96 cycles median, measured in bench CEP-BENCH-0004.
-    // CEP:EVIDENCE: bench CEP-BENCH-0004; unit/hot/substitution_test.rs::lookup_after_bind.
-    // CEP:SECURITY: bounds check retained in release.
-    // CEP:OPTIMAL: target-optimal
-    // CEP:OPTPROOF: one bounds check plus one u32 load; measured 1.96 cycles median (bench CEP-BENCH-0004); the inlined sequence appears in artifact disasm_substitution.txt.
+    /// CEP:WHAT: Looks up the binding of a variable.
+    /// CEP:WHY: The hottest substitution operation (design 8.2 OPT-0 requirement); must be a bounds check and a load.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns VariableOutOfRange for illegal indices; unbound variables yield None.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1.96 cycles median, measured in bench CEP-BENCH-0004.
+    /// CEP:EVIDENCE: bench CEP-BENCH-0004; unit/hot/substitution_test.rs::lookup_after_bind.
+    /// CEP:SECURITY: bounds check retained in release.
+    /// CEP:OPTIMAL: target-optimal
+    /// CEP:OPTPROOF: one bounds check plus one u32 load; measured 1.96 cycles median (bench CEP-BENCH-0004); the inlined sequence appears in artifact disasm_substitution.txt.
     pub fn lookup(&self, variable: u32) -> Result<Option<TermPtr>, SubstitutionError> {
         if variable >= kMaxVariablesPerClause {
             return Err(SubstitutionError::VariableOutOfRange);
@@ -244,26 +244,26 @@ impl<'a> Substitution<'a> {
         Ok(Some(TermPtr::from_raw(offset)))
     }
 
-    // CEP:WHAT: Returns true when the variable has a binding.
-    // CEP:WHY: Guards in matching and occurs checks (Phase 2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns VariableOutOfRange for illegal indices.
-    // CEP:ASSUMES: none.
-    // CEP:COST: as lookup().
-    // CEP:EVIDENCE: unit/hot/substitution_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when the variable has a binding.
+    /// CEP:WHY: Guards in matching and occurs checks (Phase 2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns VariableOutOfRange for illegal indices.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: as lookup().
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs.
+    /// CEP:SECURITY: none.
     pub fn is_bound(&self, variable: u32) -> Result<bool, SubstitutionError> {
         Ok(self.lookup(variable)?.is_some())
     }
 
-    // CEP:WHAT: Undoes every trail entry recorded after the given depth.
-    // CEP:WHY: Design 8.2: unification failure rewinds the trail; the explicit depth argument supports nested speculative attempts.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; a depth above the current depth is a no-op (documented), a depth of zero clears everything.
-    // CEP:ASSUMES: the caller passes a depth previously observed via trail_depth().
-    // CEP:COST: O(undone entries), 2 stores each.
-    // CEP:EVIDENCE: unit/hot/substitution_test.rs::trail_undo_restores_state.
-    // CEP:SECURITY: trail depth is clamped internally; no out-of-range access is possible.
+    /// CEP:WHAT: Undoes every trail entry recorded after the given depth.
+    /// CEP:WHY: Design 8.2: unification failure rewinds the trail; the explicit depth argument supports nested speculative attempts.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; a depth above the current depth is a no-op (documented), a depth of zero clears everything.
+    /// CEP:ASSUMES: the caller passes a depth previously observed via trail_depth().
+    /// CEP:COST: O(undone entries), 2 stores each.
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs::trail_undo_restores_state.
+    /// CEP:SECURITY: trail depth is clamped internally; no out-of-range access is possible.
     pub fn undo_to(&self, depth: u32) {
         let mut current = self.trail_depth.get();
         while current > depth && current > 0 {
@@ -277,26 +277,26 @@ impl<'a> Substitution<'a> {
         self.trail_depth.set(current);
     }
 
-    // CEP:WHAT: Returns the current trail depth.
-    // CEP:WHY: Save/restore points for speculative unification.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/substitution_test.rs::trail_undo_restores_state.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the current trail depth.
+    /// CEP:WHY: Save/restore points for speculative unification.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs::trail_undo_restores_state.
+    /// CEP:SECURITY: none.
     pub fn trail_depth(&self) -> u32 {
         self.trail_depth.get()
     }
 
-    // CEP:WHAT: Applies the substitution to a term, returning the interned result.
-    // CEP:WHY: Design 5.5 application semantics: variables are replaced by bindings, non-variable nodes are rebuilt with substituted children and re-interned (canonical); the entry point resets the depth guard so public callers need no depth bookkeeping.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see apply_bounded.
-    // CEP:ASSUMES: see apply_bounded.
-    // CEP:COST: see apply_bounded.
-    // CEP:EVIDENCE: bench CEP-BENCH-0004; unit/hot/substitution_test.rs::{apply_replaces_variables, apply_idempotent_on_ground_terms, cyclic_binding_rejected}.
-    // CEP:SECURITY: bounded recursion (CEP&CC 22.10 unbounded-recursion ban).
+    /// CEP:WHAT: Applies the substitution to a term, returning the interned result.
+    /// CEP:WHY: Design 5.5 application semantics: variables are replaced by bindings, non-variable nodes are rebuilt with substituted children and re-interned (canonical); the entry point resets the depth guard so public callers need no depth bookkeeping.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see apply_bounded.
+    /// CEP:ASSUMES: see apply_bounded.
+    /// CEP:COST: see apply_bounded.
+    /// CEP:EVIDENCE: bench CEP-BENCH-0004; unit/hot/substitution_test.rs::{apply_replaces_variables, apply_idempotent_on_ground_terms, cyclic_binding_rejected}.
+    /// CEP:SECURITY: bounded recursion (CEP&CC 22.10 unbounded-recursion ban).
     pub fn apply(
         &self,
         terms: &TermStore,
@@ -376,14 +376,14 @@ impl<'a> Substitution<'a> {
         }
     }
 
-    // CEP:WHAT: Materializes the substitution into an arena record and returns its offset.
-    // CEP:WHY: Design 5.4: derivation steps reference substitutions by offset; the record is the serialized form read by proof output.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaFull when the record does not fit; InvalidSubstitution never occurs at write time.
-    // CEP:ASSUMES: the arena is the same one the term store uses.
-    // CEP:COST: O(bound variables) plus one arena allocation.
-    // CEP:EVIDENCE: unit/hot/substitution_test.rs::materialize_and_read_back.
-    // CEP:SECURITY: binding count bounded by kMaxVariablesPerClause.
+    /// CEP:WHAT: Materializes the substitution into an arena record and returns its offset.
+    /// CEP:WHY: Design 5.4: derivation steps reference substitutions by offset; the record is the serialized form read by proof output.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaFull when the record does not fit; InvalidSubstitution never occurs at write time.
+    /// CEP:ASSUMES: the arena is the same one the term store uses.
+    /// CEP:COST: O(bound variables) plus one arena allocation.
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs::materialize_and_read_back.
+    /// CEP:SECURITY: binding count bounded by kMaxVariablesPerClause.
     pub fn materialize(&self) -> Result<u32, SubstitutionError> {
         let mut pairs: [(u32, u32); kMaxVariablesPerClause as usize] =
             [(0, 0); kMaxVariablesPerClause as usize];
@@ -398,14 +398,14 @@ impl<'a> Substitution<'a> {
         self.write_record(&pairs[..count])
     }
 
-    // CEP:WHAT: Writes explicit binding pairs as an arena substitution record and returns its offset.
-    // CEP:WHY: Composition (unify.rs, Spec 02 section 3) produces a derived pair set rather than the flat-array bindings of one substitution, so record construction must accept caller-assembled pairs; sharing one writer keeps the serialized layout single-sourced.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaFull when the record does not fit; VariableOutOfRange when the pair count exceeds the variable bound (a caller bug surfaced loudly).
-    // CEP:ASSUMES: pairs are (variable, term offset) with distinct variables below kMaxVariablesPerClause.
-    // CEP:COST: O(pairs) plus two arena allocations.
-    // CEP:EVIDENCE: unit/hot/unify_test.rs::{compose_union_of_domains, compose_drops_identity}; unit/hot/substitution_test.rs::materialize_and_read_back.
-    // CEP:SECURITY: pair count and arena bounds checked.
+    /// CEP:WHAT: Writes explicit binding pairs as an arena substitution record and returns its offset.
+    /// CEP:WHY: Composition (unify.rs, Spec 02 section 3) produces a derived pair set rather than the flat-array bindings of one substitution, so record construction must accept caller-assembled pairs; sharing one writer keeps the serialized layout single-sourced.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaFull when the record does not fit; VariableOutOfRange when the pair count exceeds the variable bound (a caller bug surfaced loudly).
+    /// CEP:ASSUMES: pairs are (variable, term offset) with distinct variables below kMaxVariablesPerClause.
+    /// CEP:COST: O(pairs) plus two arena allocations.
+    /// CEP:EVIDENCE: unit/hot/unify_test.rs::{compose_union_of_domains, compose_drops_identity}; unit/hot/substitution_test.rs::materialize_and_read_back.
+    /// CEP:SECURITY: pair count and arena bounds checked.
     pub fn write_record(&self, pairs: &[(u32, u32)]) -> Result<u32, SubstitutionError> {
         if pairs.len() > kMaxVariablesPerClause as usize {
             return Err(SubstitutionError::VariableOutOfRange);
@@ -442,14 +442,14 @@ impl<'a> Substitution<'a> {
         Ok(header_range.start)
     }
 
-    // CEP:WHAT: Reads back a materialized substitution record.
-    // CEP:WHY: Cold proof output and the verifier must decode records; the hot crate owns the layout, so it owns the reader.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidSubstitution when the offset is unreadable or the pair array is truncated.
-    // CEP:ASSUMES: offset came from materialize().
-    // CEP:COST: bounds checks plus slice construction.
-    // CEP:EVIDENCE: unit/hot/substitution_test.rs::materialize_and_read_back.
-    // CEP:SECURITY: bounds checks retained in release.
+    /// CEP:WHAT: Reads back a materialized substitution record.
+    /// CEP:WHY: Cold proof output and the verifier must decode records; the hot crate owns the layout, so it owns the reader.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidSubstitution when the offset is unreadable or the pair array is truncated.
+    /// CEP:ASSUMES: offset came from materialize().
+    /// CEP:COST: bounds checks plus slice construction.
+    /// CEP:EVIDENCE: unit/hot/substitution_test.rs::materialize_and_read_back.
+    /// CEP:SECURITY: bounds checks retained in release.
     pub fn read_record(
         &self,
         offset: u32,

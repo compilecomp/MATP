@@ -13,8 +13,11 @@
 // CEP:HPC-DETERMINISM: single-threaded use is deterministic; cross-thread delivery order is scheduling-dependent by design (design 19.5) with exactly-once delivery.
 // CEP:HPC-PASS-LEGALITY: Formal Spec 13 (13_portfolio_concurrency.md) fixes the pool and deque protocols, the memory-ordering tables, the linearization points, and the ABA arguments; every legality comment in this module cites it.
 
+/// The Chase-Lev work-stealing deque: owner LIFO, thief FIFO, last-element CAS race.
 pub mod chase_lev;
+/// The portable clause codec: fixed-budget word records with validated decode.
 pub mod clause_codec;
+/// The bounded MPMC clause-sharing pool: Vyukov cells with exactly-once consumption.
 pub mod mpmc_pool;
 
 pub use chase_lev::{DequeError, WorkStealingDeque};

@@ -57,14 +57,14 @@ pub struct PrecedenceTable<'a> {
 }
 
 impl<'a> PrecedenceTable<'a> {
-    // CEP:WHAT: Builds the default precedence: rank(symbol i) = i, equality head maximal.
-    // CEP:WHY: A deterministic default policy is required so that ordering behavior is reproducible without a strategy file (CEP&CC 38.10); identifier order is the least arbitrary total order available, and giving the equality head the top rank keeps equality atoms comparable with every predicate atom in literal-ordering use (design 8.3 configuration note).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns ArenaFull when the array does not fit and InvalidRanks when the symbol count is zero or exceeds kMaxSymbolCount.
-    // CEP:ASSUMES: symbol_count matches the frozen symbol table.
-    // CEP:COST: O(symbol_count) writes once.
-    // CEP:EVIDENCE: unit/hot/ordering_test.rs::id_order_is_default.
-    // CEP:SECURITY: count validated against kMaxSymbolCount.
+    /// CEP:WHAT: Builds the default precedence: rank(symbol i) = i, equality head maximal.
+    /// CEP:WHY: A deterministic default policy is required so that ordering behavior is reproducible without a strategy file (CEP&CC 38.10); identifier order is the least arbitrary total order available, and giving the equality head the top rank keeps equality atoms comparable with every predicate atom in literal-ordering use (design 8.3 configuration note).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns ArenaFull when the array does not fit and InvalidRanks when the symbol count is zero or exceeds kMaxSymbolCount.
+    /// CEP:ASSUMES: symbol_count matches the frozen symbol table.
+    /// CEP:COST: O(symbol_count) writes once.
+    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::id_order_is_default.
+    /// CEP:SECURITY: count validated against kMaxSymbolCount.
     pub fn from_id_order(
         arena: &'a Arena,
         symbol_count: u32,
@@ -77,14 +77,14 @@ impl<'a> PrecedenceTable<'a> {
         Ok(PrecedenceTable { ranks })
     }
 
-    // CEP:WHAT: Builds a precedence from explicit ranks: entries 0..n-1 are symbol ranks, entry n is the equality head rank.
-    // CEP:WHY: Design 8.3: "precedence ... loaded from a strategy file"; the strategy layer (config, Phase 3) supplies the rank vector and this constructor validates it is a strict total order before the hot path can depend on it (CEP&CC Law 3: validate once at the trust boundary).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns InvalidRanks when the vector is empty, contains a rank at or above its own length, or two symbols share a rank; ArenaFull when allocation fails.
-    // CEP:ASSUMES: the caller supplies exactly symbol_count + 1 entries.
-    // CEP:COST: O(n) validation with an arena scratch array (one-time, init phase).
-    // CEP:EVIDENCE: unit/hot/ordering_test.rs::explicit_ranks_validated.
-    // CEP:SECURITY: permutation validation prevents smuggled partial orders from reaching the hot path.
+    /// CEP:WHAT: Builds a precedence from explicit ranks: entries 0..n-1 are symbol ranks, entry n is the equality head rank.
+    /// CEP:WHY: Design 8.3: "precedence ... loaded from a strategy file"; the strategy layer (config, Phase 3) supplies the rank vector and this constructor validates it is a strict total order before the hot path can depend on it (CEP&CC Law 3: validate once at the trust boundary).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns InvalidRanks when the vector is empty, contains a rank at or above its own length, or two symbols share a rank; ArenaFull when allocation fails.
+    /// CEP:ASSUMES: the caller supplies exactly symbol_count + 1 entries.
+    /// CEP:COST: O(n) validation with an arena scratch array (one-time, init phase).
+    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::explicit_ranks_validated.
+    /// CEP:SECURITY: permutation validation prevents smuggled partial orders from reaching the hot path.
     pub fn from_ranks(
         arena: &'a Arena,
         ranks: &[u32],
@@ -154,26 +154,26 @@ impl<'a> PrecedenceTable<'a> {
             .map_err(|_| PrecedenceError::ArenaFull)
     }
 
-    // CEP:WHAT: Returns the number of real symbols covered by the table.
-    // CEP:WHY: Bounds documentation and construction cross-checks.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/ordering_test.rs::id_order_is_default.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of real symbols covered by the table.
+    /// CEP:WHY: Bounds documentation and construction cross-checks.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::id_order_is_default.
+    /// CEP:SECURITY: none.
     pub fn symbol_count(&self) -> u32 {
         self.ranks.len() as u32 - 1
     }
 
-    // CEP:WHAT: Returns the rank of a symbol (higher rank = higher precedence).
-    // CEP:WHY: The single hot-path read of the precedence component; one bounds check plus one load.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns UnknownSymbol when the ID is at or above the covered symbol count.
-    // CEP:ASSUMES: the ID came from a term head or the frozen symbol table.
-    // CEP:COST: 1 bounds check + 1 load.
-    // CEP:EVIDENCE: unit/hot/ordering_test.rs::{id_order_is_default, unknown_symbol_rejected}.
-    // CEP:SECURITY: bounds check retained in release (CEP&CC 23.7).
+    /// CEP:WHAT: Returns the rank of a symbol (higher rank = higher precedence).
+    /// CEP:WHY: The single hot-path read of the precedence component; one bounds check plus one load.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns UnknownSymbol when the ID is at or above the covered symbol count.
+    /// CEP:ASSUMES: the ID came from a term head or the frozen symbol table.
+    /// CEP:COST: 1 bounds check + 1 load.
+    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::{id_order_is_default, unknown_symbol_rejected}.
+    /// CEP:SECURITY: bounds check retained in release (CEP&CC 23.7).
     pub fn rank(&self, symbol_id: u32) -> Result<u32, PrecedenceError> {
         if symbol_id >= self.symbol_count() {
             return Err(PrecedenceError::UnknownSymbol);
@@ -181,26 +181,26 @@ impl<'a> PrecedenceTable<'a> {
         Ok(self.ranks[symbol_id as usize])
     }
 
-    // CEP:WHAT: Returns the rank of the equality pseudo-head.
-    // CEP:WHY: Equality atoms carry no symbol ID (reserved zero, term.rs), so their precedence is the dedicated trailing slot; keeping the accessor explicit prevents accidentally ranking them as symbol zero.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; the slot exists by construction.
-    // CEP:ASSUMES: built by from_id_order or validated from_ranks.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/ordering_test.rs::id_order_is_default.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the rank of the equality pseudo-head.
+    /// CEP:WHY: Equality atoms carry no symbol ID (reserved zero, term.rs), so their precedence is the dedicated trailing slot; keeping the accessor explicit prevents accidentally ranking them as symbol zero.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; the slot exists by construction.
+    /// CEP:ASSUMES: built by from_id_order or validated from_ranks.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::id_order_is_default.
+    /// CEP:SECURITY: none.
     pub fn equality_rank(&self) -> u32 {
         self.ranks[self.ranks.len() - 1]
     }
 
-    // CEP:WHAT: Returns true when symbol a has strictly higher precedence than symbol b.
-    // CEP:WHY: Direct expression of the ordering component's core question; used by KBO's head case and LPO's case (b).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates UnknownSymbol.
-    // CEP:ASSUMES: both IDs are covered.
-    // CEP:COST: 2 bounds checks + 2 loads + 1 compare.
-    // CEP:EVIDENCE: unit/hot/ordering_test.rs::{id_order_is_default, kbo_precedence_case}.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when symbol a has strictly higher precedence than symbol b.
+    /// CEP:WHY: Direct expression of the ordering component's core question; used by KBO's head case and LPO's case (b).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates UnknownSymbol.
+    /// CEP:ASSUMES: both IDs are covered.
+    /// CEP:COST: 2 bounds checks + 2 loads + 1 compare.
+    /// CEP:EVIDENCE: unit/hot/ordering_test.rs::{id_order_is_default, kbo_precedence_case}.
+    /// CEP:SECURITY: none.
     pub fn precedes(&self, a: u32, b: u32) -> Result<bool, PrecedenceError> {
         Ok(self.rank(a)? > self.rank(b)?)
     }

@@ -55,15 +55,15 @@ enum WatchCursor {
 }
 
 impl<'a> SatCore<'a> {
-    // CEP:WHAT: Propagates all pending assignments to fixpoint or the first conflict.
-    // CEP:WHY: Design 11.1 S9: the BCP engine; drains the trail queue in FIFO order (S11) and maintains the watch invariants (S10) while enqueuing forced literals.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns SatCoreError on structural failures; conflicts are returned as PropagationOutcome::Conflict.
-    // CEP:ASSUMES: see file header.
-    // CEP:COST: amortized O(1) per propagation step; measured in bench CEP-BENCH-0005.
-    // CEP:EVIDENCE: bench CEP-BENCH-0005; unit/hot/sat_bcp_test.rs; property/bcp_property_test.rs.
-    // CEP:SECURITY: every read is bounds-checked; corrupted links error out.
-    // CEP:HPC-DETERMINISM: FIFO queue drain, deterministic list order.
+    /// CEP:WHAT: Propagates all pending assignments to fixpoint or the first conflict.
+    /// CEP:WHY: Design 11.1 S9: the BCP engine; drains the trail queue in FIFO order (S11) and maintains the watch invariants (S10) while enqueuing forced literals.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns SatCoreError on structural failures; conflicts are returned as PropagationOutcome::Conflict.
+    /// CEP:ASSUMES: see file header.
+    /// CEP:COST: amortized O(1) per propagation step; measured in bench CEP-BENCH-0005.
+    /// CEP:EVIDENCE: bench CEP-BENCH-0005; unit/hot/sat_bcp_test.rs; property/bcp_property_test.rs.
+    /// CEP:SECURITY: every read is bounds-checked; corrupted links error out.
+    /// CEP:HPC-DETERMINISM: FIFO queue drain, deterministic list order.
     pub fn propagate(&self) -> Result<PropagationOutcome, crate::sat::database::SatCoreError> {
         while self.trail().qhead() < self.trail().len() {
             let propagated = match self.trail().literal_at(self.trail().qhead()) {

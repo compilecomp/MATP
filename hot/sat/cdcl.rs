@@ -250,14 +250,14 @@ fn arena_unreadable() -> CdclError {
 }
 
 impl<'a> ConflictAnalyzer<'a> {
-    // CEP:WHAT: Constructs the analyzer scratch arrays for a declared variable count.
-    // CEP:WHY: All scratch is allocated once before the hot path (design 19.4); arrays are cleared so the first analysis starts from a defined state.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns CdclError::Storage when the arrays do not fit.
-    // CEP:ASSUMES: variables matches the solver's SatCore and is above zero.
-    // CEP:COST: one-time allocation of 14 bytes per variable plus one slot.
-    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{first_uip_is_last_current_level_literal, repeated_analyses_are_independent, construction_requires_arena_room}.
-    // CEP:SECURITY: arrays cleared and bounded.
+    /// CEP:WHAT: Constructs the analyzer scratch arrays for a declared variable count.
+    /// CEP:WHY: All scratch is allocated once before the hot path (design 19.4); arrays are cleared so the first analysis starts from a defined state.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns CdclError::Storage when the arrays do not fit.
+    /// CEP:ASSUMES: variables matches the solver's SatCore and is above zero.
+    /// CEP:COST: one-time allocation of 14 bytes per variable plus one slot.
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{first_uip_is_last_current_level_literal, repeated_analyses_are_independent, construction_requires_arena_room}.
+    /// CEP:SECURITY: arrays cleared and bounded.
     pub fn new(arena: &'a Arena, variables: u32) -> Result<ConflictAnalyzer<'a>, CdclError> {
         if variables == 0 {
             return Err(CdclError::Storage(SatCoreError::InvariantViolation));
@@ -320,14 +320,14 @@ impl<'a> ConflictAnalyzer<'a> {
         })
     }
 
-    // CEP:WHAT: Analyzes a conflict: computes the first-UIP learnt clause, minimizes it, and derives the backjump level and LBD.
-    // CEP:WHY: Design 11.1 S18-S23 and Spec 06: the trail walk resolves every current-level variable of the conflict against its reason until one remains (the first UIP), the learnt clause collects the lower-level false literals, minimization drops literals whose reason chains resolve inside the clause, and the backjump level is the maximum remaining lower level.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see CdclError; the analysis never panics and leaves no stale marks (generation bump per call, separate minimization mark space).
-    // CEP:ASSUMES: see file header; the current level is >= 1.
-    // CEP:COST: one trail walk plus one reason scan per resolved variable; measured in bench CEP-BENCH-0009.
-    // CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{first_uip_is_last_current_level_literal, backjump_level_is_max_other_level, lbd_counts_distinct_levels, minimization_removes_redundant_literals, repeated_analyses_are_independent}; property/cdcl_property_test.rs::learnt_clauses_are_entailed.
-    // CEP:SECURITY: bounds-checked reads; buffers sized by the variable count.
+    /// CEP:WHAT: Analyzes a conflict: computes the first-UIP learnt clause, minimizes it, and derives the backjump level and LBD.
+    /// CEP:WHY: Design 11.1 S18-S23 and Spec 06: the trail walk resolves every current-level variable of the conflict against its reason until one remains (the first UIP), the learnt clause collects the lower-level false literals, minimization drops literals whose reason chains resolve inside the clause, and the backjump level is the maximum remaining lower level.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see CdclError; the analysis never panics and leaves no stale marks (generation bump per call, separate minimization mark space).
+    /// CEP:ASSUMES: see file header; the current level is >= 1.
+    /// CEP:COST: one trail walk plus one reason scan per resolved variable; measured in bench CEP-BENCH-0009.
+    /// CEP:EVIDENCE: unit/hot/sat_cdcl_test.rs::{first_uip_is_last_current_level_literal, backjump_level_is_max_other_level, lbd_counts_distinct_levels, minimization_removes_redundant_literals, repeated_analyses_are_independent}; property/cdcl_property_test.rs::learnt_clauses_are_entailed.
+    /// CEP:SECURITY: bounds-checked reads; buffers sized by the variable count.
     pub fn analyze(
         &self,
         core: &SatCore<'_>,
@@ -652,15 +652,15 @@ impl<'a> ConflictAnalyzer<'a> {
         }
     }
 
-    // CEP:WHAT: Final analysis: reduces a falsified clause over reason clauses to a fixpoint over the trail and collects the decision (assumption) literals that remain - the failed-assumption core (design 11.1 S38).
-    // CEP:WHY: MiniSat analyzeFinal semantics (Marques-Silva et al.; Spec 10 section 4): when a conflict occurs at or below the assumption root level, the levels cannot be undone (they are assumptions), so instead of learning, the conflict clause is resolved against the reason of every seen propagated variable in reverse trail order; reason literals always sit at strictly earlier trail positions (Spec 06 section 2), so one backward pass reaches the fixpoint; the remaining seen decision literals are exactly the assumptions whose conjunction with the formula is refuted, and their negation is entailed by the formula.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns CdclError on storage read failures or an undersized output buffer; never panics.
-    // CEP:ASSUMES: invoked at a conflict (or a falsified assumption) with the trail intact; every decision at levels 1..=root_level is an assumption pushed by solve_with_assumptions; level-0 literals are root-entailed and skipped.
-    // CEP:COST: one reverse trail pass with one reason scan per seen propagated variable; O(trail) plus O(total reason length of seen variables).
-    // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{failed_core_is_minimal_subset, core_negation_is_entailed, empty_core_means_unsat}; property/sat_incremental_property_test.rs::{assumption_solves_agree_with_brute_force, cores_are_valid}.
-    // CEP:SECURITY: all reads bounds-checked; the walk is bounded by the trail length.
-    // CEP:HPC-DETERMINISM: deterministic; trail order and index-ordered reason scans.
+    /// CEP:WHAT: Final analysis: reduces a falsified clause over reason clauses to a fixpoint over the trail and collects the decision (assumption) literals that remain - the failed-assumption core (design 11.1 S38).
+    /// CEP:WHY: MiniSat analyzeFinal semantics (Marques-Silva et al.; Spec 10 section 4): when a conflict occurs at or below the assumption root level, the levels cannot be undone (they are assumptions), so instead of learning, the conflict clause is resolved against the reason of every seen propagated variable in reverse trail order; reason literals always sit at strictly earlier trail positions (Spec 06 section 2), so one backward pass reaches the fixpoint; the remaining seen decision literals are exactly the assumptions whose conjunction with the formula is refuted, and their negation is entailed by the formula.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns CdclError on storage read failures or an undersized output buffer; never panics.
+    /// CEP:ASSUMES: invoked at a conflict (or a falsified assumption) with the trail intact; every decision at levels 1..=root_level is an assumption pushed by solve_with_assumptions; level-0 literals are root-entailed and skipped.
+    /// CEP:COST: one reverse trail pass with one reason scan per seen propagated variable; O(trail) plus O(total reason length of seen variables).
+    /// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{failed_core_is_minimal_subset, core_negation_is_entailed, empty_core_means_unsat}; property/sat_incremental_property_test.rs::{assumption_solves_agree_with_brute_force, cores_are_valid}.
+    /// CEP:SECURITY: all reads bounds-checked; the walk is bounded by the trail length.
+    /// CEP:HPC-DETERMINISM: deterministic; trail order and index-ordered reason scans.
     pub fn analyze_final(
         &self,
         core: &SatCore<'_>,

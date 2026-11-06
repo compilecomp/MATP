@@ -11,8 +11,11 @@
 // CEP:SECURITY: step budgets bound all comparison work (CEP&CC 22.10).
 // CEP:HPC-DETERMINISM: deterministic; no mutable shared state, index-ordered traversal.
 
+/// The Knuth-Bendix Ordering: weights, precedence, and variable-condition checks.
 pub mod kbo;
+/// The Lexicographic Path Ordering: recursive comparison with the step budget.
 pub mod lpo;
+/// The frozen precedence table: validated ranks, ID-order fallback, and the builder.
 pub mod precedence;
 
 pub use kbo::{compare_kbo, compare_kbo_with_budget};

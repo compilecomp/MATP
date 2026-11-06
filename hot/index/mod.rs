@@ -11,7 +11,9 @@
 // CEP:SECURITY: node, entry, and query capacities are named and enforced.
 // CEP:HPC-DETERMINISM: deterministic; tree shape is a pure function of the operation sequence.
 
+/// The discrimination tree: a path index over term symbol sequences for candidate retrieval.
 pub mod discrimination_tree;
+/// The feature-vector filter: symbol-count dominance and literal-count pruning for subsumption.
 pub mod feature_vector;
 
 pub use discrimination_tree::{DiscriminationTree, IndexEntry, IndexError, IndexNode};

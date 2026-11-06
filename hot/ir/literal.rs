@@ -116,14 +116,14 @@ pub struct Literal {
 const _: () = assert!(core::mem::size_of::<Literal>() == 8);
 
 impl Literal {
-    // CEP:WHAT: Constructs a literal from an atom handle and polarity.
-    // CEP:WHY: The single sanctioned constructor keeps flag defaults (unselected, non-maximal, no theory flags) uniform.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: atom was interned by the owning term store.
-    // CEP:COST: 4 stores.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: atom handle is an opaque interned token.
+    /// CEP:WHAT: Constructs a literal from an atom handle and polarity.
+    /// CEP:WHY: The single sanctioned constructor keeps flag defaults (unselected, non-maximal, no theory flags) uniform.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: atom was interned by the owning term store.
+    /// CEP:COST: 4 stores.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: atom handle is an opaque interned token.
     pub fn new(atom: TermPtr, polarity: bool) -> Literal {
         Literal {
             atom,
@@ -134,40 +134,40 @@ impl Literal {
         }
     }
 
-    // CEP:WHAT: Returns the atom handle.
-    // CEP:WHY: Inference rules need the atom for unification; printers need it for output.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the atom handle.
+    /// CEP:WHY: Inference rules need the atom for unification; printers need it for output.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs.
+    /// CEP:SECURITY: none.
     pub fn atom(&self) -> TermPtr {
         self.atom
     }
 
-    // CEP:WHAT: Returns the polarity (true = positive).
-    // CEP:WHY: Complementarity checks (design 10.2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the polarity (true = positive).
+    /// CEP:WHY: Complementarity checks (design 10.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn is_positive(&self) -> bool {
         self.polarity
     }
 
-    // CEP:WHAT: Returns the complementary literal (same atom, flipped polarity, flags copied).
-    // CEP:WHY: Resolution pairs complementary literals (design 10.2); copying flags keeps selection state consistent through negation.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load + 1 store + 1 XOR-equivalent flip.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
-    // CEP:OPTIMAL: target-optimal
-    // CEP:OPTPROOF: negation of a boolean field is a single byte flip; nothing less is possible.
+    /// CEP:WHAT: Returns the complementary literal (same atom, flipped polarity, flags copied).
+    /// CEP:WHY: Resolution pairs complementary literals (design 10.2); copying flags keeps selection state consistent through negation.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load + 1 store + 1 XOR-equivalent flip.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
+    /// CEP:OPTIMAL: target-optimal
+    /// CEP:OPTPROOF: negation of a boolean field is a single byte flip; nothing less is possible.
     pub fn negate(&self) -> Literal {
         Literal {
             atom: self.atom,
@@ -178,110 +178,110 @@ impl Literal {
         }
     }
 
-    // CEP:WHAT: Returns true when both literals share the atom and differ in polarity.
-    // CEP:WHY: This is the complementarity side condition of binary resolution (design 10.2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: both literals come from the same term store (hash-consing makes handle equality atom equality).
-    // CEP:COST: 2 compares.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns true when both literals share the atom and differ in polarity.
+    /// CEP:WHY: This is the complementarity side condition of binary resolution (design 10.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: both literals come from the same term store (hash-consing makes handle equality atom equality).
+    /// CEP:COST: 2 compares.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn is_complementary(&self, other: &Literal) -> bool {
         self.atom == other.atom && self.polarity != other.polarity
     }
 
-    // CEP:WHAT: Returns the selection flag.
-    // CEP:WHY: Inference legality depends on selection (design 10.2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the selection flag.
+    /// CEP:WHY: Inference legality depends on selection (design 10.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn is_selected(&self) -> bool {
         self.selected
     }
 
-    // CEP:WHAT: Sets the selection flag.
-    // CEP:WHY: The selection function (Phase 3) marks literals when a clause enters the active set.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 store.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Sets the selection flag.
+    /// CEP:WHY: The selection function (Phase 3) marks literals when a clause enters the active set.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 store.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn set_selected(&mut self, selected: bool) {
         self.selected = selected;
     }
 
-    // CEP:WHAT: Returns the maximality flag.
-    // CEP:WHY: Ordered inference legality (design 10.2).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: computed by the ordering (Phase 2).
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the maximality flag.
+    /// CEP:WHY: Ordered inference legality (design 10.2).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: computed by the ordering (Phase 2).
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn is_maximal(&self) -> bool {
         self.maximal
     }
 
-    // CEP:WHAT: Sets the maximality flag.
-    // CEP:WHY: The term ordering (Phase 2) marks maximal literals at active-set entry.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 store.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Sets the maximality flag.
+    /// CEP:WHY: The term ordering (Phase 2) marks maximal literals at active-set entry.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 store.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn set_maximal(&mut self, maximal: bool) {
         self.maximal = maximal;
     }
 
-    // CEP:WHAT: Returns the theory/AVATAR flag byte.
-    // CEP:WHY: Theory reasoning and AVATAR splitting read these bits (Phases 4-5).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: masks in LiteralFlags.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the theory/AVATAR flag byte.
+    /// CEP:WHY: Theory reasoning and AVATAR splitting read these bits (Phases 4-5).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: masks in LiteralFlags.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn theory_flags(&self) -> u8 {
         self.theory_flags
     }
 
-    // CEP:WHAT: Sets the theory/AVATAR flag byte.
-    // CEP:WHY: AVATAR splitting (Phase 4) tags component membership.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: callers use LiteralFlags masks.
-    // CEP:COST: 1 store.
-    // CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Sets the theory/AVATAR flag byte.
+    /// CEP:WHY: AVATAR splitting (Phase 4) tags component membership.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: callers use LiteralFlags masks.
+    /// CEP:COST: 1 store.
+    /// CEP:EVIDENCE: unit/hot/clause_test.rs::literal_operations.
+    /// CEP:SECURITY: none.
     pub fn set_theory_flags(&mut self, theory_flags: u8) {
         self.theory_flags = theory_flags;
     }
 
-    // CEP:WHAT: Returns the AVATAR component membership tag (bits 0-2; 0 = not a split-component literal).
-    // CEP:WHY: Design 5.2 and ticket CEP-1011: literals of an AVATAR component clause carry the component's membership tag; the tag is a fast per-literal hint - the authoritative component identity is the clause record's split_level (u16), and the 3-bit tag wraps modulo 8 beyond component 7 (Spec 12 section 4).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: tag values 0-7; theory-laden bit is preserved independently.
-    // CEP:COST: 1 load plus 1 mask.
-    // CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::component_literals_tagged.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the AVATAR component membership tag (bits 0-2; 0 = not a split-component literal).
+    /// CEP:WHY: Design 5.2 and ticket CEP-1011: literals of an AVATAR component clause carry the component's membership tag; the tag is a fast per-literal hint - the authoritative component identity is the clause record's split_level (u16), and the 3-bit tag wraps modulo 8 beyond component 7 (Spec 12 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: tag values 0-7; theory-laden bit is preserved independently.
+    /// CEP:COST: 1 load plus 1 mask.
+    /// CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::component_literals_tagged.
+    /// CEP:SECURITY: none.
     pub fn avatar_component_tag(&self) -> u8 {
         self.theory_flags & LiteralFlags::kAvatarComponentMask
     }
 
-    // CEP:WHAT: Sets the AVATAR component membership tag without touching the theory-laden bit.
-    // CEP:WHY: The splitter tags each component clause's literals at creation (CEP-1011); preserving the theory bit keeps the Phase 5 hook intact.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: tag <= kAvatarComponentMask (values beyond wrap by masking - the caller passes slot mod 8).
-    // CEP:COST: 2 loads, 1 store, 2 masks.
-    // CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::component_literals_tagged.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Sets the AVATAR component membership tag without touching the theory-laden bit.
+    /// CEP:WHY: The splitter tags each component clause's literals at creation (CEP-1011); preserving the theory bit keeps the Phase 5 hook intact.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: tag <= kAvatarComponentMask (values beyond wrap by masking - the caller passes slot mod 8).
+    /// CEP:COST: 2 loads, 1 store, 2 masks.
+    /// CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::component_literals_tagged.
+    /// CEP:SECURITY: none.
     pub fn set_avatar_component_tag(&mut self, tag: u8) {
         self.theory_flags = (self.theory_flags & !LiteralFlags::kAvatarComponentMask)
             | (tag & LiteralFlags::kAvatarComponentMask);

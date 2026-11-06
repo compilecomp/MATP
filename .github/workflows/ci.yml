@@ -41,8 +41,8 @@ jobs:
         run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
       - name: "Doc tests (Documentation Style Guide 5.2: every documentation example must compile)"
         run: cargo test --doc
-      - name: "Public-item doc comments are ticketed (Documentation Style Guide 5.2 via CEP-1057)"
-        run: echo "The missing_docs lint is not yet denied: 630 of 893 public items lack doc comments (doc/tickets.md CEP-1057). The broken-link and doc-test gates above are active."
+      - name: "Public-item doc comments are denied (Documentation Style Guide 5.2 via CEP-1057)"
+        run: RUSTFLAGS="-D missing_docs" cargo check -p mapt-hot -p mapt-cold -p mapt-config -p mapt-target -p mapt --lib
 
   rust:
     name: rust (fmt, clippy -D warnings, tests debug+release, ignored-expensive)

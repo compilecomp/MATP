@@ -68,14 +68,14 @@ pub struct WatchLists<'a> {
 }
 
 impl<'a> WatchLists<'a> {
-    // CEP:WHAT: Allocates and clears the head array for the declared variable count.
-    // CEP:WHY: Initialization before the hot path; clearing makes every list provably empty.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns WatchListError::VariableCountInvalid for bad counts and ArenaFull when the head array does not fit; SatCore maps both onto SatClauseError.
-    // CEP:ASSUMES: variable_count > 0 and <= kMaxSatVariables.
-    // CEP:COST: O(2 * variable_count) one-time clear.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::initial_state_empty.
-    // CEP:SECURITY: cleared arrays.
+    /// CEP:WHAT: Allocates and clears the head array for the declared variable count.
+    /// CEP:WHY: Initialization before the hot path; clearing makes every list provably empty.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns WatchListError::VariableCountInvalid for bad counts and ArenaFull when the head array does not fit; SatCore maps both onto SatClauseError.
+    /// CEP:ASSUMES: variable_count > 0 and <= kMaxSatVariables.
+    /// CEP:COST: O(2 * variable_count) one-time clear.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::initial_state_empty.
+    /// CEP:SECURITY: cleared arrays.
     pub fn new(arena: &'a Arena, variable_count: u32) -> Result<WatchLists<'a>, WatchListError> {
         if variable_count == 0 || variable_count > kMaxSatVariables {
             return Err(WatchListError::VariableCountInvalid);
@@ -95,16 +95,16 @@ impl<'a> WatchLists<'a> {
         Ok(WatchLists { heads })
     }
 
-    // CEP:WHAT: Returns the head clause offset of a literal's watch list.
-    // CEP:WHY: BCP begins each scan here; kInvalidClauseOffset ends the list.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: returns kInvalidClauseOffset for out-of-range encodings (cannot happen through SatLiteral).
-    // CEP:ASSUMES: literal encodings are in range (validated at literal construction).
-    // CEP:COST: 1 compare + 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::{initial_state_empty, attach_and_traverse}.
-    // CEP:SECURITY: bounds check retained in release.
-    // CEP:OPTIMAL: target-optimal
-    // CEP:OPTPROOF: one bounds check plus one u32 load; exercised within the measured 44.5-cycle propagation step (bench CEP-BENCH-0005).
+    /// CEP:WHAT: Returns the head clause offset of a literal's watch list.
+    /// CEP:WHY: BCP begins each scan here; kInvalidClauseOffset ends the list.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns kInvalidClauseOffset for out-of-range encodings (cannot happen through SatLiteral).
+    /// CEP:ASSUMES: literal encodings are in range (validated at literal construction).
+    /// CEP:COST: 1 compare + 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::{initial_state_empty, attach_and_traverse}.
+    /// CEP:SECURITY: bounds check retained in release.
+    /// CEP:OPTIMAL: target-optimal
+    /// CEP:OPTPROOF: one bounds check plus one u32 load; exercised within the measured 44.5-cycle propagation step (bench CEP-BENCH-0005).
     pub fn head(&self, literal: SatLiteral) -> u32 {
         let index = literal.encoding() as usize;
         if index >= self.heads.len() {
@@ -113,14 +113,14 @@ impl<'a> WatchLists<'a> {
         self.heads[index].get()
     }
 
-    // CEP:WHAT: Writes the head clause offset of a literal's watch list.
-    // CEP:WHY: Attach (push-front) and detach (unlink) update heads.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns false for out-of-range encodings (cannot happen through SatLiteral).
-    // CEP:ASSUMES: as head().
-    // CEP:COST: 1 compare + 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
-    // CEP:SECURITY: bounds check retained in release.
+    /// CEP:WHAT: Writes the head clause offset of a literal's watch list.
+    /// CEP:WHY: Attach (push-front) and detach (unlink) update heads.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns false for out-of-range encodings (cannot happen through SatLiteral).
+    /// CEP:ASSUMES: as head().
+    /// CEP:COST: 1 compare + 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:SECURITY: bounds check retained in release.
     pub fn set_head(&self, literal: SatLiteral, offset: u32) -> bool {
         let index = literal.encoding() as usize;
         if index >= self.heads.len() {
@@ -130,14 +130,14 @@ impl<'a> WatchLists<'a> {
         true
     }
 
-    // CEP:WHAT: Pushes a clause offset onto a literal's list (push-front).
-    // CEP:WHY: Attach primitive shared by clause registration and watch moves; the caller first stores the old head into the clause's next_in_watch slot, so this is exactly one store.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns false when the literal is out of range.
-    // CEP:ASSUMES: the caller has already written clause.next_in_watch[slot] = old head.
-    // CEP:COST: 1 compare + 1 store.
-    // CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
-    // CEP:SECURITY: bounds check retained in release.
+    /// CEP:WHAT: Pushes a clause offset onto a literal's list (push-front).
+    /// CEP:WHY: Attach primitive shared by clause registration and watch moves; the caller first stores the old head into the clause's next_in_watch slot, so this is exactly one store.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns false when the literal is out of range.
+    /// CEP:ASSUMES: the caller has already written clause.next_in_watch[slot] = old head.
+    /// CEP:COST: 1 compare + 1 store.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:SECURITY: bounds check retained in release.
     pub fn push_front(&self, literal: SatLiteral, offset: u32) -> bool {
         let index = literal.encoding() as usize;
         if index >= self.heads.len() {

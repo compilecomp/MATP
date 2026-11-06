@@ -20,14 +20,14 @@ use crate::unification::unify;
 use super::builder::{apply_literal_unwind, apply_unwind, restore_trail};
 use super::{InferenceContext, InferenceError};
 
-// CEP:WHAT: Result of one factoring attempt.
-// CEP:WHY: Mirrors the resolution outcome vocabulary for symmetry at call sites.
-// CEP:STATUS: complete
-// CEP:FAILURE: none; a vocabulary type.
-// CEP:ASSUMES: none.
-// CEP:COST: enum copy.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{factoring_merges_unifiable_literals, equality_factoring_concludes}.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Result of one factoring attempt.
+/// CEP:WHY: Mirrors the resolution outcome vocabulary for symmetry at call sites.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a vocabulary type.
+/// CEP:ASSUMES: none.
+/// CEP:COST: enum copy.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{factoring_merges_unifiable_literals, equality_factoring_concludes}.
+/// CEP:SECURITY: none.
 pub enum FactoringOutcome {
     /// CEP:WHAT: No inference.
     /// CEP:WHY: Failed side conditions or unification.
@@ -49,14 +49,14 @@ pub enum FactoringOutcome {
     Concluded(usize),
 }
 
-// CEP:WHAT: Attempts factoring of literals[first] with literals[second] (same polarity, unifiable atoms, first eligible) and writes the factored clause into out.
-// CEP:WHY: Spec 07 section 5: the conclusion keeps one applied copy of the merged literal and the applied remainders; eligibility requires the merged literal selected or (nothing selected and) strictly maximal - the standard restriction that makes factoring + ordered resolution complete.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) on failed side conditions or unification; Err on structural failures or an over-long conclusion; the substitution trail is unwound on every path.
-// CEP:ASSUMES: first < second in index order (the generator enumerates ascending pairs); out holds kMaxClauseLiterals slots.
-// CEP:COST: one unification plus O(length) applications.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{factoring_merges_unifiable_literals, factoring_rejects_opposite_polarity, factoring_side_conditions}; property/inference_property_test.rs::{factoring_is_sound, factoring_side_conditions}.
-// CEP:SECURITY: depth-bounded unification.
+/// CEP:WHAT: Attempts factoring of literals[first] with literals[second] (same polarity, unifiable atoms, first eligible) and writes the factored clause into out.
+/// CEP:WHY: Spec 07 section 5: the conclusion keeps one applied copy of the merged literal and the applied remainders; eligibility requires the merged literal selected or (nothing selected and) strictly maximal - the standard restriction that makes factoring + ordered resolution complete.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(None) on failed side conditions or unification; Err on structural failures or an over-long conclusion; the substitution trail is unwound on every path.
+/// CEP:ASSUMES: first < second in index order (the generator enumerates ascending pairs); out holds kMaxClauseLiterals slots.
+/// CEP:COST: one unification plus O(length) applications.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{factoring_merges_unifiable_literals, factoring_rejects_opposite_polarity, factoring_side_conditions}; property/inference_property_test.rs::{factoring_is_sound, factoring_side_conditions}.
+/// CEP:SECURITY: depth-bounded unification.
 pub fn factor(
     context: &InferenceContext<'_>,
     literals: &[Literal],
@@ -111,14 +111,14 @@ pub fn factor(
     Ok(FactoringOutcome::Concluded(count))
 }
 
-// CEP:WHAT: Reads the two sides of an equality atom.
-// CEP:WHY: Equality atoms are tag-fixed terms with exactly two children (design 5.1); one shared reader keeps the tag check in one place.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) when the atom is not an equality term.
-// CEP:ASSUMES: atom interned by the store.
-// CEP:COST: one view read.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::{equality_factoring_concludes, equality_resolution_concludes}.
-// CEP:SECURITY: none.
+/// CEP:WHAT: Reads the two sides of an equality atom.
+/// CEP:WHY: Equality atoms are tag-fixed terms with exactly two children (design 5.1); one shared reader keeps the tag check in one place.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(None) when the atom is not an equality term.
+/// CEP:ASSUMES: atom interned by the store.
+/// CEP:COST: one view read.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::{equality_factoring_concludes, equality_resolution_concludes}.
+/// CEP:SECURITY: none.
 pub fn equality_sides(
     terms: &TermStore<'_>,
     atom: crate::ir::term::TermPtr,
@@ -130,14 +130,14 @@ pub fn equality_sides(
     Some((view.child(0).ok()?, view.child(1).ok()?))
 }
 
-// CEP:WHAT: Attempts equality factoring of two positive equation literals literals[first] (s = t) and literals[second] (s' = t'): sigma = MGU(s, s') concludes the remainders plus (s = t)sigma plus not(t sigma = t' sigma).
-// CEP:WHY: NR01 section 4.2 (Spec 07 section 5): equality factoring resolves the two equations on their left sides and keeps the disequality of the right sides, which is what makes the superposition calculus complete on non-unit equalities.
-// CEP:STATUS: complete
-// CEP:FAILURE: Ok(None) on failed side conditions (both positive, both equations, first eligible) or unification; Err on structural failures; trail unwound on every path.
-// CEP:ASSUMES: literals belong to one clause; out holds kMaxClauseLiterals slots.
-// CEP:COST: one unification plus O(length) applications plus one disequality atom construction.
-// CEP:EVIDENCE: unit/hot/inference_test.rs::equality_factoring_concludes; property/inference_property_test.rs::equality_factoring_is_sound.
-// CEP:SECURITY: depth-bounded unification.
+/// CEP:WHAT: Attempts equality factoring of two positive equation literals literals[first] (s = t) and literals[second] (s' = t'): sigma = MGU(s, s') concludes the remainders plus (s = t)sigma plus not(t sigma = t' sigma).
+/// CEP:WHY: NR01 section 4.2 (Spec 07 section 5): equality factoring resolves the two equations on their left sides and keeps the disequality of the right sides, which is what makes the superposition calculus complete on non-unit equalities.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: Ok(None) on failed side conditions (both positive, both equations, first eligible) or unification; Err on structural failures; trail unwound on every path.
+/// CEP:ASSUMES: literals belong to one clause; out holds kMaxClauseLiterals slots.
+/// CEP:COST: one unification plus O(length) applications plus one disequality atom construction.
+/// CEP:EVIDENCE: unit/hot/inference_test.rs::equality_factoring_concludes; property/inference_property_test.rs::equality_factoring_is_sound.
+/// CEP:SECURITY: depth-bounded unification.
 pub fn equality_factor(
     context: &InferenceContext<'_>,
     literals: &[Literal],

@@ -13,8 +13,11 @@
 // CEP:HPC-DETERMINISM: deterministic; the splitter, interning, activation order, and round protocol are pure functions of the input.
 // CEP:HPC-PASS-LEGALITY: Formal Spec 12 (12_avatar_splitting.md) fixes the splitting lemma, the interning contract, the monotone-activation soundness and completeness theorems, the saturation theorem, and the degradation policy; every legality comment in this module cites it.
 
+/// The component table: hash-consed variable-dependency components with dense assertion variables.
 pub mod component;
+/// The AVATAR controller: model-guided activation, conflict clauses, and rotation over a monotone protocol.
 pub mod controller;
+/// The AVATAR splitter: variable-dependency components, the min-size gate, and the node budget.
 pub mod splitter;
 
 pub use component::{canonical_component_words, AvatarError, ComponentTable, Interned};

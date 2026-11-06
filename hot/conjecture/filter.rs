@@ -104,14 +104,14 @@ pub struct MiniCapacities {
 }
 
 impl MiniCapacities {
-    // CEP:WHAT: The production budgets (the named constants).
-    // CEP:WHY: One constructor names the production configuration (CEP&CC 11.3).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: the constants satisfy the static assertions in config/limits.rs.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: The production budgets (the named constants).
+    /// CEP:WHY: One constructor names the production configuration (CEP&CC 11.3).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the constants satisfy the static assertions in config/limits.rs.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::refuted_candidate_imports_proof.
+    /// CEP:SECURITY: none.
     pub fn production() -> MiniCapacities {
         MiniCapacities {
             passive: kConjecturePassiveCapacity,
@@ -217,14 +217,14 @@ fn collect_axiom_ids(main: &SearchSpace<'_>, axioms: &mut [u64; kConjectureMaxAx
     count
 }
 
-// CEP:WHAT: Runs one candidate's bounded mini refutation and imports the lemma on success.
-// CEP:WHY: The filter's driver (Spec 16 section 5): fresh mini space, input re-add in order (so mini input i maps to main id kFirstClauseId + i - the trivial translation the import relies on), assumption add, saturate under the named budget with harvesting disabled (no nested speculation), and on Theorem the ancestry check plus the import.
-// CEP:STATUS: complete
-// CEP:FAILURE: CandidateOutcome values; SearchError propagates only from MAIN-store operations (the lemma add).
-// CEP:ASSUMES: as file header; the mini options copy the main strategy/ordering/selection.
-// CEP:COST: as file header; measured in bench CEP-BENCH-0037.
-// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, unprovable_candidate_adds_nothing, refute_budget_discards_unprovable}.
-// CEP:SECURITY: budgets enforced by the mini options and capacities.
+/// CEP:WHAT: Runs one candidate's bounded mini refutation and imports the lemma on success.
+/// CEP:WHY: The filter's driver (Spec 16 section 5): fresh mini space, input re-add in order (so mini input i maps to main id kFirstClauseId + i - the trivial translation the import relies on), assumption add, saturate under the named budget with harvesting disabled (no nested speculation), and on Theorem the ancestry check plus the import.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: CandidateOutcome values; SearchError propagates only from MAIN-store operations (the lemma add).
+/// CEP:ASSUMES: as file header; the mini options copy the main strategy/ordering/selection.
+/// CEP:COST: as file header; measured in bench CEP-BENCH-0037.
+/// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{refuted_candidate_imports_proof, unprovable_candidate_adds_nothing, refute_budget_discards_unprovable}.
+/// CEP:SECURITY: budgets enforced by the mini options and capacities.
 pub fn refute_and_maybe_import(
     main: &SearchSpace<'_>,
     main_context: &InferenceContext<'_>,

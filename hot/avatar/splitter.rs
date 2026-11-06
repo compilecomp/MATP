@@ -296,14 +296,14 @@ impl VarUnionFind {
     }
 }
 
-// CEP:WHAT: Runs the split decision with an explicit minimum component size (the production entry uses kAvatarMinComponentSize).
-// CEP:WHY: CEP&CC 34.3: the gate threshold is a named bound and must be injectable so tests exercise both gate sides at small scales on the production code path.
-// CEP:STATUS: complete
-// CEP:FAILURE: returns Unsplittable on every non-split path (see SplitDecision); never panics.
-// CEP:ASSUMES: literals.len() <= kMaxClauseLiterals (the store's bound); the caller restandardized the namespace (defensive: a variable >= kMaxVariablesPerClause degrades to Unsplittable).
-// CEP:COST: O(literals x nodes) collection plus O(literals^2) worst-case numbering (512 literals, typical < 10); bench CEP-BENCH-0031.
-// CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::{two_variable_disjoint_components_split, ground_singleton_blocks_split, min_component_size_gate, single_component_stays_whole, walk_budget_degrades_to_unsplittable}; property/avatar_property_test.rs::{splits_preserve_literal_multiset, components_are_variable_disjoint}.
-// CEP:SECURITY: node budget and variable budget bound adversarial input.
+/// CEP:WHAT: Runs the split decision with an explicit minimum component size (the production entry uses kAvatarMinComponentSize).
+/// CEP:WHY: CEP&CC 34.3: the gate threshold is a named bound and must be injectable so tests exercise both gate sides at small scales on the production code path.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: returns Unsplittable on every non-split path (see SplitDecision); never panics.
+/// CEP:ASSUMES: literals.len() <= kMaxClauseLiterals (the store's bound); the caller restandardized the namespace (defensive: a variable >= kMaxVariablesPerClause degrades to Unsplittable).
+/// CEP:COST: O(literals x nodes) collection plus O(literals^2) worst-case numbering (512 literals, typical < 10); bench CEP-BENCH-0031.
+/// CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::{two_variable_disjoint_components_split, ground_singleton_blocks_split, min_component_size_gate, single_component_stays_whole, walk_budget_degrades_to_unsplittable}; property/avatar_property_test.rs::{splits_preserve_literal_multiset, components_are_variable_disjoint}.
+/// CEP:SECURITY: node budget and variable budget bound adversarial input.
 pub fn try_split_with(
     terms: &TermStore,
     literals: &[Literal],
@@ -397,14 +397,14 @@ pub fn try_split_with(
     SplitDecision::Splittable(view)
 }
 
-// CEP:WHAT: Runs the split decision with the production gate kAvatarMinComponentSize.
-// CEP:WHY: Design 12.3 names the constant; the production call sites stay single-argument against the store.
-// CEP:STATUS: complete
-// CEP:FAILURE: as try_split_with.
-// CEP:ASSUMES: as try_split_with.
-// CEP:COST: as try_split_with.
-// CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::{two_variable_disjoint_components_split, ground_singleton_blocks_split, min_component_size_gate}.
-// CEP:SECURITY: as try_split_with.
+/// CEP:WHAT: Runs the split decision with the production gate kAvatarMinComponentSize.
+/// CEP:WHY: Design 12.3 names the constant; the production call sites stay single-argument against the store.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: as try_split_with.
+/// CEP:ASSUMES: as try_split_with.
+/// CEP:COST: as try_split_with.
+/// CEP:EVIDENCE: unit/hot/avatar_splitter_test.rs::{two_variable_disjoint_components_split, ground_singleton_blocks_split, min_component_size_gate}.
+/// CEP:SECURITY: as try_split_with.
 pub fn try_split(terms: &TermStore, literals: &[Literal]) -> SplitDecision {
     try_split_with(terms, literals, kAvatarMinComponentSize)
 }

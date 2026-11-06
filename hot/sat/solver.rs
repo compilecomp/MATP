@@ -233,14 +233,14 @@ pub struct SolverOptions {
 }
 
 impl SolverOptions {
-    // CEP:WHAT: Production defaults for every option.
-    // CEP:WHY: One named place documents the default configuration (CEP&CC 11.3); every default is a named constant from config/limits.rs.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs (the default constructors use these).
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Production defaults for every option.
+    /// CEP:WHY: One named place documents the default configuration (CEP&CC 11.3); every default is a named constant from config/limits.rs.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs (the default constructors use these).
+    /// CEP:SECURITY: none.
     pub fn new(variables: u32, policy: RestartPolicy, reset_phases_on_restart: bool) -> Self {
         SolverOptions {
             variables,
@@ -445,14 +445,14 @@ const kPendingCleanupIdShift: u32 = 32;
 const kPendingCleanupLiteralMask: u64 = 0xFFFF_FFFF;
 
 impl<'a> CdclSolver<'a> {
-    // CEP:WHAT: Constructs the solver with production defaults (registry on, proof off).
-    // CEP:WHY: Design 19.4: every structure is fully built before the hot path; the Phase 2 signature stays identical so existing callers keep their behavior (registry bookkeeping adds O(1) per clause and the trigger never fires below kSatMaxLearntClauses).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns CdclError on invalid variable counts and arena exhaustion.
-    // CEP:ASSUMES: 0 < variables <= kMaxSatVariables; the arena has room for all substructures.
-    // CEP:COST: O(variables + registry capacity) one-time.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{empty_formula_is_satisfiable, construction_rejects_zero_variables}.
-    // CEP:SECURITY: count validated before allocation.
+    /// CEP:WHAT: Constructs the solver with production defaults (registry on, proof off).
+    /// CEP:WHY: Design 19.4: every structure is fully built before the hot path; the Phase 2 signature stays identical so existing callers keep their behavior (registry bookkeeping adds O(1) per clause and the trigger never fires below kSatMaxLearntClauses).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns CdclError on invalid variable counts and arena exhaustion.
+    /// CEP:ASSUMES: 0 < variables <= kMaxSatVariables; the arena has room for all substructures.
+    /// CEP:COST: O(variables + registry capacity) one-time.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{empty_formula_is_satisfiable, construction_rejects_zero_variables}.
+    /// CEP:SECURITY: count validated before allocation.
     pub fn new(
         arena: &'a Arena,
         variables: u32,
@@ -468,14 +468,14 @@ impl<'a> CdclSolver<'a> {
         )
     }
 
-    // CEP:WHAT: Constructs the solver with an explicit conflict budget (the production constructor delegates with kSatMaxConflicts).
-    // CEP:WHY: Security tests must exercise the ConflictBudgetExceeded path at small, fast scales; the explicit-budget constructor keeps the loop code identical for both paths (CEP&CC 34.3: test the mechanism).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as new().
-    // CEP:ASSUMES: budget >= 1.
-    // CEP:COST: as new().
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
-    // CEP:SECURITY: denial-of-service bound enforcement.
+    /// CEP:WHAT: Constructs the solver with an explicit conflict budget (the production constructor delegates with kSatMaxConflicts).
+    /// CEP:WHY: Security tests must exercise the ConflictBudgetExceeded path at small, fast scales; the explicit-budget constructor keeps the loop code identical for both paths (CEP&CC 34.3: test the mechanism).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as new().
+    /// CEP:ASSUMES: budget >= 1.
+    /// CEP:COST: as new().
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
+    /// CEP:SECURITY: denial-of-service bound enforcement.
     pub fn new_with_conflict_budget(
         arena: &'a Arena,
         variables: u32,
@@ -488,14 +488,14 @@ impl<'a> CdclSolver<'a> {
         CdclSolver::new_advanced(arena, options)
     }
 
-    // CEP:WHAT: Constructs the solver from full options (registry capacities, reduction trigger, activity increment, proof configuration).
-    // CEP:WHY: CEP&CC 34.3: every Phase 3 bound (registry capacity, reduction trigger, proof capacities) must be injectable on the production code path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: Returns CdclError::Registry/Proof when the registry or recorder arrays do not fit the arena, and the Phase 2 construction failures otherwise.
-    // CEP:ASSUMES: see SolverOptions.
-    // CEP:COST: O(variables + capacities) one-time.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{capacity_enforced, reduction_trigger_enforced}; unit/hot/sat_proof_test.rs::capacity_enforced; unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
-    // CEP:SECURITY: every capacity validated before allocation.
+    /// CEP:WHAT: Constructs the solver from full options (registry capacities, reduction trigger, activity increment, proof configuration).
+    /// CEP:WHY: CEP&CC 34.3: every Phase 3 bound (registry capacity, reduction trigger, proof capacities) must be injectable on the production code path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: Returns CdclError::Registry/Proof when the registry or recorder arrays do not fit the arena, and the Phase 2 construction failures otherwise.
+    /// CEP:ASSUMES: see SolverOptions.
+    /// CEP:COST: O(variables + capacities) one-time.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs::{capacity_enforced, reduction_trigger_enforced}; unit/hot/sat_proof_test.rs::capacity_enforced; unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
+    /// CEP:SECURITY: every capacity validated before allocation.
     pub fn new_advanced(
         arena: &'a Arena,
         options: SolverOptions,
@@ -623,26 +623,26 @@ impl<'a> CdclSolver<'a> {
         Ok(())
     }
 
-    // CEP:WHAT: Adds a problem clause at level 0 before solving, registering it with the registry and recording its proof addition when enabled.
-    // CEP:WHY: The solver-owned entry point keeps the level-0 discipline in one place (analysis assumes clauses never appear mid-search) and makes registration and proof emission impossible to forget (S4/S41).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: propagates SatCoreError (empty clause, bounds, budget) plus registry and proof capacity errors; a falsified unit returns AttachOutcome::Conflict and the solve (or the caller) decides UNSAT.
-    // CEP:ASSUMES: called before solve and only at level 0.
-    // CEP:COST: as SatCore::add_clause plus O(1) registration and one proof append.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{trivially_satisfiable, unit_conflict_at_root_is_unsat}; unit/hot/sat_registry_test.rs::registry_enumerates; unit/hot/sat_proof_test.rs::steps_recorded_in_order.
-    // CEP:SECURITY: validation in the core.
+    /// CEP:WHAT: Adds a problem clause at level 0 before solving, registering it with the registry and recording its proof addition when enabled.
+    /// CEP:WHY: The solver-owned entry point keeps the level-0 discipline in one place (analysis assumes clauses never appear mid-search) and makes registration and proof emission impossible to forget (S4/S41).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates SatCoreError (empty clause, bounds, budget) plus registry and proof capacity errors; a falsified unit returns AttachOutcome::Conflict and the solve (or the caller) decides UNSAT.
+    /// CEP:ASSUMES: called before solve and only at level 0.
+    /// CEP:COST: as SatCore::add_clause plus O(1) registration and one proof append.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{trivially_satisfiable, unit_conflict_at_root_is_unsat}; unit/hot/sat_registry_test.rs::registry_enumerates; unit/hot/sat_proof_test.rs::steps_recorded_in_order.
+    /// CEP:SECURITY: validation in the core.
     pub fn add_clause(&self, literals: &[SatLiteral]) -> Result<AttachOutcome, CdclError> {
         self.add_clause_with_kind(literals, true)
     }
 
-    // CEP:WHAT: Adds a derived clause at level 0 (preprocessing rewrites: deduplicated, strengthened, vivified replacements) with the derived-add proof step whose RUP justification the checker verifies.
-    // CEP:WHY: The axiom/derivation split (Spec 11 section 3): solver.add_clause marks problem clauses as axioms (justification skipped, correspondence with the caller-supplied formula verified); preprocessing replacements are consequences of the database and carry the RUP burden through the derived step kind; every other discipline (level-0 check, registration, attachment, root-conflict flagging) is the shared internal path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: as add_clause.
-    // CEP:ASSUMES: called at level 0; the clause is a consequence of the current database.
-    // CEP:COST: as add_clause.
-    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{duplicates_removed, strengthening_rewrites, vivification_shortens_clause}; unit/cold/drat_checker_test.rs::derivation_steps_are_rup_verified.
-    // CEP:SECURITY: add-time validation.
+    /// CEP:WHAT: Adds a derived clause at level 0 (preprocessing rewrites: deduplicated, strengthened, vivified replacements) with the derived-add proof step whose RUP justification the checker verifies.
+    /// CEP:WHY: The axiom/derivation split (Spec 11 section 3): solver.add_clause marks problem clauses as axioms (justification skipped, correspondence with the caller-supplied formula verified); preprocessing replacements are consequences of the database and carry the RUP burden through the derived step kind; every other discipline (level-0 check, registration, attachment, root-conflict flagging) is the shared internal path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as add_clause.
+    /// CEP:ASSUMES: called at level 0; the clause is a consequence of the current database.
+    /// CEP:COST: as add_clause.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{duplicates_removed, strengthening_rewrites, vivification_shortens_clause}; unit/cold/drat_checker_test.rs::derivation_steps_are_rup_verified.
+    /// CEP:SECURITY: add-time validation.
     pub fn add_derived_clause(&self, literals: &[SatLiteral]) -> Result<AttachOutcome, CdclError> {
         self.add_clause_with_kind(literals, false)
     }
@@ -695,14 +695,14 @@ impl<'a> CdclSolver<'a> {
         Ok(outcome)
     }
 
-    // CEP:WHAT: Returns the value of a variable after a Satisfiable solve.
-    // CEP:WHY: Model extraction (design 11.1 S40).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none (None when unassigned, which cannot happen after Satisfiable).
-    // CEP:ASSUMES: called after solve returned Satisfiable for meaningful results.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: property/cdcl_property_test.rs::models_satisfy_formulas.
-    // CEP:SECURITY: clamped read.
+    /// CEP:WHAT: Returns the value of a variable after a Satisfiable solve.
+    /// CEP:WHY: Model extraction (design 11.1 S40).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (None when unassigned, which cannot happen after Satisfiable).
+    /// CEP:ASSUMES: called after solve returned Satisfiable for meaningful results.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: property/cdcl_property_test.rs::models_satisfy_formulas.
+    /// CEP:SECURITY: clamped read.
     pub fn model_value(&self, variable: u32) -> Option<bool> {
         match self
             .core
@@ -714,74 +714,74 @@ impl<'a> CdclSolver<'a> {
         }
     }
 
-    // CEP:WHAT: Returns the number of conflicts analyzed.
-    // CEP:WHY: Budget introspection for tests and diagnostics.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of conflicts analyzed.
+    /// CEP:WHY: Budget introspection for tests and diagnostics.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::conflict_budget_returns_indeterminate.
+    /// CEP:SECURITY: none.
     pub fn conflicts(&self) -> u64 {
         self.conflicts.get()
     }
 
-    // CEP:WHAT: Returns the number of restarts performed.
-    // CEP:WHY: Restart introspection for tests.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the number of restarts performed.
+    /// CEP:WHY: Restart introspection for tests.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero.
+    /// CEP:SECURITY: none.
     pub fn restarts_done(&self) -> u32 {
         self.restarts.restarts_done()
     }
 
-    // CEP:WHAT: Returns a reference to the SAT core (read access for tests and preprocessing).
-    // CEP:WHY: Tests inspect trail, values, and learnt clauses; preprocessing enumerates clauses through the registry and the storage without widening the solver API.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: read-only use.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero; unit/hot/sat_preprocess_test.rs.
-    // CEP:SECURITY: read-only projection.
+    /// CEP:WHAT: Returns a reference to the SAT core (read access for tests and preprocessing).
+    /// CEP:WHY: Tests inspect trail, values, and learnt clauses; preprocessing enumerates clauses through the registry and the storage without widening the solver API.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: read-only use.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero; unit/hot/sat_preprocess_test.rs.
+    /// CEP:SECURITY: read-only projection.
     pub fn core(&self) -> &SatCore<'a> {
         &self.core
     }
 
-    // CEP:WHAT: Returns a reference to the clause registry.
-    // CEP:WHY: Preprocessing and tests enumerate and delete clauses through the registry (CEP-1003).
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: read-mostly; mutation only through the documented registry APIs.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_registry_test.rs; unit/hot/sat_preprocess_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns a reference to the clause registry.
+    /// CEP:WHY: Preprocessing and tests enumerate and delete clauses through the registry (CEP-1003).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: read-mostly; mutation only through the documented registry APIs.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_registry_test.rs; unit/hot/sat_preprocess_test.rs.
+    /// CEP:SECURITY: none.
     pub fn registry(&self) -> &ClauseRegistry<'a> {
         &self.registry
     }
 
-    // CEP:WHAT: Returns the attached proof recorder, if any.
-    // CEP:WHY: The cold writer and checker consume the recorded steps after solving.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: None when the solver was built without recording.
-    // CEP:ASSUMES: read-only use.
-    // CEP:COST: constant.
-    // CEP:EVIDENCE: unit/hot/sat_proof_test.rs; unit/cold/drat_writer_test.rs.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the attached proof recorder, if any.
+    /// CEP:WHY: The cold writer and checker consume the recorded steps after solving.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: None when the solver was built without recording.
+    /// CEP:ASSUMES: read-only use.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/sat_proof_test.rs; unit/cold/drat_writer_test.rs.
+    /// CEP:SECURITY: none.
     pub fn proof(&self) -> Option<&ProofRecorder<'a>> {
         self.proof.as_ref()
     }
 
-    // CEP:WHAT: Copies the failed-assumption core of the last UnsatUnderAssumptions result into a caller buffer and returns its length.
-    // CEP:WHY: S38: the core is the AVATAR-facing answer of an assumption solve; the copy-out API keeps the hot crate allocation-free and safe (no slice transmute of the Cell buffer), and an empty result accompanies every other outcome.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: truncates to the buffer length and returns the copied count (callers size the buffer with failed_assumption_count or pass kMaxAssumptions storage per the documented contract).
-    // CEP:ASSUMES: meaningful only after UnsatUnderAssumptions; out is caller-owned stack storage.
-    // CEP:COST: O(core length).
-    // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{unsat_under_assumptions_yields_core, core_negation_is_entailed}; property/sat_incremental_property_test.rs::cores_are_valid.
-    // CEP:SECURITY: bounds-checked reads.
+    /// CEP:WHAT: Copies the failed-assumption core of the last UnsatUnderAssumptions result into a caller buffer and returns its length.
+    /// CEP:WHY: S38: the core is the AVATAR-facing answer of an assumption solve; the copy-out API keeps the hot crate allocation-free and safe (no slice transmute of the Cell buffer), and an empty result accompanies every other outcome.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: truncates to the buffer length and returns the copied count (callers size the buffer with failed_assumption_count or pass kMaxAssumptions storage per the documented contract).
+    /// CEP:ASSUMES: meaningful only after UnsatUnderAssumptions; out is caller-owned stack storage.
+    /// CEP:COST: O(core length).
+    /// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{unsat_under_assumptions_yields_core, core_negation_is_entailed}; property/sat_incremental_property_test.rs::cores_are_valid.
+    /// CEP:SECURITY: bounds-checked reads.
     pub fn failed_assumptions_into(&self, out: &mut [SatLiteral]) -> usize {
         let count = self.failed_count.get() as usize;
         let copied = count.min(out.len()).min(self.failed.len());
@@ -791,38 +791,46 @@ impl<'a> CdclSolver<'a> {
         copied
     }
 
-    // CEP:WHAT: Returns the length of the last failed-assumption core.
-    // CEP:WHY: Lets callers size the copy buffer without probing.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none.
-    // CEP:ASSUMES: none.
-    // CEP:COST: 1 load.
-    // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::unsat_under_assumptions_yields_core.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Returns the length of the last failed-assumption core.
+    /// CEP:WHY: Lets callers size the copy buffer without probing.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 load.
+    /// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::unsat_under_assumptions_yields_core.
+    /// CEP:SECURITY: none.
     pub fn failed_assumption_count(&self) -> u32 {
         self.failed_count.get()
     }
 
-    // CEP:WHAT: Runs the CDCL loop without assumptions to Satisfiable, Unsatisfiable, or Indeterminate.
-    // CEP:WHY: Spec 06 section 8: the Phase 2 contract unchanged; the empty assumption vector makes root_level 0 so every Phase 2 behavior (backjump to computed levels, restarts to level 0) is the degenerate case of the general loop.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see SolveResult; never panics.
-    // CEP:ASSUMES: see file header (clauses at level 0, single-threaded).
-    // CEP:COST: see file header; measured in bench CEP-BENCH-0009.
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{trivially_satisfiable, pigeonhole_is_unsat, unit_conflict_at_root_is_unsat, restart_returns_to_level_zero, deterministic_across_repeated_solves, conflict_budget_returns_indeterminate}; property/cdcl_property_test.rs::{solve_agrees_with_brute_force, models_satisfy_formulas, learnt_clauses_are_entailed}; fuzz/cdcl_fuzz_test.rs.
-    // CEP:SECURITY: bounded by the conflict budget and every substructure bound.
-    // CEP:WHAT: Backtracks the trail to level 0, ending the current model's readability.
-    // CEP:WHY: The AVATAR incremental loop (design 12.2 rule 4) reads the model after a Satisfiable plain solve, then adds conflict clauses before the next solve; add_clause requires level 0, and a plain (assumption-free) solve exits without the epilogue that assumption solves run, so the controller must cancel between reading the model and adding clauses - the model contract (read first, cancel after) is documented here once instead of duplicating trail surgery in every caller.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: none; backtracking to 0 is always legal (learnt clauses of a plain solve are assumption-free and stay).
-    // CEP:ASSUMES: the caller finished reading model_value.
-    // CEP:COST: one trail unwind (O(assignments)).
-    // CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
-    // CEP:SECURITY: none.
+    /// CEP:WHAT: Runs the CDCL loop without assumptions to Satisfiable, Unsatisfiable, or Indeterminate.
+    /// CEP:WHY: Spec 06 section 8: the Phase 2 contract unchanged; the empty assumption vector makes root_level 0 so every Phase 2 behavior (backjump to computed levels, restarts to level 0) is the degenerate case of the general loop.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see SolveResult; never panics.
+    /// CEP:ASSUMES: see file header (clauses at level 0, single-threaded).
+    /// CEP:COST: see file header; measured in bench CEP-BENCH-0009.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{trivially_satisfiable, pigeonhole_is_unsat, unit_conflict_at_root_is_unsat, restart_returns_to_level_zero, deterministic_across_repeated_solves, conflict_budget_returns_indeterminate}; property/cdcl_property_test.rs::{solve_agrees_with_brute_force, models_satisfy_formulas, learnt_clauses_are_entailed}; fuzz/cdcl_fuzz_test.rs.
+    /// CEP:SECURITY: bounded by the conflict budget and every substructure bound.
+    /// CEP:WHAT: Backtracks the trail to level 0, ending the current model's readability.
+    /// CEP:WHY: The AVATAR incremental loop (design 12.2 rule 4) reads the model after a Satisfiable plain solve, then adds conflict clauses before the next solve; add_clause requires level 0, and a plain (assumption-free) solve exits without the epilogue that assumption solves run, so the controller must cancel between reading the model and adding clauses - the model contract (read first, cancel after) is documented here once instead of duplicating trail surgery in every caller.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; backtracking to 0 is always legal (learnt clauses of a plain solve are assumption-free and stay).
+    /// CEP:ASSUMES: the caller finished reading model_value.
+    /// CEP:COST: one trail unwind (O(assignments)).
+    /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::refutes_split_pigeonhole.
+    /// CEP:SECURITY: none.
     pub fn cancel(&self) {
         self.backtrack(0);
     }
 
+    /// CEP:WHAT: The convenience wrapper: solve with no assumptions.
+    /// CEP:WHY: The common call shape for one-shot formulas; identical to solve_with_assumptions over an empty assumption slice, so the result vocabulary and budget behavior match exactly (SolveResult, AssumptionOutcome).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see SolveResult; never panics.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: as solve_with_assumptions.
+    /// CEP:EVIDENCE: unit/hot/sat_solver_test.rs::{trivially_satisfiable, empty_formula_is_satisfiable}.
+    /// CEP:SECURITY: none.
     pub fn solve(&self) -> SolveResult {
         match self.solve_with_assumptions(&[]) {
             AssumptionOutcome::Satisfiable => SolveResult::Satisfiable,
@@ -837,14 +845,14 @@ impl<'a> CdclSolver<'a> {
         }
     }
 
-    // CEP:WHAT: Runs the CDCL loop under assumption literals pushed as the lowest decision levels: Satisfiable extends the assumptions, Unsatisfiable refutes the formula alone, UnsatUnderAssumptions refutes formula-plus-assumptions and leaves a failed core, Indeterminate reports a bounded failure.
-    // CEP:WHY: Design 11.1 S38/S39 and Spec 10: assumptions occupy decision levels 1..=root (each its own level so analyze_final can attribute conflicts), the search never backjumps below root, conflicts at or below root trigger final analysis instead of learning, and the epilogue backtracks to level 0, deletes every learnt clause of this call (they may depend on the assumptions), and removes the assumption proof units - which is what makes the next incremental call sound; the labeled-block structure guarantees the epilogue runs on every exit path.
-    // CEP:STATUS: complete
-    // CEP:FAILURE: see AssumptionOutcome; never panics.
-    // CEP:ASSUMES: assumptions reference declared variables; the formula's clauses were added at level 0; no more than kMaxAssumptions literals per call.
-    // CEP:COST: as solve() plus O(assumptions) push/pop and O(new learnts) cleanup.
-    // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{satisfiable_under_assumptions, unsat_formula_returns_unsat, unsat_under_assumptions_yields_core, failed_core_is_minimal_subset, repeated_assumption_solves_agree, learnts_do_not_leak_across_solves}; property/sat_incremental_property_test.rs::{assumption_solves_agree_with_brute_force, cores_are_valid}.
-    // CEP:SECURITY: bounded by the conflict budget, the assumption count, and every substructure bound.
+    /// CEP:WHAT: Runs the CDCL loop under assumption literals pushed as the lowest decision levels: Satisfiable extends the assumptions, Unsatisfiable refutes the formula alone, UnsatUnderAssumptions refutes formula-plus-assumptions and leaves a failed core, Indeterminate reports a bounded failure.
+    /// CEP:WHY: Design 11.1 S38/S39 and Spec 10: assumptions occupy decision levels 1..=root (each its own level so analyze_final can attribute conflicts), the search never backjumps below root, conflicts at or below root trigger final analysis instead of learning, and the epilogue backtracks to level 0, deletes every learnt clause of this call (they may depend on the assumptions), and removes the assumption proof units - which is what makes the next incremental call sound; the labeled-block structure guarantees the epilogue runs on every exit path.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: see AssumptionOutcome; never panics.
+    /// CEP:ASSUMES: assumptions reference declared variables; the formula's clauses were added at level 0; no more than kMaxAssumptions literals per call.
+    /// CEP:COST: as solve() plus O(assumptions) push/pop and O(new learnts) cleanup.
+    /// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::{satisfiable_under_assumptions, unsat_formula_returns_unsat, unsat_under_assumptions_yields_core, failed_core_is_minimal_subset, repeated_assumption_solves_agree, learnts_do_not_leak_across_solves}; property/sat_incremental_property_test.rs::{assumption_solves_agree_with_brute_force, cores_are_valid}.
+    /// CEP:SECURITY: bounded by the conflict budget, the assumption count, and every substructure bound.
     pub fn solve_with_assumptions(&self, assumptions: &[SatLiteral]) -> AssumptionOutcome {
         if assumptions.len() > kMaxAssumptions as usize {
             return AssumptionOutcome::Indeterminate(CdclError::TooManyAssumptions);

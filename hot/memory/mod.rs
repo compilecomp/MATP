@@ -9,6 +9,7 @@
 // CEP:EVIDENCE: unit/hot/arena_test.rs.
 // CEP:SECURITY: arena bounds are the primary memory denial-of-service mitigation.
 
+/// The bump arena allocator: generations, exhaustion policy, and the allocation contract shared by every engine.
 pub mod arena;
 
 pub use arena::{Arena, ArenaError, ArenaRange};
