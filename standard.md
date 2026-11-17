@@ -12,20 +12,12 @@ Status: **Draft standard**
 
 ## Revision history
 
-**0.4 (2026-11-06).** Research and documentation revision; the mechanical comment-discipline rules are unchanged.
-
-- Chapters 51 through 62 extend the standard to research, generative optimization, and autotuning (RCO), extreme codegen (Pall), toolchain infrastructure, memory, and hardware saturation (Infrastructure), formal verification and theorem proving (FV), heterogeneous and accelerated computing, distributed HPC and network topology (Fabric), energy and thermodynamics (Joule), controlled nondeterminism (Chaos), AI/ML systems (Tensor), industrial-level testing and fuzzing (Crucible), and the atomic file topology.
-- The repository adopts `doc standard.md` as its Documentation Style Guide. Component documents follow its section 3 structure, and the CI documentation gate (rustdoc with warnings as errors plus doc tests) is required by its section 5; the repository layout of section 32.1 names the documentation directory `doc/`.
-- The lint configuration's `standard.version` was raised from the stale 0.1 to 0.4; the `CEP-LINT-DOC-SYNC` coverage check is total in both directions (a configured rule without a heading fails even when that rule is DOC-SYNC itself, per 50.3); the self-test manifest ships the compliant and violating document scenarios for DOC-SYNC with exact expected finding counts (50.6 item 3); the first-party extension list of the configuration is named `extensions`, and 50.3's `file_globs` wording is aligned to that name.
-
 **0.3 (2026-11-05).** Enforcement-completeness revision; no existing rule's detection semantics changed.
 
 - Chapter 50's DOC-SYNC contract is now mechanical in BOTH coverage directions: a rule documented in the chapter but absent from the configuration is a lint failure, and the document's `Version:` line must equal the configuration's `standard.version`. The previous any-line version pattern was satisfiable by stale cross-references elsewhere in this document and had silently drifted (the configuration enforced `CEP&CC 0.1` while this document was already 0.2).
 - `CEP-LINT-MACRO-PREFIX` is configured and enforced; it was documented in 50.3 but shipped unconfigured. In Rust sources, `macro_rules!` definitions are the object-like macro analog of `#define` and obey the same name and guard patterns.
 - The `--self-test` manifest (`tools/cep_lint/tests/manifest.json`, 50.6 item 3) and the `--version` tool-and-standard banner (50.1) are implemented; the manifest ships one violating and one compliant scenario per configured rule with exact expected finding counts.
 - Applicability: the mechanical comment-discipline rules apply to the first-party source dialects declared by the configuration's `file_globs`. In this repository that is the Rust tree; C++-specific constructs map to their Rust analogs (macro definitions per the MACRO-PREFIX rule, include guards per its guard pattern).
-
----
 
 # 1. Purpose
 
@@ -6505,7 +6497,7 @@ repo/
 ├── tools/
 ├── config/
 ├── security/
-├── doc/
+├── docs/
 ├── scripts/
 ├── third_party/
 ├── quarantine/
@@ -6529,7 +6521,7 @@ Meaning:
 | `tools/` | Build tools, generators, harnesses |
 | `config/` | Target configuration, feature configuration |
 | `security/` | Threat models, security policies, audits |
-| `doc/` | Component documentation (Documentation Style Guide) |
+| `docs/` | Human documentation |
 | `scripts/` | Python/Lua tooling scripts |
 | `third_party/` | Vendored third-party code |
 | `quarantine/` | Non-compliant code awaiting deletion or repair |
@@ -8873,7 +8865,7 @@ For C++26 compilers, the compiler must maintain a feature matrix.
 Example:
 
 ```text
-doc/compiler/cxx26_feature_matrix.md
+docs/compiler/cxx26_feature_matrix.md
 ```
 
 The feature matrix must include:
@@ -12049,7 +12041,7 @@ Every rule below is a key in `.cep/cep_lint.json` under `rules` and must have a 
 
 **Severity 1. Sections: 35, 10.2. Check: `comment_block_schema` (file header mode).**
 
-Every first-party source file in the configured dialects must begin with a CEP file header block containing `CEP:FILE`, `CEP:WHAT`, `CEP:WHY`, `CEP:CLASS`, `CEP:STATUS`, `CEP:FAILURE`, `CEP:ASSUMES`, `CEP:COST`, and `CEP:EVIDENCE`. For C++ the first-party dialects are `.cpp` and `.hpp`; a consuming repository declares its first-party set through the configuration's `extensions` (this repository's is the Rust tree, per the 0.3 applicability note). The declared class must be one of the defined conformance classes (`CEP-0`, `CEP-1`, `CEP-2`, `CC`, `FFI`, `HPC-0`, `HPC-1`, `HPC-2`, `RCS-0`, `RCS-1`, `RCS-2`).
+Every first-party source file in the configured dialects must begin with a CEP file header block containing `CEP:FILE`, `CEP:WHAT`, `CEP:WHY`, `CEP:CLASS`, `CEP:STATUS`, `CEP:FAILURE`, `CEP:ASSUMES`, `CEP:COST`, and `CEP:EVIDENCE`. For C++ the first-party dialects are `.cpp` and `.hpp`; a consuming repository declares its first-party set through the configuration's `file_globs` (this repository's is the Rust tree, per the 0.3 applicability note). The declared class must be one of the defined conformance classes (`CEP-0`, `CEP-1`, `CEP-2`, `CC`, `FFI`, `HPC-0`, `HPC-1`, `HPC-2`, `RCS-0`, `RCS-1`, `RCS-2`).
 
 Parameters: `max_start_line`, `required_fields`, `class_field`, `allowed_classes`.
 
@@ -12208,6 +12200,74 @@ Limits: prose comments that merely mention code words are not flagged unless the
 This document and the lint configuration must agree: every configured rule must have a `### Rule` heading in this chapter, every documented rule must exist in the configuration, rule headings must be unique, and the document's `Version:` line must equal the configuration's `standard.version`. Any drift is a lint failure, which is the mechanical enforcement of Law 8 for this tool.
 
 Parameters: `doc_path`, `heading_pattern`, `version_pattern`.
+
+---
+
+### Rule CEP-LINT-ATOMIC-FILE
+
+**Severity 1. Sections: 62.1, 62.4, 62.5. Check: `file_topology_policy`.**
+
+First-party files must satisfy the atomic-file mandate: the line count does not exceed the limit for the file's declared `CEP:CLASS` (62.5.1: 400 lines for CEP-0/HPC-0/RCS-0, 800 for CEP-1/HPC-1/RCS-1/CC/FFI, 1200 for CEP-2/HPC-2/RCS-2), and the file name is not a junk drawer (62.4: names containing `util`, `helper`, `misc`, or `common` are rejected).
+
+Parameters: `line_limits`, `default_limit`, `junk_names`.
+
+Limits: the class limit uses the file header's `CEP:CLASS`; a missing class falls back to `default_limit`. Generated-code exemption (62.5.1) is not detected mechanically and relies on directory policy.
+
+### Rule CEP-LINT-DOC-ID
+
+**Severity 1. Sections: 68.2, 68.6.1. Check: `function_policy` (id mode).**
+
+Every function whose body contains more than `max_id_statements` statements (default 10, the mechanical form of 68.6.1's ">10 LOC") must declare `CEP:ID: <DOMAIN>-<id>` in its comment block, with a domain from 68.2.1 and a lowercase alphanumeric identifier.
+
+Parameters: `max_id_statements`, `id_pattern`.
+
+Limits: same extractor limits as `CEP-LINT-FUNC-BLOCK`. Registry existence is checked by `CEP-LINT-DOC-FILE`.
+
+### Rule CEP-LINT-DOC-FILE
+
+**Severity 1. Sections: 68.3, 68.6.1. Check: `rosetta_policy`.**
+
+Every identifier registered in `docs/registry.json` must have a Markdown file at `docs/functions/<DOMAIN>/<ID>.md`, and every such file must correspond to a registry entry. Registry and documentation tree must agree in both directions.
+
+Parameters: `registry_path`, `docs_prefix`.
+
+Limits: cross-file check performed after the per-file scan; a missing registry is a bootstrap failure when the rule is configured.
+
+### Rule CEP-LINT-DOC-TIERS
+
+**Severity 1. Sections: 68.3.1, 68.3.2, 68.6.1. Check: `rosetta_policy`.**
+
+Every function documentation file must contain the two mandated tier headings: `## Tier 1: Beginner` and `## Tier 2: Silicon Reality`. Tier 2 content that relies on vague phrases ("fast", "optimized") is a review-level violation of 68.3.2.
+
+Parameters: none.
+
+### Rule CEP-LINT-DOC-INQUISITION
+
+**Severity 1. Sections: 68.4, 68.6.1. Check: `rosetta_policy`.**
+
+Every function documentation file must contain the `## Silent Failure Checklist` section addressing fallbacks, truncation, wrapping, and error codes for that function (66.10).
+
+Parameters: none.
+
+### Rule CEP-LINT-SECRET-SCAN
+
+**Severity 0. Sections: 10.14, 22.13, 34.3. Check: `secret_probe_policy`.**
+
+Comments and string literals must not contain secret-shaped content: assignment-style occurrences of `password`, `passwd`, `secret_key`, `api_key`, `apikey`, or `aws_secret_access_key`, PEM private-key headers, or AWS access-key id prefixes (`AKIA`). Prose that merely mentions the words without an assignment context is not a violation.
+
+Parameters: `patterns`, `exempt_paths`, `suppression_pattern`.
+
+Limits: lexical probing only; a determined obfuscated secret requires review and the 34.3 security stage.
+
+### Rule CEP-LINT-UNSAFE-DOC
+
+**Severity 1. Sections: 22.7, 25.7. Check: `unsafe_doc_policy`.**
+
+Every code occurrence of `unsafe` (Rust analog of the C++ unsafe constructs) must be documented by a `CEP:UNSAFE` field in the enclosing comment block or the file header. Undocumented unsafe usage is a Severity 1 defect (25.7 requires the field on every unsafe block).
+
+Parameters: `exempt_paths`.
+
+Limits: word-bounded match on code lines after comment removal; string-literal occurrences of the word are not code usage unless the dialect treats them as such.
 
 ---
 
@@ -14332,3 +14392,1377 @@ A repository topology is compliant only if:
 - [ ] Merge conflicts are localized to the single atomic component being changed.
 
 ---
+
+# 63. The Craft of Optimal Performance Code (The Silicon Mandate)
+This chapter defines the mechanical, mathematical, and hardware-level disciplines required to write OPT-0 (target-optimal) code. Writing optimal code is not about writing "clean" C++26 and hoping the compiler figures it out. It is about manually orchestrating the CPU's execution ports, cache hierarchy, and branch predictor. 
+
+Where this chapter is stricter than Chapter 23 (Optimal Code), this chapter wins.
+
+## 63.1 The Prime Directive: You Are Writing for the Microarchitecture
+The ISA manual tells you what instructions exist. It does not tell you how the silicon executes them. The compiler's cost model is a heuristic. The only truth is the silicon's execution ports, the cache hierarchy, and the branch predictor.
+
+> **You do not write code for the C++ abstract machine. You write code for the execution ports, the uop cache, and the L1 data cache.**
+> **If you cannot explain the generated assembly in terms of uops, latency, and throughput, your code is not optimal. It is a guess.**
+
+### 63.1.1 The Measurement Mandate
+If you did not measure it with Performance Monitoring Counters (PMCs), you did not optimize it. 
+- **Banned:** Claiming a loop is "fast" based on instruction count alone.
+- **Required:** Every OPT-0 claim must be backed by hardware counters (e.g., `perf stat`, `uops.info`, IACA, `nsight compute`).
+- **Extermination:** Adding a "performance optimization" without a microbenchmark proving a reduction in actual cycles, cache misses, or uops on the target microarchitecture is **exterminated**.
+
+## 63.2 Memory Hierarchy Mastery
+Memory is not a flat array. It is a strict, unforgiving hierarchy of caches, TLBs, and main memory. Every pointer access must be classified and proven.
+
+### 63.2.1 Cache-Line Alignment and Padding
+The cache line (typically 64 bytes) is the fundamental unit of memory transfer. 
+- **Banned:** Placing frequently accessed, independent mutable variables on the same cache line (False Sharing).
+- **Required:** Use `alignas(cep::target::cache_line_bytes)` for thread-local counters, spinlocks, and producer-consumer ring buffers.
+- **Extermination:** Profiling a multi-threaded hot path and finding cache-line bouncing (measured via `perf c2c`) without explicit padding is a **Severity 0 defect**.
+
+### 63.2.2 Spatial and Temporal Locality
+The CPU prefetcher relies on predictable access patterns. 
+- **Banned:** Pointer-chasing data structures (e.g., linked lists, trees of `std::unique_ptr`) in CEP-0 hot paths.
+- **Required:** Use contiguous arrays, flat structs, and Structure-of-Arrays (SoA) layouts when vectorization or sequential access is required.
+- **Extermination:** Traversing a linked list in an inner loop is **exterminated**. Use a flat arena-allocated array with integer indices.
+
+### 63.2.3 The Prefetcher Contract
+If the access pattern is non-sequential (e.g., graph traversal, indirect lookups), the hardware prefetcher will fail.
+- **Required:** Use explicit software prefetching (`__builtin_prefetch`, `_mm_prefetch`) if the latency of the cache miss is on the critical path and the next address can be predicted.
+- **Banned:** Prefetching without proving that the prefetch distance matches the memory latency pipeline depth.
+
+## 63.3 Branchless Execution and Predictability
+A branch misprediction flushes the pipeline, costing 15–20 cycles on modern superscalar CPUs. Branches are a performance tax.
+
+### 63.3.1 The Branch Penalty Reality
+- **Banned in CEP-0:** Data-dependent branching inside inner loops unless the branch is 100% predictable (proven by profile) or mathematically bounded.
+- **Required:** Replace conditional assignments with arithmetic, bitwise operations, or conditional moves (`cmov`).
+
+### 63.3.2 Arithmetic and Logic Substitution
+Instead of branching to select a value, use math.
+**Bad:**
+```cpp
+if (x > limit) x = limit;
+```
+**Good (Branchless Clamp):**
+```cpp
+// CEP:ASSUMES: No signed overflow.
+x = x - ((x - limit) & ((x - limit) >> (sizeof(int) * 8 - 1)));
+```
+Or use compiler intrinsics (`std::min`, `std::max`) *only* if the generated assembly is verified to be branchless on the target.
+
+### 63.3.3 Table-Driven Dispatch
+Switch statements over dense enums often compile to branch trees. 
+- **Required:** For hot dispatch, use jump tables or, preferably, arrays of function pointers or direct data lookups.
+- **Extermination:** A 50-case `switch` statement inside a CEP-0 inner loop that generates a branch tree instead of a jump table or computed goto is **exterminated**.
+
+## 63.4 Dependency Chains and ILP (Instruction-Level Parallelism)
+Modern CPUs can execute dozens of instructions per cycle, but only if they are independent. Latency is the enemy of throughput.
+
+### 63.4.1 Breaking False Dependencies
+Do not reuse a register for unrelated values if it creates a false dependency chain.
+- **Extermination:** Generating an instruction that writes to a register that is still being read by a subsequent independent instruction, creating a false dependency chain, is **exterminated** unless register pressure demands it. Use XOR to zero a register (`xorps xmm0, xmm0`) instead of moving zero.
+
+### 63.4.2 Latency Hiding via Unrolling and Interleaving
+If a loop is bound by the latency of a single dependency chain (e.g., `sum += data[i]`), the CPU will stall waiting for the addition to complete.
+- **Required:** Use multiple accumulators to break the dependency chain.
+**Bad:**
+```cpp
+uint64_t sum = 0;
+for (auto v : data) sum += v; // Bound by ADD latency (e.g., 4 cycles).
+```
+**Good:**
+```cpp
+// CEP:CODEGEN-ILP: 4-way unrolled to hide ADD latency.
+uint64_t sum0 = 0, sum1 = 0, sum2 = 0, sum3 = 0;
+for (size_t i = 0; i < n; i += 4) {
+    sum0 += data[i];
+    sum1 += data[i+1];
+    sum2 += data[i+2];
+    sum3 += data[i+3];
+}
+uint64_t sum = (sum0 + sum1) + (sum2 + sum3);
+```
+
+## 63.5 The Ban on Implicit Work
+The compiler will silently insert work if you allow it. You must audit the assembly for hidden costs.
+
+### 63.5.1 No Implicit Conversions
+- **Banned:** Mixing signed and unsigned integers, or different widths (e.g., `uint32_t` to `uint64_t`), inside hot loops.
+- **Why:** The compiler will insert `movzx` or `cdqe` instructions, wasting execution ports.
+- **Required:** Explicit, matching types for all loop counters and arithmetic.
+
+### 63.5.2 No Hidden Temporaries
+- **Banned:** Returning large structs by value if the compiler fails to elide the copy or if the ABI forces a memory copy via a hidden pointer.
+- **Required:** Pass output parameters by reference, or ensure the return type is trivially copyable and fits in registers (e.g., `std::pair<uint64_t, uint64_t>`).
+
+## 63.6 Extermination Examples (The Silicon Mandate)
+
+### Example 1: The "Fast" Linked List
+**Violation:**
+```cpp
+for (auto* node = head; node; node = node->next) {
+    process(node->data);
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Pointer-chasing guarantees an L1 cache miss for every node. The prefetcher cannot predict the next address.
+Rule: CEP&CC 63.2.2
+Action: Refactor to a contiguous arena-allocated array.
+```
+
+### Example 2: Branching on Data
+**Violation:**
+```cpp
+for (auto v : input) {
+    if (v > threshold) output[i++] = v;
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Data-dependent branch inside a hot loop. Branch predictor will fail on random input, flushing the pipeline.
+Rule: CEP&CC 63.3.1
+Action: Use branchless compaction (e.g., SIMD mask and compress, or branchless prefix-sum indexing).
+```
+
+### Example 3: Single Accumulator Bottleneck
+**Violation:**
+```cpp
+float dot = 0.0f;
+for (int i=0; i<N; ++i) dot += a[i] * b[i]; // FMA latency bound.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Loop is bound by FMA latency (e.g., 4 cycles). CPU execution ports are starved.
+Rule: CEP&CC 63.4.2
+Action: Unroll with 4 independent accumulators to saturate FMA throughput.
+```
+
+---
+
+# 64. Fast Path Engineering (The Zero-Latency Protocol)
+This chapter defines how to architect, isolate, and protect fast paths. A fast path is not just a function; it is a quarantined execution environment where cold-path pollution is a Severity 0 defect. 
+
+## 64.1 The Prime Directive: The Fast Path is a Quarantine Zone
+> **The fast path does not know what an error is. The fast path does not know what a string is. The fast path does not allocate, it does not lock, and it does not branch on the unexpected.**
+> **If cold-path logic bleeds into the fast path, the system is defective.**
+
+### 64.1.1 The Separation Mandate
+Fast paths (CEP-0) must be physically and logically separated from cold paths (CEP-1/CEP-2).
+- **Banned:** Mixing error formatting, logging, or configuration parsing in the same translation unit or function as the hot loop.
+- **Required:** The fast path must be a pure, deterministic transformation of validated input to output.
+
+## 64.2 The Validation Airlock
+You cannot run untrusted input through a CEP-0 fast path. The fast path assumes invariants; the cold path must prove them.
+
+### 64.2.1 The Validation Boundary
+Before entering the fast path, all invariants must be checked.
+- **Required:** A dedicated "Validation Airlock" function that checks bounds, alignment, encodings, and state.
+- **Banned:** Checking bounds *inside* the inner loop of the fast path "just to be safe."
+- **Extermination:** A fast path that performs bounds checking on untrusted input in the hot loop is **exterminated**. Validate once at the airlock, then use `[[assume]]` or `CEP_ASSERT` in the fast path.
+
+### 64.2.2 The State Handoff
+The airlock must translate untrusted, messy external state into a pristine, validated, strongly-typed internal state.
+```cpp
+// CEP:WHAT: Validation airlock for network packets.
+// CEP:WHY: Proves invariants before entering the CEP-0 decoder.
+// CEP:STATUS: complete
+// CEP:FAILURE: Returns PacketError on malformed bounds.
+auto validate_packet(std::span<const uint8_t> raw) -> std::expected<ValidatedPacket, PacketError>;
+
+// CEP:WHAT: CEP-0 hot decoder.
+// CEP:ASSUMES: ValidatedPacket invariants are proven by the airlock.
+// CEP:COST: 1 cycle/byte.
+void decode_fast_path(const ValidatedPacket& pkt, DecoderState& state);
+```
+
+## 64.3 The Cold-Path Evacuation Protocol
+When the fast path encounters an anomaly (e.g., a rare edge case, a cache miss that requires a syscall, a complex error), it must evacuate to the cold path immediately.
+
+### 64.3.1 Status Codes over Exceptions
+- **Banned:** Exceptions in CEP-0.
+- **Required:** Use `std::expected`, status codes, or explicit error enums. The error path must be a simple conditional branch that jumps to a cold, `[[cold]]` annotated function.
+- **Extermination:** Throwing an exception, or using a library function that might throw, inside a CEP-0 fast path is **exterminated**.
+
+### 64.3.2 The `[[cold]]` Annotation
+Rare error handlers, fallback logic, and complex edge-case processing must be marked `[[cold]]` or placed in separate translation units.
+- **Why:** This instructs the compiler to optimize the fast path for size and locality, pushing the error handling code to the end of the binary, preventing I-cache pollution.
+
+## 64.4 State Machines and Bounded Iteration
+Fast paths often implement state machines (e.g., parsers, protocol handlers). These must be ruthlessly bounded.
+
+### 64.4.1 Explicit State Transitions
+- **Banned:** Hidden state, implicit conversions, or virtual dispatch in state machines.
+- **Required:** Explicit `enum class` states, `switch` statements (or jump tables), and explicit context structs.
+- **Extermination:** Using `std::function` or virtual functions to dispatch state transitions in a CEP-0 parser is **exterminated**.
+
+### 64.4.2 Bounded Iteration
+- **Banned:** `while(true)` loops without an explicit, proven termination condition.
+- **Required:** All loops must have a maximum iteration count derived from the validated input size.
+
+## 64.5 The "Last Resort" Protocol: Intrinsics and Inline Assembly
+The compiler is a translator, but it is not omniscient. Sometimes, you must speak directly to the silicon.
+
+### 64.5.1 When the Compiler Fails
+Inline assembly and target intrinsics are allowed **only** when:
+1. The compiler fails to generate the optimal instruction sequence (proven by assembly inspection).
+2. A specific hardware feature (e.g., CRC32c, AES-NI, memory barriers) is required.
+3. The operation is on the absolute critical path.
+
+### 64.5.2 The Isolation Mandate
+- **Banned:** Scattering `#ifdef __AVX2__` or inline assembly throughout the generic codebase.
+- **Required:** All intrinsics and assembly must be isolated in `target/` directories, wrapped in safe, strongly-typed C++26 functions, and gated by feature-test macros.
+- **Extermination:** Writing inline assembly in a generic header file is **exterminated**.
+
+## 64.6 Fast Path Review Checklist
+A fast path is compliant only if:
+- [ ] The Validation Airlock exists and proves all invariants.
+- [ ] No bounds checks, locks, or allocations exist in the inner loop.
+- [ ] Memory accesses are contiguous, aligned, and prefetch-friendly.
+- [ ] Branches are eliminated or proven highly predictable.
+- [ ] Dependency chains are broken to maximize ILP.
+- [ ] Error handling evacuates to a `[[cold]]` cold path.
+- [ ] Assembly/intrinsics are isolated in target-specific modules.
+- [ ] PMCs prove the cycle cost matches the `CEP:COST` claim.
+
+## 64.7 Extermination Examples (The Zero-Latency Protocol)
+
+### Example 1: The "Safe" Inner Loop
+**Violation:**
+```cpp
+for (size_t i = 0; i < len; ++i) {
+    if (i >= buffer_capacity) throw std::out_of_range("Oops"); // Or even a branch to an error handler
+    buffer[i] = data[i];
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Bounds check and branch inside the CEP-0 hot loop. The airlock failed to prove `len <= buffer_capacity`.
+Rule: CEP&CC 64.2.1
+Action: Validate `len` at the airlock. Use `[[assume(i < buffer_capacity)]]` or debug-asserts in the fast path.
+```
+
+### Example 2: Virtual Dispatch in a Parser
+**Violation:**
+```cpp
+class TokenHandler { virtual void handle(Token t) = 0; };
+// ... inside hot loop ...
+handler->handle(token);
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Virtual dispatch introduces an indirect branch, destroying the branch predictor and preventing inlining.
+Rule: CEP&CC 64.4.1
+Action: Use a `switch` statement on an `enum class TokenType`, or a template-based static dispatch.
+```
+
+### Example 3: Inline Assembly in a Header
+**Violation:**
+```cpp
+// include/math_utils.h
+inline uint32_t crc32(uint32_t crc, uint32_t data) {
+    __asm__ ("crc32 %0, %1, %2" : "=r"(crc) : "r"(crc), "r"(data));
+    return crc;
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Inline assembly in a generic header violates target isolation. Will fail to compile on ARM or cause silent miscompilation if flags change.
+Rule: CEP&CC 64.5.2
+Action: Move to `target/x86_64/crc32.cppm`, gate with `#if defined(__SSE4_2__)`, and provide a fallback.
+```
+
+---
+
+# 65. Continuous Bug Hunting (The Bloodhound Protocol)
+
+This chapter extends CEP&CC for the per-commit continuous integration pipeline. 
+Modern CI pipelines treat testing as a passive afterthought. "Run the unit tests, if they pass, merge." This is a dereliction of duty. Unit tests only prove the code works for the inputs the developer *imagined*. They do not prove the code survives the inputs the silicon and the adversary will throw at it.
+
+For CEP&CC, every commit that touches critical code must trigger an active, aggressive, diff-targeted bug hunt. You do not just "test" the code; you hunt it. 
+Where this chapter is stricter than Chapter 61 (The Crucible Protocol), this chapter wins. (Chapter 61 governs release-cycle quotas; Chapter 65 governs the per-commit gate).
+
+## 65.1 The Prime Directive: The Per-Commit Bloodhound
+> **You do not merge code you have not actively hunted.**
+> **A commit without a diff-targeted bug hunt is a liability.**
+> **The linter does not just check syntax; it checks for the scars of the hunt.**
+> **If you modified it, you must have hunted it. If you did not hunt it, the linter will yell at you and block the merge.**
+
+Violations of the Bloodhound Protocol are **Severity 0**. 
+
+## 65.2 The Ban on SMT for Per-Commit Gates
+Formal Verification (Chapter 54) uses SMT solvers and theorem provers. This is mandatory for release qualification. 
+However, SMT solvers are **strictly banned** as the primary per-commit bug hunt mechanism.
+
+**Why SMT is banned for per-commit gates:**
+1. **Too Slow:** A per-commit gate must complete in minutes. SMT solvers suffer from state-space explosion and can hang for hours.
+2. **CI Starvation:** Blocking a CI queue for 45 minutes waiting for a Z3 timeout wastes massive compute resources.
+3. **Axiom Faking:** To make SMT pass quickly, developers will silently introduce `axiom` or `sorry` equivalents, creating a false sense of security.
+
+**What we use instead:**
+Per-commit bug hunting relies on **fast, aggressive, heuristic-driven, and fuzz-driven** techniques that complete in under 3 minutes.
+
+## 65.3 Detailed Mechanics of the Per-Commit Hunt
+When a commit modifies a CEP-0, HPC-0, or RCS-0 component, the CI pipeline automatically spawns the `cep_hunt` daemon. The hunt consists of three mechanical phases.
+
+### 65.3.1 Phase 1: Diff-Targeted Grammar-Aware Fuzzing
+The fuzzer does not perform dumb byte-mutation. It uses a custom mutator that understands the structural invariants of the IR, AST, or binary format.
+1. **Target Extraction:** The CI parses the `git diff` and identifies the exact functions modified.
+2. **Harness Generation:** A targeted harness is dynamically linked that bypasses the parser and injects data directly into the modified function.
+3. **Grammar Mutation:** The fuzzer mutates the inputs using grammar rules (e.g., preserving opcode boundaries, maintaining valid IR use-def chains).
+4. **Quota:** The modified functions must be fuzzed for a minimum of **100,000 executions** (or 60 seconds of wall-clock time, whichever is higher).
+
+### 65.3.2 Phase 2: Differential Execution
+The fuzzer's corpus is saved. The CI then builds the `HEAD` (new) binary and the `HEAD~1` (baseline) binary.
+1. **Corpus Replay:** Both binaries are fed the exact same 10,000 complex inputs (40% worst-case, 40% adversarial, 20% happy-path).
+2. **Bitwise/Semantic Diff:** The outputs are compared. If the new binary produces a different output, crashes, or triggers a sanitizer failure that the baseline did not, it is a **divergence**.
+3. **Quota:** 10,000 differential executions. Divergences must be exactly 0 (unless explicitly waived as an intentional semantic change).
+
+### 65.3.3 Phase 3: Cold-Path Mutation Testing
+To prove the fast path correctly handles the fallout of cold-path validation failures, the CI injects faults.
+1. **Mutation:** The build system injects **50 targeted mutations** (e.g., flipped bounds, off-by-one, null pointers) into the surrounding cold-path validation code.
+2. **Observation:** The fast path is executed against these mutated cold paths.
+3. **Quota:** The fast path must gracefully evacuate to the error handler or return a status code in 100% of the mutations. If it triggers Undefined Behavior, the hunt fails.
+
+## 65.4 The Hunt Receipt and Cryptographic Provenance
+The CI runner generates a **Hunt Receipt**. This receipt is not a simple text file; it is a cryptographically signed JSON manifest proving the hunt occurred.
+
+### 65.4.1 Receipt Structure
+```json
+{
+  "receipt_id": "uuid-v4",
+  "commit_hash": "abc123def",
+  "baseline_hash": "987654321",
+  "ci_runner_id": "runner-04",
+  "signature": "ed25519_signature_from_ci_private_key",
+  "targets": [
+    {
+      "file": "hot/decoder/opcode_decoder.cpp",
+      "function": "decode_opcode",
+      "fuzz_executions": 154000,
+      "diff_inputs": 10000,
+      "divergences": 0,
+      "mutations_survived": 50,
+      "duration_ms": 42000
+    }
+  ],
+  "timestamp": "2026-11-12T14:32:00Z"
+}
+```
+
+### 65.4.2 Provenance
+The receipt is signed by the CI runner's private key. The repository contains the corresponding public key in `.cep/keys/ci_runner.pub`. This prevents developers from manually editing the JSON to fake the execution counts.
+
+## 65.5 Mechanical Enforcement: `cep_lint`
+The linter (`cep_lint`) is the enforcer. It does not trust the developer's word. It demands the Hunt Receipt.
+
+### Rule CEP-LINT-HUNT-RECEIPT
+**Severity 0. Check: `commit_hunt_manifest`.**
+When invoked with `--verify-hunt`, the linter performs the following mechanical steps:
+1. Parses the `git diff` to identify all modified functions in CEP-0/HPC-0/RCS-0 files.
+2. Locates the Hunt Receipt JSON in the commit artifacts.
+3. **Verifies the cryptographic signature** using the trusted public key.
+4. Cross-references the modified functions against the `targets` array in the receipt.
+5. Checks that `fuzz_executions >= 100,000` and `diff_inputs >= 10,000`.
+6. Checks that `divergences == 0`.
+
+If *any* of these checks fail, `cep_lint` exits with code 1 and emits the Yell Protocol.
+
+## 65.6 The "Yell at You" Protocol
+When `cep_lint` detects a missing, insufficient, or tampered hunt receipt, it does not silently fail. It yells. The CI output must be unambiguous and aggressive.
+
+**Example CI Output:**
+```text
+[CEP-LINT] SEVERITY 0: BLOODHOUND PROTOCOL VIOLATION
+[CEP-LINT] You modified `hot/decoder/opcode_decoder.cpp`.
+[CEP-LINT] You did NOT provide a cryptographically signed Hunt Receipt.
+[CEP-LINT] You did NOT fuzz the diff.
+[CEP-LINT] You are attempting to merge un-hunted, un-proven code into the mainline.
+[CEP-LINT] This is a Severity 0 defect. The merge is BLOCKED.
+[CEP-LINT] Run `tools/cep_hunt --diff HEAD~1` and attach the signed receipt.
+[CEP-LINT] EXTERMINATE THE COMMIT.
+```
+
+## 65.7 The Integrity Mandate: NEVER FAKE EVIDENCE OR WAIVERS
+This is the most critical rule in this chapter. 
+
+> **NEVER FAKE WAIVERS, RECEIPTS, OR EVIDENCE.**
+> **Falsifying a hunt receipt, forging a waiver signature, or manipulating benchmark evidence is not a coding defect. It is a catastrophic integrity breach.**
+
+If you attempt to fake a waiver, bypass the linter, or forge a hunt receipt:
+1. **You are immediately banned from the project.**
+2. **You are blacklisted from all affiliated repositories, organizations, and partner projects.**
+3. **Maintainers of external projects are formally notified of your integrity failure.**
+
+There are no appeals. There are no emergency waivers for integrity breaches. A developer who lies about evidence is a security liability that cannot be mitigated by code review.
+
+### 65.7.1 Linter Detection of Tampering
+Because the Hunt Receipt is cryptographically signed by the CI runner, any manual edit to the JSON (e.g., changing `"fuzz_executions": 100` to `"fuzz_executions": 100000"`) will break the signature. 
+If `cep_lint` detects a broken signature, it does not just fail the build; it triggers an **Integrity Breach Extermination**.
+
+## 65.8 Extermination Examples (The Bloodhound Protocol)
+
+### Example 1: The "I Ran the Unit Tests" Defense
+**Violation:** Developer modifies a hot loop. CI runs 50 unit tests. They pass. Developer merges.
+**Response:**
+```text
+EXTERMINATE
+Reason: Unit tests are not a bug hunt. No cryptographically signed Hunt Receipt provided.
+Rule: CEP&CC 65.5
+Action: Revert commit. Force developer to run `cep_hunt` and attach receipt.
+```
+
+### Example 2: The SMT Timeout Trap
+**Violation:** Developer adds a Z3 script to the per-commit CI to "prove" the loop is safe. The CI hangs for 45 minutes and times out.
+**Response:**
+```text
+EXTERMINATE
+Reason: SMT solvers are banned for per-commit gates (65.2). They cause CI starvation.
+Rule: CEP&CC 65.2
+Action: Remove Z3 script from per-commit gate. Replace with 60-second diff-fuzz.
+```
+
+### Example 3: Faking the Hunt Receipt (Integrity Breach)
+**Violation:** Developer manually edits `.cep/hunt_receipts/abc123.json` to claim 1,000,000 fuzz executions, but the CI hash-check proves the fuzzer only ran for 2 seconds. The signature is invalid.
+**Response:**
+```text
+EXTERMINATE (INTEGRITY BREACH)
+Reason: Falsification of hunt evidence. The cryptographic signature is invalid.
+Rule: CEP&CC 65.7 (The Integrity Mandate)
+Action: Revert commit. IMMEDIATELY BAN THE DEVELOPER. BLACKLIST FROM ALL PROJECTS. 
+        NOTIFY EXTERNAL MAINTAINERS. Falsified evidence is a career-ending integrity failure.
+```
+
+### Example 4: Faking a Waiver (Integrity Breach)
+**Violation:** Developer needs to merge a hot-path allocation. They forge a signature on a `.cep/waivers/` YAML file to make it look like the security and performance leads approved it.
+**Response:**
+```text
+EXTERMINATE (INTEGRITY BREACH)
+Reason: Forged waiver signature. 
+Rule: CEP&CC 65.7 (The Integrity Mandate) / 34.7
+Action: Revert commit. IMMEDIATELY BAN THE DEVELOPER. BLACKLIST FROM ALL PROJECTS.
+        Never fake a waiver. It will get you banned and notified on other projects.
+```
+
+## 65.9 Summary of the Bloodhound Protocol
+The Bloodhound Protocol ensures that no un-hunted code ever reaches the mainline. Its core tenets are:
+
+1. **Mandatory Diff-Targeted Hunting:** Every commit modifying critical code must be fuzzed (100k+ executions), differentially executed (10k+ inputs), and mutation-tested (50 faults).
+2. **No SMT in Per-Commit Gates:** SMT solvers are too slow for CI. We use fast, grammar-aware fuzzing and differential execution instead.
+3. **Cryptographic Provenance:** The CI runner generates a cryptographically signed Hunt Receipt. The linter verifies this signature and the quotas mechanically.
+4. **Aggressive Enforcement:** If the receipt is missing or insufficient, `cep_lint` blocks the merge and yells at the developer.
+5. **The Integrity Mandate:** **NEVER FAKE WAIVERS OR RECEIPTS.** Falsifying evidence or forging signatures is a catastrophic integrity breach resulting in immediate banning, blacklisting, and notification to external projects. There are zero exceptions.
+
+---
+
+# 66. Common Mistakes and The War on Silent Failure (The Inquisition Protocol)
+
+This chapter catalogs the most frequent, insidious, and destructive mistakes made by developers. These are not mere style violations; they are the exact mechanisms by which systems silently corrupt data, hide performance regressions, and introduce catastrophic security vulnerabilities. 
+
+CEP&CC does not forgive these mistakes. It hunts them. The compiler will silently truncate. The compiler will silently wrap. The compiler will silently fall back to slow paths. You must explicitly forbid the compiler from lying to you.
+
+Where this chapter conflicts with general programming habits, general programming habits lose.
+
+---
+
+## 66.1 The Prime Directive: Silence is a Defect
+
+> **If a mistake is silent, it is a Severity 0 defect.**
+> **Silent truncation is data corruption.**
+> **Silent fallback is a performance lie.**
+> **Forgotten wrapping is a security breach.**
+> **Ignored error codes are a trust boundary violation.**
+> **You do not get to hide the failure of your code behind the compiler's default behavior.**
+
+---
+
+## 66.2 Silent Truncation and Narrowing
+
+### 66.2.1 The Mandate
+All narrowing conversions must be explicit, checked, or mathematically proven safe. The compiler's default behavior is to silently drop the high-order bits. This is not a "feature"; it is data corruption.
+
+### 66.2.2 Banned Patterns
+- Assigning a wider integer to a narrower integer without an explicit cast and a bounds check.
+- Assigning a `double` to a `float` without an explicit cast and range check.
+- Converting a `size_t` to an `int` or `uint32_t` without verifying it fits.
+- Using C-style casts `(uint32_t)x` or `static_cast` merely to silence a compiler warning without proving the value actually fits in the target type.
+
+### 66.2.3 Extermination Examples
+
+**Violation:**
+```cpp
+uint64_t file_size = get_file_size();
+uint32_t buffer_size = file_size; // Silent truncation!
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Silent truncation of 64-bit file size to 32-bit buffer size. If file > 4GB, buffer_size wraps, causing a heap buffer overflow in the subsequent allocation.
+Rule: CEP&CC 66.2.1 / 22.6
+Action: Use std::cmp_greater to check bounds, or explicit static_cast with a documented invariant and a debug assert.
+```
+
+---
+
+## 66.3 Silent Fallbacks and Hidden Degradation
+
+### 66.3.1 The Mandate
+If a fast path, an optimized algorithm, or a hardware-specific instruction fails, the fallback must be explicit, documented, and measured. A silent fallback hides a performance regression and often hides a correctness bug.
+
+### 66.3.2 Banned Patterns
+- Silently falling back from a SIMD vectorized loop to a scalar loop without incrementing a fallback counter.
+- Silently falling back from a lock-free data structure to a mutex-protected one without logging the contention.
+- Catching an exception or error code and silently returning a default "zero" or "empty" value without propagating the error or logging the degradation.
+- Using a generic, slow implementation because the specialized one failed to compile or run, without updating the `CEP:COST` or `CEP:STATUS`.
+
+### 66.3.3 Extermination Examples
+
+**Violation:**
+```cpp
+if (!try_avx2_path(data)) {
+    // Silently falls back to scalar. No counter, no log, no cost update.
+    return scalar_path(data); 
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Silent fallback. The CEP:COST claim is now a lie because the scalar path is 10x slower. The system is hiding a performance regression from the monitoring telemetry.
+Rule: CEP&CC 66.3.1 / 23.2
+Action: Increment a fallback metric. Document the fallback cost in CEP:FALLBACK-COST. If the fallback is triggered in production, it must be visible in telemetry.
+```
+
+---
+
+## 66.4 Forgotten Wrapping (Overflow, Bounds, and Error Codes)
+
+### 66.4.1 The Mandate
+Every arithmetic operation on bounded types must be wrapped in checked arithmetic or proven safe. Every fallible function must have its result checked. Ignoring an error code is a security vulnerability.
+
+### 66.4.2 Banned Patterns
+- `a + b`, `a * b`, `index + offset` without overflow checks or explicit wrapping semantics.
+- Calling a function that returns `std::expected`, `Result`, or an error code, and ignoring the return value (the "Happy Path Delusion").
+- Forgetting to wrap an array index calculation, leading to out-of-bounds access.
+- Assuming a loop counter will not overflow (e.g., `for (uint8_t i = 0; i < 300; ++i)`).
+
+### 66.4.3 Extermination Examples
+
+**Violation:**
+```cpp
+size_t total = header_size + payload_size; // Forgotten wrapping!
+memcpy(buffer, payload, payload_size);
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Forgotten integer overflow wrapping. If header_size + payload_size > SIZE_MAX, total wraps to a small number, causing a heap buffer overflow in memcpy.
+Rule: CEP&CC 66.4.1 / 22.6
+Action: Use std::add_overflow or a checked addition helper. Abort or return error on overflow.
+```
+
+**Violation:**
+```cpp
+auto result = validate_packet(data);
+// Forgot to check result!
+process_packet(data);
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Ignored error code. The validation might have failed, but the code proceeds anyway. This is a trust boundary violation.
+Rule: CEP&CC 66.4.1 / 22.5
+Action: Check the result. If error, evacuate to cold path.
+```
+
+---
+
+## 66.5 Implicit Conversions and Type Coercion
+
+### 66.5.1 The Mandate
+The compiler's implicit type promotions are a source of silent bugs. Signed/unsigned mixing, boolean-to-integer coercion, and floating-point promotions must be banned in hot paths.
+
+### 66.5.2 Banned Patterns
+- Comparing a signed integer with an unsigned integer (e.g., `int i < vec.size()`).
+- Passing a `bool` to a function expecting an `int` or `uint32_t`.
+- Implicit conversion from `float` to `double` in hot loops (causes hidden register pressure and conversion instructions).
+
+### 66.5.3 Extermination Examples
+
+**Violation:**
+```cpp
+for (int i = 0; i < container.size(); ++i) // Signed/unsigned mismatch!
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Implicit conversion from unsigned size_t to signed int. If size() > INT_MAX, i becomes negative, causing an infinite loop or OOB access.
+Rule: CEP&CC 66.5.1 / 14.4
+Action: Use std::size_t for i, or explicitly cast with a bounds check.
+```
+
+---
+
+## 66.6 Forgotten Validation at Trust Boundaries
+
+### 66.6.1 The Mandate
+Data crossing a trust boundary (FFI, network, file, user input) must be validated. Assuming "the caller already checked it" is a fatal flaw. The Validation Airlock (Chapter 64) is not optional.
+
+### 66.6.2 Banned Patterns
+- Accepting a raw pointer and a length from an FFI caller without checking for null and bounds.
+- Parsing a string from a config file without checking for valid encoding or length limits.
+- Passing an unvalidated enum value from a network packet into a `switch` statement without a `default` case that handles the invalid state.
+
+### 66.6.3 Extermination Examples
+
+**Violation:**
+```cpp
+extern "C" void process_data(uint8_t* data, size_t len) {
+    // Forgot to check if data is null or len is 0!
+    hot_path(data, len);
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: FFI boundary without validation. A malicious or buggy caller can pass null or a massive len, causing a crash or OOB read.
+Rule: CEP&CC 66.6.1 / 22.8
+Action: Add null check, length bound check, and alignment check at the FFI airlock.
+```
+
+---
+
+## 66.7 Forgotten Resource Cleanup and Leaks
+
+### 66.7.1 The Mandate
+Every acquired resource must have a deterministic release path. Early returns, error paths, and exception unwinding must not leak memory, locks, or file descriptors.
+
+### 66.7.2 Banned Patterns
+- Manual `malloc`/`free` or `new`/`delete` without RAII wrappers.
+- Acquiring a mutex and returning early on error without releasing it.
+- Opening a file descriptor and forgetting to close it in the error path.
+
+### 66.7.3 Extermination Examples
+
+**Violation:**
+```cpp
+void process() {
+    lock.acquire();
+    if (error_condition) return; // Forgot to release lock!
+    lock.release();
+}
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Forgotten resource cleanup. Early return leaks the lock, causing a deadlock.
+Rule: CEP&CC 66.7.1 / 40.3
+Action: Use RAII (std::lock_guard or custom scope guard).
+```
+
+---
+
+## 66.8 Forgotten Target and Environment Assumptions
+
+### 66.8.1 The Mandate
+You cannot assume the hardware. Endianness, alignment, pointer size, and cache line size must be queried from the target configuration, not hard-coded.
+
+### 66.8.2 Banned Patterns
+- Hard-coding `64` for cache line size.
+- Assuming `sizeof(void*) == 8`.
+- Assuming little-endian byte order without a `static_assert` or target check.
+- Assuming a pointer is aligned without checking.
+
+### 66.8.3 Extermination Examples
+
+**Violation:**
+```cpp
+uint32_t val = *reinterpret_cast<uint32_t*>(ptr); // Assumes alignment!
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Forgotten alignment assumption. If ptr is not 4-byte aligned, this is Undefined Behavior on ARM/RISC-V and causes a hardware fault.
+Rule: CEP&CC 66.8.1 / 8.40
+Action: Use std::memcpy for unaligned access, or prove alignment via the Validation Airlock.
+```
+
+---
+
+## 66.9 The Copy-Paste Disease (Stale Claims and Uninitialized State)
+
+### 66.9.1 The Mandate
+A `CEP:COST` or `CEP:EVIDENCE` comment that no longer matches the code is a lie. Copy-pasting comments from other functions is a Severity 1 defect. Furthermore, relying on zero-initialization when the zero-state is invalid is a logic bomb.
+
+### 66.9.2 Banned Patterns
+- Copy-pasting a `CEP:COST: 3 cycles` comment into a new function that actually takes 15 cycles.
+- Forgetting to update the `CEP:EVIDENCE` artifact ID when the benchmark changes.
+- Leaving a struct partially uninitialized and assuming the "rest is zero".
+- Using `= {}` to zero-initialize a state machine where `0` is not a valid state.
+
+### 66.9.3 Extermination Examples
+
+**Violation:**
+```cpp
+// CEP:COST: 1 cycle/element. (Copied from another function, actual cost is 4 cycles).
+```
+**Response:**
+```text
+FAIL
+Reason: Stale/False performance claim. The evidence does not match the code.
+Rule: CEP&CC 66.9.1 / Law 8
+Action: Measure the actual cost, update the comment, and attach the correct artifact.
+```
+
+---
+
+## 66.10 The Inquisition Checklist
+
+A code review is not complete until the Inquisition Checklist is satisfied. The reviewer must actively hunt for these specific mistakes. If any of these are found, the code is **exterminated**.
+
+- [ ] **No silent truncation:** All narrowing is explicit, checked, and proven safe.
+- [ ] **No silent fallbacks:** All fallbacks are measured, logged, and documented.
+- [ ] **No forgotten wrapping:** All arithmetic is checked or proven safe; no overflow bugs.
+- [ ] **No ignored error codes:** All fallible functions are checked; no "Happy Path" delusions.
+- [ ] **No implicit type conversions:** All types are explicit; no signed/unsigned mixing.
+- [ ] **No forgotten validation:** Trust boundaries are sealed with a Validation Airlock.
+- [ ] **No forgotten resource cleanup:** RAII is used everywhere; no leaked locks or memory.
+- [ ] **No hard-coded target assumptions:** Endianness, alignment, and sizes are queried.
+- [ ] **No stale or copy-pasted claims:** CEP comments match the actual code and evidence.
+- [ ] **No uninitialized state:** All state is explicitly initialized to a valid state.
+
+---
+
+## 66.11 Final Inquisition Clause
+
+> **The compiler is not your friend.**
+> **The compiler will silently truncate your integers.**
+> **The compiler will silently wrap your pointers.**
+> **The compiler will silently fall back to slow, unoptimized code.**
+> **The compiler will silently ignore your errors.**
+
+If you do not explicitly forbid the compiler from lying to you, it will lie. 
+If you do not check the bounds, it will crash. 
+If you do not measure the fallback, it will hide the regression.
+
+Hunt the silence. Exterminate the hidden failure. Or do not claim your code is compliant.
+
+---
+
+# 67. HUNTER: Deep Semantic Static Analysis
+
+HUNTER is the mandatory, deep semantic static analysis engine for CEP&CC. It is not a linter. It is not a generic static analyzer. It is a contract-discharging, reachability-proving, bounded-symbolic hunting engine designed to mechanically exterminate the silent failures, hidden costs, and assumption violations defined in Chapter 66.
+
+Generic tools (Coverity, Clang Static Analyzer, SonarQube) are insufficient. They produce false positives, ignore hardware reality, and are blind to domain-specific CEP contracts. HUNTER is built specifically to enforce CEP&CC.
+
+## 67.1 HUNTER Architecture
+HUNTER operates on a unified, flat, arena-allocated Intermediate Representation (IR) mandated by Chapter 52. It does not analyze pointer-chasing ASTs. It analyzes the exact same cache-friendly, string-interned IR that the compiler uses.
+
+HUNTER consists of three specialized engines:
+
+### 67.1.1 Engine A: Abstract Interpretation (Whole-Program Sweep)
+- **Purpose:** Fast, whole-program analysis to find range violations, aliasing bugs, and uninitialized states.
+- **Mechanic:** Tracks abstract values (e.g., `x ∈ [0, 100]`, `ptr is 16-byte aligned`) and propagates them through the flat Control Flow Graph (CFG).
+- **Hunt:** Specifically targets **Silent Truncation** and **Integer Overflow** (Chapter 66.2, 66.4) by mathematically proving that a narrowed value cannot exceed the target type’s bounds.
+
+### 67.1.2 Engine B: Bounded Symbolic Execution (Deep Logic Hunt)
+- **Purpose:** Finds complex, path-dependent logic bugs (e.g., state-machine deadlocks, FFI misuse) that abstract interpretation misses.
+- **Mechanic:** Unrolls loops up to $K$ times and limits path depth. Uses a lightweight, highly optimized SAT solver with a strict **5-second timeout per path**.
+- **Hunt:** Targets **Validation Airlock Bypasses** (Chapter 64.2). It symbolically executes the cold-path airlock, extracts the exact post-conditions of the "success" return, and mathematically proves whether those post-conditions strictly satisfy the `CEP:ASSUMES` of the fast path. If there is a gap, it flags an **Airlock Gap Defect**.
+
+### 67.1.3 Engine C: Call-Graph Reachability (Hidden Cost Prover)
+- **Purpose:** Proves the *absence* of forbidden behaviors in CEP-0/HPC-0/RCS-0 code.
+- **Mechanic:** Builds a precise, interprocedural call graph. Identifies all "tainted" sinks (e.g., `malloc`, `new`, `std::mutex::lock`, `syscall`, `std::vector::push_back`). Performs reverse reachability analysis from these sinks.
+- **Hunt:** If a CEP-0 function is in the reachable set of any tainted sink, it is a **Severity 0 defect**. This mechanically proves **No Hidden Cost** (Law 1).
+
+## 67.2 HUNTER-Specific Hunts
+HUNTER is explicitly tuned to enforce CEP&CC rules that generic tools ignore:
+
+1. **The Airlock Discharge Proof:** Verifies $Post_{airlock} \implies Pre_{fast\_path}$. If the cold path allows an 8192-byte input but the hot path assumes $\le 4096$, HUNTER flags an Airlock Gap.
+2. **The Silent Fallback Detector:** Tracks control flow. If a function claims `CEP:OPTIMAL: target-optimal` but contains a branch to a secondary implementation lacking a corresponding metric increment or `CEP:FALLBACK-COST` annotation, it flags a Silent Fallback Defect.
+3. **The Determinism Enforcer:** Maintains a list of nondeterministic APIs (e.g., `std::unordered_map` iteration, pointer-address hashing). If reachable from HPC-0/CEP-0, it flags a Determinism Violation.
+4. **The FFI Boundary Airlock:** Identifies all FFI entry points. Verifies that *every* pointer and length parameter is validated against null, bounds, and alignment *before* any internal API is called.
+
+## 67.3 CI Mechanics and the HUNTER Receipt
+To comply with the Bloodhound Protocol (Chapter 65), HUNTER must run in under 3 minutes per commit and produce cryptographic proof of its execution.
+
+1. **Incremental & Content-Addressable Caching:** Uses the CAS protocol (Chapter 53.4). Hashes the source file, included headers, and compiler flags. Reuses abstract state and call-graph reachability data if unchanged.
+2. **Diff-Targeted Execution:** Parses the `git diff`. Identifies modified functions. Re-runs Engine B (Bounded Symbolic) only on modified functions and their immediate callees. Engines A and C are updated incrementally.
+3. **The HUNTER Receipt:** Upon completion, HUNTER generates a JSON receipt, cryptographically signed by the CI runner:
+   ```json
+   {
+     "engine": "HUNTER",
+     "functions_analyzed": ["cep::hot::decode_opcode"],
+     "airlock_discharges_passed": 14,
+     "hidden_cost_proofs": 1,
+     "symbolic_paths_explored": 412,
+     "unproven_paths": 0,
+     "signature": "ed25519_ci_signature"
+   }
+   ```
+   `cep_lint` verifies this receipt. If the receipt is missing, or if `unproven_paths > 0` without a waiver, the merge is blocked.
+
+## 67.4 Handling "Unproven" Code
+In generic static analysis, if the tool cannot prove a bug, it stays silent. In CEP&CC, **silence is a defect**.
+
+If HUNTER's Bounded Symbolic Execution engine hits a complex loop and times out (> 5 seconds), it marks the path as **UNPROVEN**. 
+- An unproven path in a CEP-0, HPC-0, or RCS-0 function is a **Severity 1 defect**.
+- The developer must either:
+  1. Add a stronger `CEP:ASSUMES` or loop invariant to help HUNTER.
+  2. Refactor the code to be mathematically simpler.
+  3. Request an emergency waiver (requiring manual review and formal proof outside the per-commit gate).
+
+## 67.5 HUNTER Integration with `cep_lint`
+HUNTER is invoked automatically by `cep_lint` during the CI gate. 
+
+### Rule CEP-LINT-HUNTER-RECEIPT
+**Severity 0. Check: `hunter_manifest`.**
+When invoked, `cep_lint` performs the following mechanical steps:
+1. Parses the `git diff` to identify all modified functions in CEP-0/HPC-0/RCS-0 files.
+2. Locates the HUNTER Receipt JSON in the commit artifacts.
+3. Verifies the cryptographic signature using the trusted public key.
+4. Cross-references the modified functions against the `functions_analyzed` array in the receipt.
+5. Checks that `unproven_paths == 0`.
+
+If any check fails, `cep_lint` exits with code 1 and blocks the merge.
+
+---
+
+**Extermination Example:**
+**Violation:** A developer adds a bounds check in a cold path but forgets to update the `CEP:ASSUMES` in the hot path, leaving a 1-byte gap where an overflow could occur.
+**HUNTER Response:**
+```text
+EXTERMINATE
+Engine: HUNTER (Bounded Symbolic Execution)
+Reason: Airlock Gap Defect. Cold path post-condition (len <= 4096) does not imply hot path pre-condition (len <= 4095).
+Rule: CEP&CC 67.2.1 / 64.2.1
+Action: Tighten the cold path validation or prove the hot path assumption mathematically.
+```
+
+HUNTER does not guess. HUNTER does not tolerate silent assumptions. HUNTER proves or it blocks.
+---
+# HUNTER / ENGINE B
+## B.0 Verdict contract
+
+Engine B answers **obligations**, not "finds bugs." An obligation is a tuple:
+
+```
+O = (site_id, predicate P, precondition context Q, depth budget K)
+```
+
+produced by:
+- airlock discharge (`Post_airlock ⇒ Pre_fast`),
+- narrowing/overflow proof obligations (Ch. 66.2, 66.4),
+- alignment / lifetime / initialization obligations,
+- FFI validation obligations (66.6),
+- `CEP:ASSUMES` discharge (Law 3).
+
+Verdict domain is exactly three values:
+
+| Verdict | Meaning | Gate effect |
+|---|---|---|
+| `PROVEN` | `Q ∧ ¬P` unsatisfiable within depth K, certificate produced | pass |
+| `VIOLATED` | nonempty **canonical** counterexample set | Severity 0 |
+| `UNPROVEN` | logical budget exhausted, or abstraction gap | Severity 1, blocks |
+
+`UNKNOWN` from any internal decision procedure maps to `UNPROVEN`. **Never** to `PROVEN`. Treating a solver timeout as a proof is a Severity 0 integrity defect, not a bug.
+
+Reconciliation with 65.2: Engine B is not "an SMT solver in the per-commit gate." It is a native bounded executor with its own word-level propagators and an incremental SAT core, budgeted in **deterministic work units**, with no external solver on the critical path. External SMT (Ch. 54) is release-qualification only.
+
+---
+
+## B.1 Determinism model: three zones
+
+Parallelism and determinism are only compatible if you partition the engine by *what nondeterminism is allowed to touch*.
+
+**Zone D (deterministic, verdict-bearing).** Everything that can change the verdict, the counterexample set, or the receipt content:
+- obligation enumeration and ordering,
+- cube partitioning,
+- decision variable order and phase,
+- loop unroll bounds, pruning decisions, subsumption admissions,
+- canonicalization and dedup,
+- budget accounting.
+
+All Zone D inputs are derived from **content hashes and stable structural IDs**, never from timing, pointer values, thread ID, or arrival order.
+
+**Zone S (speed-only).** Thread count, work stealing, clause import timing, cache warmth, prefetch depth, SIMD width. Zone S may change wall-clock and work-unit *distribution*, never the Zone D result. Enforced mechanically: **heuristic isolation** — no cross-worker activity counters (VSIDS bumps, LBD scores) may flow into a Zone D decision. Workers may share *sound derived facts* (units, summaries, proven lemmas), never heuristic state. Rationale: heuristic contamination makes budget exhaustion machine-dependent, which makes `UNPROVEN` nondeterministic, which makes the gate nondeterministic.
+
+**Zone T (telemetry).** Wall-clock, IPC, cache misses. Excluded from the hashed receipt body; reported separately and gated as ranges.
+
+Consequence: `verdict(O)` and `cex_set(O)` are pure functions of `(IR hash, contract hash, config hash, engine version)`. Two runs on 8 cores and 128 cores produce byte-identical verdicts and byte-identical canonical counterexample ledgers. This is testable and must be a CI gate (determinism differential: 1-thread vs N-thread replay).
+
+---
+
+## B.2 Data layout
+
+No pointers in the hot representation. Everything is `u32` handles into flat arenas.
+
+**Terms.** Hash-consed DAG, 16-byte node records, SoA:
+
+```
+kind: u8   flags: u8   arity: u16
+operand[4]: u32        // inline; arity > 4 → side array index
+aux: u32               // bitwidth, constant pool index, etc.
+```
+
+- Identity across workers = **64-bit structural Merkle hash** of `(kind, aux, operand hashes)`. Content-derived, therefore deterministic.
+- Identity within a worker = `u32` local handle (dense, arena index). Local handles are *not* stable across workers or runs; they never escape into Zone D output.
+- Hash-consing table: open addressing, linear probing, power-of-two capacity, `folly`-style tag bytes for SIMD probe (16 tags per cache line, one `pcmpeqb`).
+- **Batched interning:** lookups are issued in groups of `kProbeBatch` with software-pipelined prefetch (hash → prefetch bucket → probe previous). This is the single highest-leverage optimization in the engine; term interning is a pointer-chase-bound workload and batching converts it to a bandwidth-bound one.
+
+**Path conditions.** Persistent chunked trail of assumption literals. Fork = copy the tail chunk only (`O(chunk)`), share the immutable spine by arena epoch, no refcount atomics. Push/pop = trail truncation, no clause retraction, no relearning.
+
+**Clause DB.** Contiguous, watched literals as `u32` indices, 32-byte aligned, arena-allocated in `kClauseChunkBytes` blocks on huge pages. Learned clauses live in per-worker tiers; export tier is immutable and epoch-reclaimed.
+
+**Symbolic store.** SSA-renamed flat map keyed by `(base_id, version)`; versioned arrays for memory with lazy `select/store` chains. No `std::map`, no `std::string`, names are interned `u32` (53.2.2).
+
+**Per-worker state** is `alignas(cep::target::cache_line_bytes)`, NUMA first-touch allocated, no mutable shared cache line anywhere (53.5.4).
+
+---
+
+## B.3 Search architecture
+
+**B.3.1 Obligation graph, not path enumeration.** Paths are not enumerated blindly. Engine B runs a *directed* search over the obligation graph:
+
+1. Engine C supplies the reachable call graph and the tainted-sink set.
+2. Engine A supplies cheap proven domains (intervals, congruences, alignment, non-null).
+3. Engine B computes, per obligation, a CFG distance-to-target metric and searches shortest-distance-first with a deterministic radix heap keyed by `(obligation_priority, cfg_distance, depth, stable_state_id)`.
+
+**B.3.2 Compositional summaries.** Functions are summarized bottom-up in reverse topological order over the call graph, SCC-aware. A summary is:
+
+```
+Summary(f) = { (precondition_partition_i, symbolic_post_i, side_effect_footprint_i) }
+```
+
+keyed by `hash(f_ir, contract, callee_summary_hashes, config)`. Summaries are reused across call sites and across commits (B.8). This is what makes the engine scale: interprocedural symbolic execution is exponential without summaries and roughly linear in call sites with them.
+
+Recursion: SCCs get bounded unrolling with an explicit `kRecursionDepth` and a mandatory `UNPROVEN` verdict if the bound is load-bearing. No silent truncation of the recursion (66.2).
+
+**B.3.3 Sound pruning only.** A path may be pruned only by a fact carrying a **proof tag**:
+- Engine A abstract domain result marked `PROVEN`,
+- an Engine B derived unit with a derivation record,
+- an FV chapter lemma (Ch. 54) with zero `sorry`.
+
+Unproven invariants, profile hints, and "this probably can't happen" may reorder the search. They may never prune. Pruning on an unproven invariant is a Severity 0 unsoundness defect — it is exactly the mechanism by which static analyzers silently lose bugs.
+
+**B.3.4 Subsumption and merging.** Two-tier:
+- cheap: syntactic store equality + interval containment (SIMD bitset test);
+- exact: incremental implication query `state_a ⇒ state_b` under the current assumption stack, budgeted.
+
+State merging at join points uses `ITE` only when the merged term DAG grows by less than `kMergeGrowthPct`; otherwise states stay split. Merging is a Zone D decision, so its trigger is a structural threshold, not a timing one.
+
+**B.3.5 Loops.** In order of preference:
+1. proven invariant from Engine A / FV → summarize, no unrolling;
+2. affine recurrence acceleration → closed form (Presburger-decidable fragment);
+3. bounded unroll `kLoopUnroll` with an explicit completeness statement;
+4. `UNPROVEN` with the loop identified as the abstraction gap.
+
+Every `VIOLATED` verdict from an unrolled loop must state whether the witness is reachable at the real bound or only at the unrolled bound. A witness that exists only because `K` truncated the loop is not a bug report; it is an artifact, and reporting it as a bug is a false positive that will get the engine ignored.
+
+---
+
+## B.4 Incremental solver core
+
+**B.4.1 One persistent context per worker.** No solver restarts. The path condition lives as an assumption-literal stack over a shared prefix trie; sibling paths share learned clauses for free.
+
+**B.4.2 Word-level before bit-level.** Lazy bit-blasting:
+- tier 0: interval + congruence propagation over bitvector terms (cheap, SIMD-batched over 8 terms);
+- tier 1: word-level rewriting, structural hashing, constant folding, `select/store` algebra;
+- tier 2: bit-blast to AIG, structural-hash + SAT-sweep, then incremental CDCL.
+
+Most airlock discharge obligations die at tier 0/1. Bit-blasting every query is the classic performance mistake: it throws away the word-level structure that makes the query trivial.
+
+**B.4.3 Incremental invariants.**
+- decision order: static, derived from canonical structural hash (Zone D);
+- phase: canonical, `0` first (needed for lex-min in B.6);
+- restarts: deterministic Luby sequence indexed by conflict count, not by time;
+- clause deletion: deterministic, ordered by `(LBD, size, stable_clause_hash)` — never by activity that crossed a worker boundary.
+
+**B.4.4 Persistent lemma cache.** Learned units and small implied clauses are exported to a content-addressed lemma store keyed by the canonical hash of their support set. Import is sound because a lemma is implied by its support; provenance is tracked so a lemma is only reused when its support hash is present in the current constraint set. Audit mode requires a DRAT derivation for every imported lemma.
+
+---
+
+## B.5 Parallelism
+
+Four levels, all deterministic-partition, **no portfolio racing**.
+
+| Level | Unit | Partition | Determinism mechanism |
+|---|---|---|---|
+| 1 | obligation | static by `obligation_id`, then work-steal | verdict is per-obligation, order-free |
+| 2 | path / subtree | fork on canonical branch literal | trail fork, shared spine |
+| 3 | hard query | **cube-and-conquer** | deterministic cubing on canonical decision vars |
+| 4 | inner loop | SIMD | data-parallel, no ordering |
+
+**Cube-and-conquer, not portfolios.** A hard obligation is split by a deterministic lookahead cubing procedure into `kCubeTarget` cubes over canonical variables. Cubes are disjoint and covering by construction, so the union of results is complete regardless of scheduling. Portfolios (race N heuristics, take the first answer) are banned: the winner depends on machine load, which makes budget exhaustion — and therefore `UNPROVEN` — nondeterministic.
+
+**Work stealing.** Chase-Lev deques, `u32` task descriptors, lock-free, cache-line padded. Stealing affects only Zone S. Results are admitted at deterministic join barriers ordered by `stable_state_id`.
+
+**Shared immutable term store.** Lock-free append with content-derived slots; reclamation by epoch, never by reference counting (9.33, 53.5.2).
+
+**SIMD.** Watched-literal scanning, tag-byte hash probing, interval-domain intersection over 8 lanes, support-set bitset ops, symmetry-orbit computation. All Zone S or pure-functional Zone D.
+
+**No idle cores** (53.6.2): if the obligation queue is empty but cubes remain, workers steal cubes. If both are empty, the engine is at a join barrier and the remaining work is inherently sequential — that must be measured and reported, not hidden.
+
+---
+
+## B.6 The counterexample quotient
+
+This is the core requirement: **mathematically equivalent counterexamples collapse to one representative.** Deduplicating models is the wrong move; models are infinite and cheap to perturb. We quotient **violation conditions**, then pick a canonical model of each class.
+
+**B.6.1 Definition.** A raw counterexample is `(site, path condition Φ, model M)`. Define its **violation core**:
+
+```
+VC(cex) = slice(Φ ∧ ¬P, cone_of_influence(P))
+```
+
+i.e. program-slice backward from the violated predicate, drop every constraint not in its cone of influence, drop don't-care inputs. Two counterexamples are **equivalent** iff their violation cores are logically equivalent over a canonically ordered input signature:
+
+```
+cex_a ≡ cex_b  ⟺  ⊨ VC_a ↔ VC_b   (after canonical renaming)
+```
+
+This identifies: α-renaming, irrelevant input variation, path variation reaching the same root cause, lane/thread/iteration symmetry, and affine reindexing — all without special-casing any of them.
+
+**B.6.2 Canonicalization pipeline.** Six stages, each sound (never merges nonequivalent things):
+
+1. **Cone-of-influence slice.** Remove constraints outside the violated predicate's dependency cone. Kills the "same bug, different unrelated input fields" duplicate class outright.
+2. **Support minimization.** Assumption-based shrinking (QuickXplain-style dichotomic reduction) to a minimal constraint subset that still admits the violation. Result is a MUS, not *the* minimum — so stage 4 canonicalizes the order.
+3. **Structural canonical form.** AIG rewrite + structural hashing + SAT sweeping, variables renumbered by canonical structural hash of the IR signature (Merkle over the input's type, role, and use-def shape — not by name, not by declaration order).
+4. **Symmetry quotient.** Compute the automorphism group of the constraint graph via canonical labeling (nauty-class algorithm, bounded by `kSymmetryNodeBudget`). Emit **lex-leader constraints** so that symmetric assignments map to a single orbit representative. This is what collapses "input lane 3 is bad" and "input lane 7 is bad" into one report.
+5. **Lex-min model.** With symmetry broken, compute the exact lexicographically minimum model in canonical variable order:
+
+```
+for v in canonical_order(support):
+    if SAT(core ∧ assumptions ∧ ¬v): fix v = 0
+    else:                              fix v = 1
+```
+`n` incremental SAT calls on a warm context, all sharing the same clause DB. Output is unique per equivalence class, independent of which worker found the witness first or how the search was scheduled. **Discovery order becomes irrelevant** — this is precisely what makes B.1's Zone S safe.
+
+6. **Canonical key.**
+```
+key = H( canonical_AIG_hash(VC_min),
+         lex_min_model_bytes,
+         site_canonical_id,
+         ir_signature_hash,
+         canon_algorithm_version )
+```
+Equal keys ⇒ one ledger entry. The ledger keeps the lex-min witness, the orbit size (how many raw witnesses collapsed), and one concrete reproducer.
+
+**B.6.3 Residual semantic equivalence.** Stages 1–5 are syntactic/structural plus symmetry. Two cores can be logically equivalent without being structurally identical (e.g. `x < 4` vs `x ≤ 3` after rewriting misses). For those, a **bounded equivalence registry**:
+
+- candidate pairs are selected by cheap invariants (same site, same support cardinality, same interval envelope, same output-cone hash);
+- an incremental query `SAT(VC_a ⊕ VC_b)` runs under `kEquivalenceBudget`;
+- `UNSAT` ⇒ proven equivalent ⇒ union-find merge, representative = `min(key_a, key_b)` (deterministic, order-free);
+- `SAT` ⇒ genuinely distinct, keep both, and the distinguishing model is recorded as proof of distinctness;
+- budget exhausted ⇒ **keep both and emit `UNMERGED-POSSIBLE-DUPLICATE`** with the pair recorded.
+
+That last branch is non-negotiable. Merging on "looks equivalent" loses bugs (Severity 0). Silently keeping duplicates hides the fact that the quotient is incomplete (66.1, silence is a defect). So the ledger states its own incompleteness. Equivalence checking over bounded bitvectors is decidable but coNP-complete; there is no cheap complete answer and the design must not pretend otherwise.
+
+**B.6.4 Ledger output.** Per obligation:
+
+```json
+{
+  "obligation": "airlock_discharge:decode_fast:len_bound",
+  "verdict": "VIOLATED",
+  "canonical_classes": 1,
+  "raw_witnesses_collapsed": 4127,
+  "unmerged_possible_duplicates": 0,
+  "witness": { "canonical_key": "…", "inputs": {"len": 4096}, "orbit_size": 4127 },
+  "bounded_completeness": { "loops_unrolled": {"scan": 4}, "depth": 12 },
+  "certificate": "drat:…"
+}
+```
+
+`raw_witnesses_collapsed` is the metric that proves the quotient is doing work. A run with 10⁶ raw witnesses and 10⁶ ledger entries means canonicalization is broken.
+
+---
+
+## B.7 Budgets in work units, not seconds
+
+Wall-clock budgets make verdicts machine-dependent. Engine B budgets **logical work**:
+
+| Counter | Unit | Config constant |
+|---|---|---|
+| propagations | count | `kBudgetPropagationsPerObligation` |
+| conflicts | count | `kBudgetConflictsPerObligation` |
+| nodes expanded | count | `kBudgetNodesPerObligation` |
+| lex-min SAT calls | count | `kBudgetLexMinCalls` |
+| equivalence queries | count | `kEquivalenceBudget` |
+| per-path hard cap | work units | `kPathWorkCap` (the "5 s" cap re-expressed deterministically) |
+
+All counters `u64`, checked increments, overflow is a fault not a wrap (66.4).
+
+Wall-clock exists only as a **host guard**. If it fires, the verdict is not `PROVEN` and not `UNPROVEN` — it is `BUDGET-HOST-EXHAUSTED`, which blocks the merge and demands replay on a conforming runner. A slower machine may never manufacture a pass, and may never manufacture a silent `UNPROVEN` that a faster machine would have proven.
+
+---
+
+## B.8 Incrementality across commits
+
+CAS keys (53.4.1), never timestamps:
+
+```
+obligation_key = H(func_ir_hash, contract_hash, callee_summary_hashes,
+                   engine_version, canon_version, config_hash, target_hash)
+```
+
+- unchanged function + unchanged dependency closure ⇒ reuse verdict, certificate, and canonical ledger;
+- changed function ⇒ invalidate only obligations whose cone-of-influence touches the changed IR nodes (fine-grained dependency graph, 53.4.2);
+- changed *contract* (`CEP:ASSUMES` tightened) ⇒ invalidate the discharge obligations of every caller, not the function body's internal obligations;
+- changed canon algorithm version ⇒ invalidate all ledgers (the quotient changed, so the representatives changed). Reuse here would be a stale-evidence defect (Law 8).
+
+Summaries, proven lemmas, and canonical cores are all persistent, memory-mapped, content-addressed artifacts. Re-deriving an unchanged summary is the same category of defect as re-parsing an unchanged header (53.4.3).
+
+---
+
+## B.9 Certificates
+
+- `PROVEN` ⇒ DRAT/LRAT refutation of `Q ∧ ¬P`, hashed into the receipt.
+- `VIOLATED` ⇒ concrete witness + replay check that the witness actually triggers the violation in the *real* code path, not just in the model. A model-only witness is a modeling bug until replay confirms it (Ch. 54.4 fidelity).
+- Per-commit gate: certificate **produced and hashed**, not checked (checking is expensive).
+- Release/audit gate: certificates checked by an independent trusted checker. Any certificate that fails checking is a Severity 0 engine defect and invalidates every verdict that reused it.
+
+---
+
+## B.10 Failure modes Engine B must not have
+
+| Mistake | Why it is fatal | Required behavior |
+|---|---|---|
+| `UNKNOWN` → `PROVEN` | fabricates safety | map to `UNPROVEN`, block |
+| prune on unproven invariant | silently loses bugs | proof tag required |
+| merge counterexamples without proof | silently loses bugs | merge only on `UNSAT` of XOR |
+| keep duplicates silently | hides quotient incompleteness | emit `UNMERGED-POSSIBLE-DUPLICATE` |
+| heuristic state crossing workers | verdict becomes machine-dependent | Zone D heuristic isolation |
+| portfolio racing | budget exhaustion becomes load-dependent | cube-and-conquer |
+| wall-clock budget as verdict input | faster machine = different verdict | work units; host guard blocks |
+| model-only witness reported as bug | false positives destroy trust | replay against real path |
+| truncating bitwidth in the model | wrong semantics (66.2) | widths explicit, checked |
+| `u32` handle overflow | silent aliasing of terms | checked, fault on exhaustion |
+| reusing ledger across canon version | stale evidence (Law 8) | version in key |
+
+---
+
+## B.11 Cost evidence required of the engine itself
+
+Engine B is CEP-0 and must satisfy Law 4 on its own code:
+
+```cpp
+// CEP:FILE: hot/hunter/engine_b/term_intern.cpp
+// CEP:CLASS: CEP-0, HPC-0
+// CEP:WHAT: Batched hash-consing of symbolic terms into a flat arena DAG.
+// CEP:WHY: Interning is pointer-chase bound; batching + prefetch converts it to
+//          bandwidth bound. Rejected: per-term probe (measured 4.1x slower).
+// CEP:COST: kProbeBatch=8, 2.3 ns/term on host ref-a, artifact hunter-intern-07.
+// CEP:CODEGEN-UOPS: 1 gather-free probe, 1 SIMD tag compare per 16 candidates.
+// CEP:INFRA-ALLOC: worker-local arena, bump allocation, zero global heap.
+// CEP:INFRA-THREAD: immutable shared store, epoch reclamation, no mutex.
+// CEP:HPC-DETERMINISM: identity = content Merkle hash; no insertion-order IDs.
+// CEP:EVIDENCE: perf stat hunter-intern-07 (IPC, L1 miss rate, PMC).
+```
+
+Required metrics: terms/s, propagations/s, obligations/s, cache miss rate, IPC, core saturation, peak RSS, fork cost, lex-min calls/witness, collapse ratio.
+
+---
+
+## B.12 File topology (Ch. 62)
+
+```
+hot/hunter/engine_b/
+├── term_store.cpp          # hash-consing only
+├── trail_fork.cpp          # persistent path condition
+├── word_propagator.cpp     # interval/congruence tier
+├── bitblast.cpp            # AIG lowering
+├── cdcl_incremental.cpp    # SAT core
+├── cube_partition.cpp      # deterministic cubing
+├── summary_cache.cpp
+├── subsumption.cpp
+├── slice_coi.cpp           # cone-of-influence
+├── canon_aig.cpp
+├── symmetry_lexleader.cpp
+├── lexmin_model.cpp
+├── equivalence_registry.cpp
+└── ledger.cpp
+```
+
+One concern per file, ≤ `kMaxHotFileLines`. No `engine_b_utils.cpp`.
+
+---
+
+## B.13 What remains honestly unproven
+
+State these in the design, not in a footnote:
+
+1. Completeness is bounded. Unbounded loops, recursion beyond `kRecursionDepth`, and heap shapes outside the memory model produce `UNPROVEN`, never `PROVEN`.
+2. The equivalence quotient is sound but incomplete. `UNMERGED-POSSIBLE-DUPLICATE` is a permanent, visible category, not a bug to be suppressed.
+3. Support minimization yields *minimal*, not *minimum*, cores; uniqueness comes from lex-min over the canonical order plus symmetry breaking, not from minimum cardinality.
+4. The memory model is an abstraction. Every abstraction gap must be listed as a `CEP:FV-REFINEMENT` gap (54.4.2) or bridged by a runtime check in the airlock. An unlisted gap is the "verified a toy problem" failure.
+
+---
+
+**Summary of the load-bearing ideas:** obligation-directed compositional search with sound-only pruning; one warm incremental context per worker with trail-fork instead of restart; deterministic cube-and-conquer instead of portfolios; heuristic isolation so concurrency touches speed and never verdicts; work-unit budgets so `UNPROVEN` is reproducible; and a six-stage canonicalization — slice, minimize, canonicalize, symmetry-quotient, lex-min, hash — that makes the representative independent of who found the witness, with proof-or-flag semantics for every merge.
+---
+
+# 68. Documentation and Knowledge Transfer 
+---
+
+## 68.1 The Prime Directive: The Rosetta Mandate
+
+> **Every function must be documented.**
+> **Every function must have a globally unique ID.**
+> **Every function must be explainable at two distinct levels of depth.**
+> **Silent fallbacks, silent truncation, and hidden degradation are not just bugs; they are fraud.**
+
+Violations of the Rosetta Protocol are Severity 0 defects. Consistent violations of the integrity mandates within this chapter result in **immediate and permanent banning**.
+
+---
+
+## 68.2 The Function ID Registry
+
+You cannot document what you cannot name. Every non-trivial function in the repository must be assigned a globally unique identifier.
+
+### 68.2.1 ID Format
+The ID format is strictly: `<DOMAIN>-<alphanumeric_id>`.
+- **Domains:** `JIT` (JIT Compiler), `IR` (Intermediate Representation), `LEX` (Lexer), `FE` (Frontend), `MEM` (Memory/Allocator), `NET` (Network/Fabric), `GPU` (Accelerator), `HOT` (General Hot Path), `CS` (Cold/Support).
+- **ID:** A lowercase alphanumeric string (e.g., `y42`, `a09`, `k99`).
+
+Example: `JIT-y42`, `IR-a01`, `GPU-k99`.
+
+### 68.2.2 Source Code Declaration
+The ID must be declared in the function's CEP comment block:
+```cpp
+// CEP:ID: JIT-y42
+// CEP:WHAT: ...
+```
+
+### 68.2.3 The Registry Manifest
+All IDs must be registered in `docs/registry.json`. This file is mechanically verified by `cep_lint`.
+- **Extermination:** A function with a `CEP:ID` that is not in `registry.json` is **exterminated**.
+- **Extermination:** A function missing a `CEP:ID` is **exterminated**.
+
+---
+
+## 68.3 The Dual-Tier Documentation Mandate
+
+Every registered function must have a corresponding Markdown file in `docs/functions/<DOMAIN>/<ID>.md`. This file must contain exactly two sections.
+
+### 68.3.1 Tier 1: The Beginner/Onboarding View (The "What" and "Why")
+This section must be simple enough for a junior engineer, a new hire, or a reviewer from a different domain to understand in under 5 minutes.
+- **No jargon:** Do not mention uops, cache lines, or IR dialects here.
+- **Analogies:** Use real-world analogies to explain the control flow.
+- **Inputs/Outputs:** What goes in, what comes out, what errors can occur.
+- **The Contract:** What are the preconditions? What are the postconditions?
+- **Extermination:** If a Tier 1 explanation requires understanding the target microarchitecture to parse, it is **exterminated**.
+
+### 68.3.2 Tier 2: The Advanced/Silicon Reality (The "How" and "At What Cost")
+This section is for principal engineers, performance auditors, and hardware specialists. It must go into extreme depth on the silicon reality.
+- **Microarchitecture:** Which execution ports are saturated? What is the dependency chain length?
+- **Memory Hierarchy:** How does this interact with the L1/L2 cache? Is it prefetch-friendly?
+- **IR/Codegen:** What specific IR transformations does this perform? What are the exact assembly instructions generated?
+- **Cost Model:** Exact cycle counts, throughput, and latency bounds.
+- **Extermination:** If a Tier 2 explanation relies on vague phrases like "it's fast" or "optimized", it is **exterminated**.
+
+---
+
+## 68.4 The Inquisition Reminders (Silent Failure Checklist)
+
+Documentation is not just about explaining the code; it is about actively hunting the silent failures defined in Chapter 66. Every documentation page must include a "Silent Failure Checklist" section that explicitly addresses the following for that specific function:
+
+1. **Fallbacks:** Does this function have a slow path? If so, where is the telemetry counter incremented?
+2. **Truncation:** Are there any narrowing conversions? Are they proven safe or explicitly checked?
+3. **Wrapping:** Is there arithmetic that could overflow? How is it handled?
+4. **Error Codes:** Are all fallible calls checked? What happens if the cold path fails?
+
+If any of these questions are answered with "N/A" without mathematical proof, the documentation is incomplete.
+
+---
+
+## 68.5 The Ban on Silent Fallbacks and the Integrity Mandate
+
+This is the most critical rule in this chapter.
+
+> **Silent fallbacks are not a coding mistake. They are a performance lie.**
+> **If your code silently falls back to a scalar path when SIMD fails, you are hiding a regression.**
+> **If your code silently drops precision when a fast-math flag is missing, you are corrupting data.**
+> **If you consistently write code that silently falls back, you are not a developer; you are a liability.**
+
+### 68.5.1 The Penalty for Silent Fallbacks
+A silent fallback is a **Severity 0 defect**. The code is immediately **exterminated**.
+
+However, if a developer *consistently* writes code that silently falls back, hides performance regressions, or masks hardware limitations without telemetry, it crosses the line from incompetence to **fraud**.
+
+Fraud results in the following, with zero appeals:
+1. **Immediate termination** from the project.
+2. **Permanent blacklisting** from all affiliated repositories, organizations, and partner projects.
+3. **Formal notification** to external maintainers and affiliated projects regarding the integrity breach.
+
+You do not get to hide the silicon's reality. You do not get to lie about the cost of your code.
+
+---
+
+## 68.6 Documentation Topology
+
+The `docs/` directory is a first-class citizen of the repository. It is not a graveyard for outdated wikis.
+
+```text
+docs/
+├── registry.json             # Master list of all Function IDs
+├── onboarding/               # High-level architecture guides
+├── functions/                # Dual-tier function documentation
+│   ├── JIT/
+│   │   ├── JIT-y42.md
+│   │   └── JIT-y43.md
+│   ├── IR/
+│   └── GPU/
+├── architecture/             # Deep dives into subsystems
+└── inquisition/              # Post-mortems of caught silent failures
+```
+
+### 68.6.1 Mechanical Enforcement
+`cep_lint` enforces the Rosetta Protocol:
+- **Rule CEP-LINT-DOC-ID:** Every function with >10 LOC must have a `CEP:ID`.
+- **Rule CEP-LINT-DOC-FILE:** Every `CEP:ID` must have a corresponding `.md` file in `docs/functions/`.
+- **Rule CEP-LINT-DOC-TIERS:** The `.md` file must contain both `## Tier 1: Beginner` and `## Tier 2: Silicon Reality` headers.
+- **Rule CEP-LINT-DOC-INQUISITION:** The `.md` file must contain the `## Silent Failure Checklist` section.
+
+---
+
+## 68.7 Extermination and Ban Examples (The Rosetta Protocol)
+
+### Example 1: Missing Documentation
+**Violation:** A developer writes a complex lock-free queue `MEM-q01` but does not create `docs/functions/MEM/MEM-q01.md`.
+**Response:**
+```text
+EXTERMINATE
+Reason: Black box code. No dual-tier documentation provided.
+Rule: CEP&CC 68.3
+Action: Revert commit. Developer must write the Tier 1 and Tier 2 docs before merging.
+```
+
+### Example 2: The Hidden Fallback (Integrity Breach)
+**Violation:** A developer writes a vectorized string parser. When the input is misaligned, it silently falls back to a byte-by-byte scalar loop. No telemetry counter is incremented. The `CEP:COST` claim remains "1 cycle/byte". The developer does this for the 4th time in the quarter.
+**Response:**
+```text
+EXTERMINATE (INTEGRITY BREACH)
+Reason: Silent fallback masking a performance regression. Consistent violation of the Inquisition Protocol (Ch. 66) and the Rosetta Protocol (Ch. 68.5).
+Rule: CEP&CC 68.5.1 / 66.3
+Action: Revert commit. IMMEDIATELY BAN THE DEVELOPER. BLACKLIST FROM ALL PROJECTS.
+NOTIFY EXTERNAL MAINTAINERS. Hiding a fallback is a performance lie. Consistent lying is fraud.
+```
+
+### Example 3: Tier 2 Documentation is Vague
+**Violation:**
+```markdown
+## Tier 2: Silicon Reality
+This function is very fast. It uses SIMD to process the data quickly.
+```
+**Response:**
+```text
+EXTERMINATE
+Reason: Tier 2 documentation is vague and lacks silicon reality. Does not mention execution ports, cache hierarchy, or exact uop counts.
+Rule: CEP&CC 68.3.2
+Action: Rewrite with exact microarchitectural analysis and PMC evidence.
+```
