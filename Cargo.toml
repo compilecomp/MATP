@@ -337,6 +337,10 @@ name = "clause_codec_test"
 path = "tests/unit/hot/clause_codec_test.rs"
 
 [[test]]
+name = "theory_flag_test"
+path = "tests/unit/hot/theory_flag_test.rs"
+
+[[test]]
 name = "tstp_test"
 path = "tests/unit/cold/tstp_test.rs"
 

@@ -184,7 +184,7 @@ pub(crate) fn replace_at(
     }
 }
 
-/// CEP:WHAT: Attempts superposition of the positive equation from_literals[equation_index] (s = t) into the subterm at path of into_literals[into_index]'s atom, writing the conclusion into out.
+/// CEP:WHAT: Attempts superposition of the positive equation `from_literals[equation_index]` (s = t) into the subterm at path of `into_literals[into_index]`'s atom, writing the conclusion into out.
 /// CEP:WHY: Spec 07 section 6: sigma = MGU(w, s) with the design 10.2 side conditions - the equation literal eligible (strictly maximal or selected), oriented s sigma strictly greater than t sigma, the target subterm w sigma not a variable, and the into literal eligible (selected, or nothing selected and maximal; the negative-side eligibility for negative literals, positive-side for positive literals - the standard superposition restrictions) - concluding the applied remainders plus the rewritten into literal.
 /// CEP:STATUS: complete
 /// CEP:FAILURE: Ok(None) on any failed side condition or unification (the MGU is unwound first, Spec 02 section 4); Err on structural failures or an over-long conclusion with the trail restored to the entry depth (CEP-1050: the applied-side reads, the rebuild, and every materialization unwind through the restore helpers), so the generator's drop-and-resume policy can skip the candidate safely.
@@ -350,7 +350,7 @@ pub fn superpose(
     Ok(SuperpositionOutcome::Concluded(count))
 }
 
-/// CEP:WHAT: Attempts equality resolution on the negative equation literals[index] (not (s = t)) with unifiable sides, concluding the applied remainders.
+/// CEP:WHAT: Attempts equality resolution on the negative equation `literals[index]` (not (s = t)) with unifiable sides, concluding the applied remainders.
 /// CEP:WHY: NR01 section 4.3 (Spec 07 section 6): when sigma = MGU(s, t) exists, the literal is trivially contradictory under sigma and is dropped; soundness is the equality-elimination instance of resolution.
 /// CEP:STATUS: complete
 /// CEP:FAILURE: Ok(None) on failed side conditions or unification; Err on structural failures with the trail restored to the entry depth (CEP-1050 restore helpers); the trail is clean on every path.

@@ -49,7 +49,7 @@ pub enum FactoringOutcome {
     Concluded(usize),
 }
 
-/// CEP:WHAT: Attempts factoring of literals[first] with literals[second] (same polarity, unifiable atoms, first eligible) and writes the factored clause into out.
+/// CEP:WHAT: Attempts factoring of `literals[first]` with `literals[second]` (same polarity, unifiable atoms, first eligible) and writes the factored clause into out.
 /// CEP:WHY: Spec 07 section 5: the conclusion keeps one applied copy of the merged literal and the applied remainders; eligibility requires the merged literal selected or (nothing selected and) strictly maximal - the standard restriction that makes factoring + ordered resolution complete.
 /// CEP:STATUS: complete
 /// CEP:FAILURE: Ok(None) on failed side conditions or unification; Err on structural failures or an over-long conclusion; the substitution trail is unwound on every path.
@@ -130,7 +130,7 @@ pub fn equality_sides(
     Some((view.child(0).ok()?, view.child(1).ok()?))
 }
 
-/// CEP:WHAT: Attempts equality factoring of two positive equation literals literals[first] (s = t) and literals[second] (s' = t'): sigma = MGU(s, s') concludes the remainders plus (s = t)sigma plus not(t sigma = t' sigma).
+/// CEP:WHAT: Attempts equality factoring of two positive equation literals `literals[first]` (s = t) and `literals[second]` (s' = t'): sigma = MGU(s, s') concludes the remainders plus (s = t)sigma plus not(t sigma = t' sigma).
 /// CEP:WHY: NR01 section 4.2 (Spec 07 section 5): equality factoring resolves the two equations on their left sides and keeps the disequality of the right sides, which is what makes the superposition calculus complete on non-unit equalities.
 /// CEP:STATUS: complete
 /// CEP:FAILURE: Ok(None) on failed side conditions (both positive, both equations, first eligible) or unification; Err on structural failures; trail unwound on every path.

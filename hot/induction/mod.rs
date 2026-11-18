@@ -76,7 +76,7 @@ pub struct InductionDeclaration {
     /// CEP:STATUS: complete
     /// CEP:FAILURE: WellFoundedNotBinary when the symbol is not a binary predicate.
     /// CEP:ASSUMES: kind Predicate, arity 2 (validated); the semantic obligation (well-foundedness over the declared datatype) is the caller's, fixed by Spec 15 section 3.2.
-    /// CEP:COST: 8 bytes (Option<u32>).
+    /// CEP:COST: 8 bytes (`Option<u32>`).
     /// CEP:EVIDENCE: unit/hot/induction_test.rs::{well_founded_scheme_clauses_match_clausification, declaration_validation_rejects_bad_shapes}.
     /// CEP:SECURITY: none.
     pub well_founded: Option<u32>,

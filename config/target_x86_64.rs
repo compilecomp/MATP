@@ -46,7 +46,7 @@ pub const kPageBytes: u32 = 4_096;
 /// CEP:WHY: Layout computations and static assertions reference the named width instead of assuming 8.
 /// CEP:STATUS: complete
 /// CEP:FAILURE: none.
-/// CEP:ASSUMES: 8 bytes; enforced by static assertion against core::mem::size_of::<usize>() when compiled for this target.
+/// CEP:ASSUMES: 8 bytes; enforced by static assertion against core::mem::size_of::`<usize>`() when compiled for this target.
 /// CEP:COST: compile-time only.
 /// CEP:EVIDENCE: System V ABI x86-64.
 /// CEP:SECURITY: none.

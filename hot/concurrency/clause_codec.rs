@@ -18,7 +18,7 @@ use mapt_config::limits::{
     kSharedClauseMaxWords,
 };
 
-use crate::ir::literal::Literal;
+use crate::ir::literal::{Literal, LiteralFlags, TheoryTag};
 use crate::ir::symbol_table::SymbolTable;
 use crate::ir::term::{TermPtr, TermStore, TermTag};
 
@@ -147,7 +147,7 @@ fn unpack_node(word: u64) -> (u64, u64, u64) {
 }
 
 /// CEP:WHAT: Encodes one clause into out; returns the word count.
-/// CEP:WHY: Spec 13 section 4: word 0 = [total words:16][literal count:16][reserved:32]; then per literal one polarity word ([polarity:1][reserved:63]) followed by the atom's prefix node words (children before parents is wrong - the prefix order is parent first, then each child subtree left to right; the decoder rebuilds bottom-up through its frame stack); the explicit DFS stack keeps the walk non-recursive; the budget check on every word keeps the record bounded.
+/// CEP:WHY: Spec 13 section 4: word 0 = `[total words:16][literal count:16][reserved:32]`; then per literal one polarity word (`[polarity:1][reserved:63]`) followed by the atom's prefix node words (children before parents is wrong - the prefix order is parent first, then each child subtree left to right; the decoder rebuilds bottom-up through its frame stack); the explicit DFS stack keeps the walk non-recursive; the budget check on every word keeps the record bounded.
 /// CEP:STATUS: complete
 /// CEP:FAILURE: returns TooLarge when the words exceed kSharedClauseMaxWords (the exporter skips and counts).
 /// CEP:ASSUMES: literals.len() <= kMaxClauseLiterals; atoms interned by the given store.
@@ -179,7 +179,15 @@ pub fn encode_clause(
             return Err(CodecError::TooLarge);
         }
         let polarity = if literal.is_positive() { 1u64 } else { 0u64 };
-        out[cursor] = polarity;
+        // CEP:WHAT: The polarity word carries the literal's flags byte (CEP-1012).
+        // CEP:WHY: Spec 13 section 4 (amended): [polarity:1][theory flags:8][reserved:55] - the theory-laden bit, theory tag, and AVATAR component tag survive the worker boundary instead of being silently dropped by the old polarity-only word.
+        // CEP:STATUS: complete
+        // CEP:FAILURE: none.
+        // CEP:ASSUMES: the flags byte fits 8 bits (it is a u8).
+        // CEP:COST: 1 shift + 1 or.
+        // CEP:EVIDENCE: unit/hot/theory_flag_test.rs::codec_roundtrip_preserves_theory_flags.
+        // CEP:SECURITY: the decode side validates the byte (reserved bits zero, coupling invariant).
+        out[cursor] = polarity | ((literal.theory_flags() as u64) << 1);
         cursor += 1;
         // Explicit DFS over the atom: (node, next child cursor).
         let mut stack: [(TermPtr, u16); kMaxTermDepth as usize] =
@@ -302,11 +310,39 @@ pub fn decode_clause(
         }
         let polarity_word = record[cursor];
         cursor += 1;
-        if polarity_word > 1 {
+        // CEP:WHAT: Validates the polarity word and extracts polarity plus the flags byte (CEP-1012).
+        // CEP:WHY: Spec 13 section 4 (amended): [polarity:1][theory flags:8][reserved:55]; reserved bits must be zero and the flags byte must satisfy the coupling invariant (theory-laden bit set exactly when the theory tag nibble decodes to a non-None theory; reserved tag encodings 7-15 rejected) - a forged record fails loudly instead of decoding to a mis-tagged literal.
+        // CEP:STATUS: complete
+        // CEP:FAILURE: returns Malformed on nonzero reserved bits or a broken coupling invariant.
+        // CEP:ASSUMES: none.
+        // CEP:COST: constant per literal.
+        // CEP:EVIDENCE: unit/hot/theory_flag_test.rs::{codec_roundtrip_preserves_theory_flags, codec_rejects_bad_flag_words}.
+        // CEP:SECURITY: untrusted-record validation before any literal construction.
+        if polarity_word >> 9 != 0 {
             return Err(CodecError::Malformed);
         }
+        let flags = (polarity_word >> 1) as u8;
+        let laden = flags & LiteralFlags::kTheoryLaden != 0;
+        let tag_bits = (flags & LiteralFlags::kTheoryTagMask) >> LiteralFlags::kTheoryTagShift;
+        match TheoryTag::from_bits(tag_bits) {
+            Some(TheoryTag::None) => {
+                if laden {
+                    return Err(CodecError::Malformed);
+                }
+            }
+            Some(_) => {
+                if !laden {
+                    return Err(CodecError::Malformed);
+                }
+            }
+            None => {
+                return Err(CodecError::Malformed);
+            }
+        }
         let atom = decode_atom(record, &mut cursor, total, terms, symbols)?;
-        *slot = Literal::new(atom, polarity_word == 1);
+        let mut literal = Literal::new(atom, polarity_word & 1 == 1);
+        literal.set_theory_flags(flags);
+        *slot = literal;
     }
     if cursor != total {
         return Err(CodecError::Malformed);

@@ -6,19 +6,19 @@ Each component document follows the Documentation Style Guide (`doc standard.md`
 
 | # | Document | Scope | Status |
 |---|---|---|---|
-| 01 | `01_fol_syntax_semantics.md` | Signature, terms, hash-consing canonicality, literals, clauses, canonical order, IR contract | Complete (Phase 1 scope) |
+| 01 | `01_fol_syntax_semantics.md` | Signature, terms, hash-consing canonicality, literals, clauses, canonical order, IR contract; section 5 amendment: the literal flags byte and the design 13.1 theory-tag vocabulary with the coupling invariant (CEP-1012) | Complete (Phase 1 scope + CEP-1012 amendment) |
 | 02 | `02_substitution_unification.md` | Substitution algebra, application, trail discipline, MGU and matching definitions and algorithms | Complete (algorithms delivered in Phase 2) |
 | 03 | `03_term_orderings.md` | Term orderings: precedence, KBO, LPO, theorems and measurement | Complete (Phase 2 scope; ticket CEP-1013 closed) |
 | 04 | `04_term_indexing.md` | Discrimination tree: flat sequences, matching rule, retrieval theorems | Complete (Phase 2 scope) |
 | 05 | `05_sat_cdcl_foundations.md` | SAT literals, clauses, trails, watched literals, BCP soundness and completeness; section 6 amendment: deleted-record lazy unlinking (Phase 3) | Complete (Phase 1 scope + Phase 3 amendment) |
-| 06 | `06_cdcl_conflict_analysis.md` | Implication graphs, first-UIP analysis, learning, minimization, backjumping, VSIDS, phase saving, restarts; section 9: clause registry and learnt-clause deletion (Phase 3) | Complete (Phase 2 scope + Phase 3 amendment) |
+| 06 | `06_cdcl_conflict_analysis.md` | Implication graphs, first-UIP analysis, learning, minimization, backjumping, VSIDS, phase saving, restarts; section 9: clause registry and learnt-clause deletion (Phase 3); section 6 amendment: the two-level ladder bucket heap replacing the binary heap (CEP-1030) | Complete (Phase 2 scope + Phase 3 amendment + CEP-1030 amendment) |
 | 07 | `07_inference_rules.md` | The inference rules: renaming theorems, eligibility, resolution, factoring, equality factoring, superposition, equality resolution, demodulation, subsumption, tautology, duplicate removal | Complete (Phase 3 scope) |
 | 08 | `08_given_clause_loop.md` | The given-clause loop, clause database, selection fairness, feature-vector filter, generation strategy, loop contract | Complete (Phase 3 scope) |
 | 09 | `09_sat_preprocessing.md` | SAT preprocessing: tautology, duplicates, subsumption, strengthening, vivification; preservation theorems; proof-trace order | Complete (Phase 3 scope) |
 | 10 | `10_incremental_solving.md` | Assumption solving, root levels, final analysis, failed cores, incremental hygiene | Complete (Phase 3 scope) |
 | 11 | `11_drat_proof_logging.md` | DRAT recording, step kinds, RUP/RAT semantics, text format, internal checker | Complete (Phase 3 scope) |
 | 12 | `12_avatar_splitting.md` | AVATAR: splitting lemma, component interning, monotone-activation protocol, conflict soundness, assertability lemma, saturation terminal, degradation policy | Complete (Phase 4 scope) |
-| 13 | `13_portfolio_concurrency.md` | Bounded MPMC pool, Chase-Lev deque, portable clause codec, worker protocol, import soundness, first-to-finish linearization | Complete (Phase 4 scope) |
+| 13 | `13_portfolio_concurrency.md` | Bounded MPMC pool, Chase-Lev deque, portable clause codec, worker protocol, import soundness, first-to-finish linearization; section 4 amendment: the polarity word carries the literal flags byte with validation (CEP-1012) | Complete (Phase 4 scope + CEP-1012 amendment) |
 | 14 | `14_unified_proof_reconstruction.md` | Derivation walk, reachability pruning, TSTP grammar subset, AVATAR presentation, replay checker; Phase 4 (revised) amendment: superposition/equality-resolution/equality-factoring replay arms (Spec 17 section 5); Phase 5 amendment: the checker delegates to the certified kernel (Spec 19), demodulation replays exactly over the CEP-1036 chain | Complete (Phase 4 scope; Phase 5 kernel delegation) |
 | 15 | `15_structural_induction.md` | Automated induction: declaration contract, input-signature scan, structural and well-founded scheme clausifications, initial-algebra soundness, bounds, the worked refutation, TSTP presentation | Complete (Phase 4 revised scope) |
 | 16 | `16_conjecture_generation.md` | Conjecture harvest: unit window, templates T1/T2/T3, enumeration order, mini-refutation filter, isolation and import theorems, schedule and budgets | Complete (Phase 4 revised scope) |

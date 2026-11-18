@@ -30,15 +30,15 @@ use mapt_config::limits::{
     kInvalidClauseId, kInvalidSubstitutionOffset, kMaxConjectureCandidates, kMaxDerivationParents,
 };
 
-// CEP:WHAT: Arena bytes for the fuzz fixture.
-// CEP:WHY: Named fixture size (CEP&CC 11.3).
+// CEP:WHAT: Arena bytes for the fuzz fixture (16 MiB).
+// CEP:WHY: Named fixture size (CEP&CC 11.3). Arena::new requires a 'static region, so every run_random_harvest leaks its region and random_harvests_respect_budgets runs 64 seeds in one process: the per-seed region size bounds the process footprint at 64 x 16 MiB = 1 GiB. allocate_aligned_region zero-fills the whole region, so a larger region is paid in resident memory per seed - the previous 50 MiB size zero-filled 3.2 GiB across the seed loop and was OOM-killed mid-run. 16 MiB covers the construction reservations (the 2 MiB-entry term hash table alone is 8 MiB) plus the fixture's bounded draws; the passing seed loop proves consumption fits (an overflow fails loudly as ArenaFull).
 // CEP:STATUS: complete
 // CEP:FAILURE: none.
 // CEP:ASSUMES: none.
 // CEP:COST: compile-time only.
 // CEP:EVIDENCE: used by this file.
 // CEP:SECURITY: none.
-const kFuzzArena: u32 = 50_331_648;
+const kFuzzArena: u32 = 16_777_216;
 
 // CEP:WHAT: Builds one random store state and runs one harvest, returning the observables.
 // CEP:WHY: The shared body of the no-panic and determinism properties: random inputs (0-6 clauses of 1-3 literals over random ground atoms and polarities, including non-equation and negative shapes the templates must skip) plus random derived units (0-4, random orientation), then one harvest; the tuple of (stats, next id) is the comparable observable.

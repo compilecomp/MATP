@@ -1010,7 +1010,7 @@ pub const kAvatarMaxModelRotations: u32 = 4_096;
 pub const kKernelReplayBudget: u64 = 1_048_576;
 
 /// CEP:WHAT: Maximum assertion symbols one symbol table reserves for AVATAR clause learning (Spec 18 section 3).
-/// CEP:WHY: The FOL copies of SAT-side clauses (conflict lemmas and learnt transfers) speak only through 0-ary assertion predicates mapt_assertion_<i>; the reservation is one-shot and bounded so a misconfigured learning budget cannot flood the symbol table (the denial-of-service discipline).
+/// CEP:WHY: The FOL copies of SAT-side clauses (conflict lemmas and learnt transfers) speak only through 0-ary assertion predicates `mapt_assertion_<i>`; the reservation is one-shot and bounded so a misconfigured learning budget cannot flood the symbol table (the denial-of-service discipline).
 /// CEP:STATUS: complete
 /// CEP:FAILURE: reserve_assertion_symbols returns BuilderError::AssertionBudget past the bound; the controller refuses learning options whose symbol count exceeds it.
 /// CEP:ASSUMES: 4_096 assertion symbols cover the abstraction solver's component slots used by learning (learning is off by default).

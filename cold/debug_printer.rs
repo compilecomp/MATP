@@ -33,7 +33,7 @@ pub enum PrintError {
 }
 
 /// CEP:WHAT: Prints one term in s-expression syntax into out.
-/// CEP:WHY: The internal debug format (design 5.7 printable requirement); variables print as V<n>, functions as (name args...), predicates the same, equality as (= l r), application as (@ f x), sorts as (sort id).
+/// CEP:WHY: The internal debug format (design 5.7 printable requirement); variables print as `V<n>`, functions as (name args...), predicates the same, equality as (= l r), application as (@ f x), sorts as (sort id).
 /// CEP:STATUS: complete
 /// CEP:FAILURE: Returns UnreadableTerm when the term or a descendant cannot be read.
 /// CEP:ASSUMES: names is the builder that produced the symbols.

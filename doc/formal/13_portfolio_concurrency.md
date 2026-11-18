@@ -32,7 +32,7 @@ This document is normative for the Phase 4 concurrency layer (design section 19)
 
 ### 4. The portable clause codec
 
-**Definition 4.1 (Record layout).** Word 0: [total words:16][literal count:16][reserved:32]. Per literal: one polarity word (0 or 1), then the atom's node words in prefix order (parent first, children left to right). Node word: [tag:3][symbol or variable id:32][child count:10]. Tags follow `TermTag`; Lambda is rejected (Phase 5 scope).
+**Definition 4.1 (Record layout).** Word 0: [total words:16][literal count:16][reserved:32]. Per literal: one polarity word ([polarity:1][theory flags:8][reserved:55]; the flags byte carries the theory-laden bit, the theory tag, and the AVATAR component tag per Spec 01 section 5 — CEP-1012 — reserved bits must be zero, the tag/laden coupling invariant is validated, and reserved tag encodings are rejected), then the atom's node words in prefix order (parent first, children left to right). Node word: [tag:3][symbol or variable id:32][child count:10]. Tags follow `TermTag`; Lambda is rejected (Phase 5 scope).
 
 **Lemma 4.1 (Tree encoding).** The prefix node-word sequence determines the term tree exactly (the child counts guide the rebuild), so decode(encode(c)) = c over interned stores with the same symbol-id table. *The symbol-table contract:* every worker rebuilds its table from the same declaration list in the same order (the ids are assignment-order-dense), so the codec's symbol ids agree across arenas.
 

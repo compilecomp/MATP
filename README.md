@@ -31,6 +31,8 @@ MAPT is a first-order automated theorem prover with an integrated CDCL SAT solve
 | Formal specs 12-14 (AVATAR, concurrency, proof reconstruction) | complete | `doc/formal/` |
 | Subsumption resolution + condensation (CEP-1034: RV03 exact-match SR, BG94 per-literal condensation, the simplify-chain extension, the two kernel replay arms) | complete | `hot/inference/subsumption.rs`, `hot/search/given_clause.rs`, `cold/kernel.rs` |
 | Conjecture-distance + set-of-support selection (CEP-1035: the fourth priority strategy and the fifth restriction row of design 15.2, the kClauseFlagSos mark, config/strategy.rs presets) | complete | `hot/search/passive.rs`, `hot/search/given_clause.rs`, `hot/ir/clause.rs`, `config/strategy.rs` |
+| Two-level bucket heap for VSIDS (CEP-1030: the static geometric ladder + per-band key-sorted lists, exact-order-preserving, no sift trees, batched backtrack waves, sort-free rescale rebuild) | complete | `hot/sat/vsids.rs`, `hot/sat/solver.rs` |
+| Theory-laden literal flags (CEP-1012: the design 13.1 theory-tag vocabulary in the literal flags byte with the coupling invariant, codec carriage and validation of the flags word) | complete | `hot/ir/literal.rs`, `hot/concurrency/clause_codec.rs` |
 
 ## Phase 3 contents (design section 26)
 

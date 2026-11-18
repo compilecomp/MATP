@@ -292,10 +292,10 @@ impl Arena {
     }
 
     /// CEP:WHAT: Allocates an array of count elements of type Element, layout-aligned.
-    /// CEP:WHY: Typed arrays (term headers, clauses, literals, watch heads) are the arena's main product; aligning to align_of::<Element>() keeps every consumer layout-correct without per-caller alignment knowledge.
+    /// CEP:WHY: Typed arrays (term headers, clauses, literals, watch heads) are the arena's main product; aligning to align_of::<`Element`>() keeps every consumer layout-correct without per-caller alignment knowledge.
     /// CEP:STATUS: complete
     /// CEP:FAILURE: Returns ArenaError::TypeMismatch for zero-sized element types; propagates ArenaError::Exhausted and ArenaError::Misaligned (the latter cannot occur for Rust-native alignments, which are powers of two <= kMaxAlignment; the check is retained as defense in depth).
-    /// CEP:ASSUMES: size_of::<Element>() * count fits u32 after u64Checked multiplication.
+    /// CEP:ASSUMES: size_of::<`Element`>() * count fits u32 after u64Checked multiplication.
     /// CEP:COST: constant overhead over alloc_bytes; 2 extra multiplies/compares.
     /// CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.
     /// CEP:SECURITY: element count is u64-checked before multiplication (CEP&CC 22.6 unchecked multiplication ban).
@@ -360,7 +360,7 @@ impl Arena {
     /// CEP:WHAT: Returns the range as a typed element slice.
     /// CEP:WHY: Hot structures read arrays of headers, literals, and offsets; typed access validates alignment and element divisibility so no caller repeats the proof.
     /// CEP:STATUS: complete
-    /// CEP:FAILURE: Returns ArenaError::TypeMismatch when the range is not aligned to Element or its length is not a multiple of size_of::<Element>(); ArenaError::OutOfRange when beyond capacity.
+    /// CEP:FAILURE: Returns ArenaError::TypeMismatch when the range is not aligned to Element or its length is not a multiple of size_of::<`Element`>(); ArenaError::OutOfRange when beyond capacity.
     /// CEP:ASSUMES: none.
     /// CEP:COST: 3 compares plus slice construction.
     /// CEP:EVIDENCE: unit/hot/arena_test.rs::typed_array_roundtrip.

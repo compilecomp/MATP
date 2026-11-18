@@ -125,7 +125,7 @@ struct SymbolDraft {
 /// CEP:SECURITY: all bounds enforced at declaration time.
 pub struct SymbolTableBuilder {
     /// CEP:WHAT: The one-shot assertion-symbol reservation base (Spec 18 section 3).
-    /// CEP:WHY: reserve_assertion_symbols records the base id of the mapt_assertion_<i> block; a second reservation is refused (AssertionBudget) so the dense base+n mapping stays exact.
+    /// CEP:WHY: reserve_assertion_symbols records the base id of the `mapt_assertion_<i>` block; a second reservation is refused (AssertionBudget) so the dense base+n mapping stays exact.
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: None until the first reservation.
@@ -431,10 +431,10 @@ impl SymbolTableBuilder {
         self.drafts.len() as u32
     }
 
-    /// CEP:WHAT: Reserves the learning assertion space: declares count 0-ary predicates named mapt_assertion_<i> (deterministic names, i ascending from 0) and returns the base id.
+    /// CEP:WHAT: Reserves the learning assertion space: declares count 0-ary predicates named `mapt_assertion_<i>` (deterministic names, i ascending from 0) and returns the base id.
     /// CEP:WHY: Spec 18 section 3: the FOL copies of SAT-side clauses speak only through 0-ary assertion predicates; the reservation is ONE-SHOT (a second call returns AssertionBudget), bounded by kAvatarMaxAssertionSymbols, and dense (the symbols are declared back-to-back, so assertion atom for SAT slot i is base + i); a reserved-name collision with an existing declaration is refused so the density assumption cannot silently break.
     /// CEP:STATUS: complete
-    /// CEP:FAILURE: BuilderError::AssertionBudget when count exceeds kAvatarMaxAssertionSymbols, when the reservation was already made, or when any mapt_assertion_<i> name already exists with a 0-ary predicate signature (declare_symbol would return the existing id and break the density); the TooManySymbols/DuplicateName errors of the underlying declaration propagate.
+    /// CEP:FAILURE: BuilderError::AssertionBudget when count exceeds kAvatarMaxAssertionSymbols, when the reservation was already made, or when any `mapt_assertion_<i>` name already exists with a 0-ary predicate signature (declare_symbol would return the existing id and break the density); the TooManySymbols/DuplicateName errors of the underlying declaration propagate.
     /// CEP:ASSUMES: called after the problem symbols are declared and before freeze; count >= 1.
     /// CEP:COST: O(count) declarations plus one density check.
     /// CEP:EVIDENCE: unit/cold/symbol_table_builder_test.rs::assertion_reservation_bounded; unit/hot/avatar_learning_test.rs::conflict_lemma_staged_and_verifiable.
@@ -550,7 +550,7 @@ impl Default for SymbolTableBuilder {
 }
 
 /// CEP:WHAT: The deterministic reserved name of the assertion symbol for SAT slot i.
-/// CEP:WHY: Spec 18 section 3: the FOL copy of a SAT clause over component slots names its atoms mapt_assertion_<slot>; one name builder keeps the prefix consistent between the reservation, the controller's atom construction, and the kernel's shape documentation.
+/// CEP:WHY: Spec 18 section 3: the FOL copy of a SAT clause over component slots names its atoms `mapt_assertion_<slot>`; one name builder keeps the prefix consistent between the reservation, the controller's atom construction, and the kernel's shape documentation.
 /// CEP:STATUS: complete
 /// CEP:FAILURE: none.
 /// CEP:ASSUMES: the prefix is MAPT-reserved (problem inputs must not declare it).

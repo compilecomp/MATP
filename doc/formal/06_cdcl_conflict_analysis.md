@@ -55,6 +55,8 @@ The analysis walks the trail backwards from the top. Variables of `C` at level `
 
 **Heap discipline.** Assigned variables leave the heap lazily (discarded at pick time); backtracking reinserts every unassigned variable, so the heap always contains every unassigned variable (the invariant behind "pick returns None means SAT").
 
+**Structure (CEP-1030 amendment).** The decision structure is the two-level bucket heap of `hot/sat/vsids.rs` (E-prover TBucket style; it replaces the binary heap named in design 11.1 S7 under ticket CEP-1030, with this section's decision rule unchanged). Level 1 is a static geometric ladder over the activity scores: the band is computed by pure bit inspection of the f64 score (the biased exponent selects the band, the top mantissa bits the sub-band; the map is strictly monotone, so band order is score order; band 0 is the bottom band of zero scores). Level 2 is a per-band doubly-linked member list kept sorted by the exact normative key `(activity desc, index asc)`. Invariants: every unassigned variable is linked in the band of its current score; each band list is descending under the key; the pick returns the head of the highest non-empty band, which is therefore the normative maximum. Operations: bump unlinks in O(1) and relinks into the new band by one walk; the backtracking wave is sorted once and merged per band (one walk per touched band, `VsidsHeap::insert_wave_iter`); the rescale multiplies every score by the order-preserving factor and rebuilds the bands by run splitting — positive bands are re-chained in descending source order, which is the key order, and scores flushed to exactly zero are re-chained in index order, matching the tie-break. Band cost is the walk over the destination band's members (contiguous index-order activity reads) instead of a binary-heap sift; the differential oracle tests (`unit/hot/sat_vsids_test.rs::ladder_matches_oracle_under_fuzz`, `::wave_insert_matches_oracle`, `::underflow_flush_ties_by_index`) pin the equivalence with the normative order, including across rescales and underflow flushes.
+
 **Phase saving.** The solver saves each variable's polarity when unassigning (cancel) and optionally resets all saved phases on restart (design 11.1 S17, configurable at solver construction).
 
 ### 7. Restarts
@@ -138,6 +140,6 @@ Depended on by:
 ## Known Limitations
 
 - Conflict budget exhaustion returns Indeterminate by design (bounded failure, design 20.1/20.2); the solver is not an any-time prover.
-- The VSIDS heap is a binary heap; the two-level bucket heap (E-prover style, ticket CEP-1030) and watched-binaries fast path in analysis (CEP-1031) are not implemented.
+- The watched-binaries fast path in analysis (CEP-1031) is not implemented. (The two-level bucket heap of section 6 was delivered under CEP-1030; its re-measurement against bench CEP-BENCH-0009's binary-heap baseline is pending with the release bench gates.)
 - Solver-loop micro-optimizations (batched trail reads, copy-free learnt handoff, ticket CEP-1032) are "measure first" work items.
 - Reduction is triggered by the learnt count only; an activity-driven trigger is not provided (the activity key is documented as vacuous in the victim order, section 9).

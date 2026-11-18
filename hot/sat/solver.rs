@@ -1232,25 +1232,33 @@ impl<'a> CdclSolver<'a> {
         self.failed_count.set(count as u32);
     }
 
-    // CEP:WHAT: Backtracks to a level, saving phases and reinserting variables into the VSIDS heap for every popped assignment.
-    // CEP:WHY: Design 11.1 S17 (save polarity) and the MiniSat heap discipline (unassigned variables return to the decision heap); walking the popped segment before core cancellation keeps the three structures consistent.
+    // CEP:WHAT: Backtracks to a level, saving phases and reinserting every popped variable through one batched VSIDS wave.
+    // CEP:WHY: Design 11.1 S17 (save polarity) and the MiniSat heap discipline (unassigned variables return to the decision structure); walking the popped segment before core cancellation keeps the three structures consistent. The wave is merged as one sorted batch per touched band (CEP-1030) instead of per-variable walks.
     // CEP:STATUS: complete
     // CEP:FAILURE: none.
     // CEP:ASSUMES: level <= current level.
-    // CEP:COST: O(popped entries).
-    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero; unit/hot/sat_vsids_test.rs::insert_after_backtrack.
+    // CEP:COST: O(popped entries) for the phase pass plus O(W log W) wave sort and one merge walk per touched band.
+    // CEP:EVIDENCE: unit/hot/sat_solver_test.rs::restart_returns_to_level_zero; unit/hot/sat_vsids_test.rs::{insert_after_backtrack, wave_insert_matches_oracle}.
     // CEP:SECURITY: clamped level arithmetic in the core.
     fn backtrack(&self, level: u32) {
         let keep = self.core.trail().cancel_keep_index(level);
-        let mut index = self.core.trail().len();
+        let old_len = self.core.trail().len();
+        let mut index = old_len;
         while index > keep {
             index -= 1;
             if let Some(literal) = self.core.trail().literal_at(index) {
-                let variable = literal.variable().0;
-                self.phases.save_phase(variable, literal.is_positive());
-                self.vsids.insert(variable);
+                self.phases
+                    .save_phase(literal.variable().0, literal.is_positive());
             }
         }
+        let keep_index = keep;
+        self.vsids
+            .insert_wave_iter((keep_index..old_len).rev().filter_map(|entry| {
+                self.core
+                    .trail()
+                    .literal_at(entry)
+                    .map(|literal| literal.variable().0)
+            }));
         self.core.cancel_until(level);
     }
 }

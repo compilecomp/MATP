@@ -365,7 +365,7 @@ pub enum PortfolioError {
 /// CEP:SECURITY: none.
 pub struct WorkerReport {
     /// CEP:WHAT: The worker's index.
-    /// CEP:WHY: Identifies the strategy (plans[index]).
+    /// CEP:WHY: Identifies the strategy (`plans[index]`).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: none.

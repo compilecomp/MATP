@@ -168,7 +168,7 @@ pub struct AvatarOptions {
     /// CEP:EVIDENCE: unit/hot/avatar_controller_test.rs::model_rotation_budget_enforced.
     /// CEP:SECURITY: denial-of-service bound.
     pub max_model_rotations: u32,
-    /// CEP:WHAT: Clause learning: the base symbol id of the reserved mapt_assertion_<i> block (Spec 18 section 3).
+    /// CEP:WHAT: Clause learning: the base symbol id of the reserved `mapt_assertion_<i>` block (Spec 18 section 3).
     /// CEP:WHY: The FOL copies of SAT-side clauses speak through the 0-ary assertion predicates reserved by SymbolTableBuilder::reserve_assertion_symbols; the controller maps SAT component slot i onto assertion atom base + i.
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none (construction validates the count bound).

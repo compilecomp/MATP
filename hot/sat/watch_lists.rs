@@ -134,7 +134,7 @@ impl<'a> WatchLists<'a> {
     /// CEP:WHY: Attach primitive shared by clause registration and watch moves; the caller first stores the old head into the clause's next_in_watch slot, so this is exactly one store.
     /// CEP:STATUS: complete
     /// CEP:FAILURE: Returns false when the literal is out of range.
-    /// CEP:ASSUMES: the caller has already written clause.next_in_watch[slot] = old head.
+    /// CEP:ASSUMES: the caller has already written clause.`next_in_watch[slot]` = old head.
     /// CEP:COST: 1 compare + 1 store.
     /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
     /// CEP:SECURITY: bounds check retained in release.

@@ -51,6 +51,8 @@ Every term is stored once. The store maintains the invariant:
 
 A literal is `A` or `not-A` for an atom `A` (Predicate or Equality term). Complementarity: `L` and `M` are complementary iff same atom and opposite polarity (`Literal::is_complementary`).
 
+**Definition (literal flags byte, CEP-1012).** The literal's flags byte (design 5.2) carries: bits 0-2 the AVATAR component membership tag (Spec 12 section 4; a hint only — `split_level` is authoritative); bit 3 the theory-laden mark; bits 4-7 the theory tag, whose vocabulary enumerates the extensional theories of design 13.1: 0 none, 1 linear integer arithmetic, 2 linear real arithmetic, 3 non-linear arithmetic, 4 bitvectors, 5 arrays, 6 algebraic datatypes; encodings 7-15 are reserved. *Coupling invariant:* the theory-laden bit is set exactly when the tag is not `none`; the sanctioned setter `Literal::set_theory_tag` maintains it, negation preserves the whole byte, AVATAR component tagging preserves the theory bits (CEP-1011), and the portable codec validates the invariant on every decoded record, rejecting reserved tag encodings (Spec 13 section 4). Untagged literals are exactly the uninterpreted ones: uninterpreted functions are the FOL background itself, not a delegated theory.
+
 A clause is a finite multiset of literals, stored in canonical order:
 
 **Definition (canonical literal order).** Literals are sorted ascending by the key `(!polarity, atom offset)`; the sort is stable.
