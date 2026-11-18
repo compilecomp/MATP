@@ -539,6 +539,36 @@ pub const kKboVariableWeight: u32 = 1;
 /// CEP:SECURITY: none.
 pub const kSelectionVariableWeight: u32 = 0;
 
+/// CEP:WHAT: Maximum one-directional match attempts inside one subsumption-resolution or condensation decision (CEP-1034).
+/// CEP:WHY: The SR/condensation decision is exponential backtracking (NP-complete, arXiv:2412.16058 section 2); the attempt budget bounds every decision in the hot simplify path (Law 6: bounded failure) - exhaustion aborts the attempt as Ok(false), a documented decision incompleteness that only misses a simplification, never applies an unsound one; the certified kernel replays with the same budget, so every recorded step still verifies (the bound is deterministic and the search order is fixed).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a bound value.
+/// CEP:ASSUMES: >= 1; small-clause decisions (the loop's typical |side|, |main| <= 8) stay far below it.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/subsumption_resolution_test.rs::{sr_fires_on_resolution_literal, sr_attempt_budget_bounds_the_search}.
+/// CEP:SECURITY: the CPU bound of the exponential decision.
+pub const kMaxSrMatchAttempts: u32 = 1_024;
+
+/// CEP:WHAT: Distinct head symbols kept in the simplify-path prefilter set for the subsumption-resolution scan (CEP-1034).
+/// CEP:WHY: The scan is unfiltered by the feature-vector index (the FV dominance filter is unsound for SR's set-inclusion condition - two side literals may map onto one main literal, the paper's S5 shape), so a cheap sound prefilter bounds the scan: every side literal's head symbol must occur in the main premise (each side literal sigma-equals an exact main literal, so its head is a main head); clauses with more distinct head symbols than this constant disable the prefilter (sound degradation, documented like the feature-vector truncation).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a capacity value.
+/// CEP:ASSUMES: >= 1.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/subsumption_resolution_test.rs::sr_head_prefilter_soundness.
+/// CEP:SECURITY: bounds the scan's per-active work.
+pub const kSrHeadSymbols: usize = 32;
+
+/// CEP:WHAT: Distinct foreign symbols counted by the conjecture-distance selection weight (design 15.2 row 2, CEP-1035).
+/// CEP:WHY: The conjecture distance sums the weights of the clause's symbols that do not occur in the frozen conjecture set; the distinct-symbol collection is bounded by this constant and truncation is a documented sound degradation (a missed foreign symbol only lowers the distance deterministically, never changes soundness or determinism).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none; a capacity value.
+/// CEP:ASSUMES: >= 1.
+/// CEP:COST: compile-time only.
+/// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::heap_orders_by_conjecture_distance.
+/// CEP:SECURITY: bounds the distance computation's scratch space.
+pub const kConjectureDistanceSymbols: usize = 64;
+
 /// CEP:WHAT: Number of watch-list heads: two per Boolean variable (one per literal polarity).
 /// CEP:WHY: Design 11.1 S6: watch lists are indexed by literal encoding; the derived count keeps sizing consistent with kMaxSatVariables.
 /// CEP:STATUS: complete

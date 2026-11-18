@@ -30,7 +30,9 @@ The rejection vocabulary distinguishes structural corruption from replay failure
 |---|---|
 | `NonMonotonicDerivation` | a parent id is not strictly below its child (Spec 14 section 2's monotonic-id contract violated) |
 | `UnreadableClause` | a record or literal in the derivation could not be read |
-| `DeletedRuleDerivation` | the derivation claims a deletion rule (forward/backward subsumption, subsumption resolution, tautology deletion, condensation) — deletion never derives a stored record |
+| `DeletedRuleDerivation` | the derivation claims a pure deletion rule (forward/backward subsumption, tautology deletion) — deletion never derives a stored record; the strengthening simplifications (SubsumptionResolution, Condensation, CEP-1034) replay through their own arms and no longer reject |
+| `BrokenSubsumptionResolution` | no legal subsumption-resolution application reproduces the conclusion (CEP-1034): the arm renames the side parent apart exactly like the loop's simplify scan and enumerates every resolution literal through the production bounded decision |
+| `BrokenCondensation` | no legal condensation application reproduces the conclusion (CEP-1034): the arm enumerates every deletion candidate through the production per-literal instance decision |
 | `UnrecordedRule` | a `Demodulation` derivation claiming the two-parent shape whose rule parent (derivation parent 1) is unrecorded; the pre-Phase-5 one-parent park shape fails the parent-count requirement and is rejected as `BrokenDemodulation` |
 | `BrokenIntroduction` | a parentless introduction claims parents |
 | `BrokenResolution` / `BrokenFactoring` / `BrokenSuperposition` / `BrokenEqualityResolution` / `BrokenEqualityFactoring` / `BrokenDemodulation` / `BrokenAvatarSplit` | no legal application of the recorded rule between the recorded parents reproduces the recorded conclusion |
@@ -65,7 +67,9 @@ The arms replay the **production** rule functions — `resolve`, `superpose`, `f
 
 **Parentless introductions.** `Input`, `NegatedConjecture`, `StructuralInduction`, `WellFoundedInduction`, `ConjectureNegation` require `parent_count == 0` (existence is checked by the walk); `TheoryLemma` likewise (rejecting with its own reason).
 
-**Deletion rules.** `ForwardSubsumption`, `BackwardSubsumption`, `SubsumptionResolution`, `TautologyDeletion`, `Condensation` are rejected outright: deletion removes clauses, it never derives a stored record.
+**Deletion rules.** `ForwardSubsumption`, `BackwardSubsumption`, `TautologyDeletion` are rejected outright: deletion removes clauses, it never derives a stored record.
+
+**Strengthening simplifications (CEP-1034).** `SubsumptionResolution` and `Condensation` DO derive stored records (the simplify chain parks one record per step, Spec 07 sections 11-12) and replay through their own arms: the SubsumptionResolution arm renames the side parent (derivation parent 1) above the main parent's variables exactly like the loop's simplify scan, enumerates every resolution literal of the main parent through the production `subsumption_resolves_onto`, and accepts when the licensed remainder (main minus the literal, through the shared restandardize/dedupe pipeline) matches the recorded conclusion; the Condensation arm enumerates every deletion candidate through the production `condensation_resolves_onto` (the per-literal instance decision with the renamed-apart kept pattern) and compares the piped remainder the same way. A unit SR against a unit disequation leaves the EMPTY conclusion - the piped-empty comparison covers it. Both arms share the production attempt budget (kMaxSrMatchAttempts), so a recorded step always re-verifies.
 
 The match over `InferenceRule` is exhaustive over its twenty variants — a new rule cannot compile without an arm (the CEP-0 discipline applied to soundness).
 

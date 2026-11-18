@@ -1,6 +1,6 @@
 // CEP:FILE: hot/search/given_clause.rs
-// CEP:WHAT: The given-clause saturation loop (design 15.1) with the clause database (design 8.4), the selection weight function (design 15.3), simplification (demodulation, forward subsumption, tautology deletion - design 10.3 step 1), backward subsumption, bounded inference generation, the design 20 budgets (CEP-1005), and - since CEP-1036 - the demodulation step chain: every rewrite records a restandardized, deduplicated snapshot with the demodulating rule clause's id, and the park point stores one clause record per step (parents [previous, rule]) so the certified kernel replays demodulation exactly per step (Spec 19).
-// CEP:WHY: Design 26 Phase 3 build order: the loop is the ATP search - select from the passive set, move to the active set, simplify against the active set, discard the redundant, generate all inferences between the given clause and the active set, add the conclusions to the passive set, and terminate with Theorem on the empty clause, Saturated on an empty passive set, or GaveUp on a budget; the loop step order is fixed (select, simplify, forward-subsume, backward-subsume, activate, generate) so the active array never mutates during one given clause's generation (the generator's slot scan stays consistent); fairness follows from the strategy's priority function (Spec 08 section 4); the time budget is an injected should_stop callback checked every kBudgetCheckInterval iterations, which keeps the hot crate clock-free (the CEP-1 driver supplies wall time; tests supply deterministic stop predicates - the mechanism is what CEP-1005 demands); CounterSatisfiable needs model building (design 17, Phase 5) and Saturated is the honest Phase 3 terminal for satisfiable inputs.
+// CEP:WHAT: The given-clause saturation loop (design 15.1) with the clause database (design 8.4), the selection weight function (design 15.3), the conjecture-distance weight (design 15.2 row 2, CEP-1035), the set-of-support selection restriction (design 15.2 row 5, CEP-1035), simplification (demodulation, subsumption resolution, condensation, forward subsumption, tautology deletion - design 10.3 step 1, CEP-1034), backward subsumption, bounded inference generation, the design 20 budgets (CEP-1005), and - since CEP-1036 - the simplification step chain: every rewrite (demodulation, subsumption resolution, condensation) records a restandardized, deduplicated snapshot with the simplifying rule clause's id, and the park point stores one clause record per step (parents [previous, rule]) so the certified kernel replays simplification exactly per step (Spec 19).
+// CEP:WHY: Design 26 Phase 3 build order: the loop is the ATP search - select from the passive set, move to the active set, simplify against the active set, discard the redundant, generate all inferences between the given clause and the active set, add the conclusions to the passive set, and terminate with Theorem on the empty clause, Saturated on an empty passive set, or GaveUp on a budget; the loop step order is fixed (select, simplify, forward-subsume, backward-subsume, activate, generate) so the active array never mutates during one given clause's generation (the generator's slot scan stays consistent); fairness follows from the strategy's priority function (Spec 08 section 4), and the set-of-support restriction (CEP-1035) skips generation for non-supported clauses, which activates them as inference partners without ever selecting them as given (Spec 08 section 7's SOS contract); the time budget is an injected should_stop callback checked every kBudgetCheckInterval iterations, which keeps the hot crate clock-free (the CEP-1 driver supplies wall time; tests supply deterministic stop predicates - the mechanism is what CEP-1005 demands); CounterSatisfiable needs model building (design 17, Phase 5) and Saturated is the honest Phase 3 terminal for satisfiable inputs.
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
@@ -17,22 +17,27 @@ use crate::index::feature_vector::FeatureError;
 use crate::index::IndexError;
 use crate::inference::demodulation::{demodulate, unit_equation_sides};
 use crate::inference::selection::compute_selection_flags;
-use crate::inference::subsumption::{is_tautology, subsumes};
+use crate::inference::subsumption::{
+    condensation_target, is_tautology, subsumes, subsumption_resolves,
+};
 use crate::inference::{InferenceContext, InferenceError, SelectionFunction};
-use crate::ir::clause::{ClauseError, ClauseStore, DerivationStep, InferenceRule};
+use crate::ir::clause::{
+    kClauseFlagSos, ClauseError, ClausePtr, ClauseStore, DerivationStep, InferenceRule,
+};
 use crate::ir::literal::Literal;
 use crate::ir::symbol_table::SymbolTable;
 use crate::ir::term::TermStore;
 use crate::memory::arena::Arena;
 use crate::search::active::{ActiveError, ActiveSet};
 use crate::search::generate::{generate_step, GenerationCursor, InferenceBuffer};
-use crate::search::passive::{PassiveHeap, SelectionStrategy};
+use crate::search::passive::{PassiveError, PassiveHeap, SelectionStrategy};
 use crate::search::SearchError;
 use crate::unification::substitution::{Substitution, SubstitutionError};
 use mapt_config::limits::{
-    kBudgetCheckInterval, kConjectureHarvestInterval, kDefaultSymbolWeight, kInvalidClauseId,
-    kInvalidSubstitutionOffset, kMaxClauseLiterals, kMaxConjectureHarvests, kMaxDerivationParents,
-    kMaxInferences, kMaxSimplifyRounds, kSelectionVariableWeight,
+    kBudgetCheckInterval, kConjectureDistanceSymbols, kConjectureHarvestInterval,
+    kDefaultSymbolWeight, kInvalidClauseId, kInvalidSubstitutionOffset, kMaxClauseLiterals,
+    kMaxConjectureHarvests, kMaxDerivationParents, kMaxInferences, kMaxSimplifyRounds,
+    kSelectionVariableWeight, kSrHeadSymbols,
 };
 
 // CEP:WHAT: Parent counts of unary and binary inference rules (demodulation and factoring-style rules have one parent; resolution and superposition have two).
@@ -238,6 +243,24 @@ pub struct SearchStats {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_simplifies.
     /// CEP:SECURITY: none.
     pub demodulations: u32,
+    /// CEP:WHAT: Condensation literal deletions applied to given clauses (CEP-1034).
+    /// CEP:WHY: Simplification accounting (design 10.1 condensation row): each deletion is a self-subsumption resolution recorded in the simplification step chain.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::condensation_simplifies_given.
+    /// CEP:SECURITY: none.
+    pub condensations: u32,
+    /// CEP:WHAT: Subsumption-resolution literal deletions applied to given clauses (CEP-1034).
+    /// CEP:WHY: Simplification accounting (design 10.1 subsumption-resolution row): each deletion is an active clause's SR against the given clause, recorded in the simplification step chain.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::subsumption_resolution_simplifies_given.
+    /// CEP:SECURITY: none.
+    pub subsumption_resolutions: u32,
     /// CEP:WHAT: Conjecture harvests run (revised build order Phase 4, Spec 16).
     /// CEP:WHY: Speculative-work accounting (Law 4): every harvest increments, and the count never exceeds kMaxConjectureHarvests.
     /// CEP:STATUS: complete
@@ -323,6 +346,15 @@ pub struct SearchOptions {
     /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{harvest_schedule_fires, harvest_budget_enforced}.
     /// CEP:SECURITY: the schedule and harvest count are the speculative-work bounds.
     pub conjecture: bool,
+    /// CEP:WHAT: Whether the set-of-support selection restriction is enabled (design 15.2 row 5, CEP-1035).
+    /// CEP:WHY: With the flag on, only conjecture descendants (clauses carrying the kClauseFlagSos mark: NegatedConjecture/ConjectureNegation seeds and their derivation descendants) become given clauses; non-supported clauses are simplified, subsumption-checked, and ACTIVATED (they serve as inference partners) but never selected, so every inference involves at least one supported clause - the classical set-of-support strategy (Wos, Robinson & Carson 1965). Completeness position (documented, Spec 08 section 7): refutationally complete when the non-supported clause set is satisfiable and the conjecture's negation is present in the input; the OFF default keeps every existing search byte-identical (CEP&CC 38.10).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; a configuration flag.
+    /// CEP:ASSUMES: the driver marks conjecture inputs with the NegatedConjecture rule (or ConjectureNegation); with no marked clause the loop activates everything and saturates without generation (the honest empty-support behavior, unit-tested).
+    /// CEP:COST: 1 byte plus one flag read per selected clause.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{sos_restriction_spares_nonsupport_clauses, sos_descendants_stay_selectable, sos_without_seeds_saturates}.
+    /// CEP:SECURITY: none.
+    pub set_of_support: bool,
 }
 
 impl SearchOptions {
@@ -341,6 +373,44 @@ impl SearchOptions {
             selection: SelectionFunction::None,
             inference_budget: kMaxInferences,
             conjecture: false,
+            set_of_support: false,
+        }
+    }
+
+    /// CEP:WHAT: Translates a config-layer strategy preset (design 21.1) into search options (CEP-1035).
+    /// CEP:WHY: config/strategy.rs is the dependency-free constant layer; this is the single tag-to-enum translation point (CEP&CC 33.18) and the tag contract is pinned by unit/hot/strategy_selection_test.rs::preset_tags_match_hot_enums, so a one-sided enum or preset edit fails the pin test instead of silently reinterpreting a preset (CEP&CC Law 8); the inference budget is the production default (presets carry no budget fields by design - the driver injects budgets).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none; every tag value maps (the pin test keeps the vocabularies identical).
+    /// CEP:ASSUMES: the preset's tags are kStrategyTag*/kSelectionTag*/kOrderingTag* values.
+    /// CEP:COST: constant.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::default_preset_maps_to_search_options.
+    /// CEP:SECURITY: none.
+    pub fn from_preset(preset: &mapt_config::strategy::StrategyPreset) -> SearchOptions {
+        let strategy = match preset.passive_strategy {
+            mapt_config::strategy::kStrategyTagWeightOnly => SelectionStrategy::WeightOnly,
+            mapt_config::strategy::kStrategyTagAgeOnly => SelectionStrategy::AgeOnly,
+            mapt_config::strategy::kStrategyTagConjectureDistance => {
+                SelectionStrategy::ConjectureDistance
+            }
+            // The default tag and every unknown value fall back to the design
+            // default (the pin test keeps unknown values from occurring).
+            _ => SelectionStrategy::AgeWeightRatio,
+        };
+        let selection = match preset.selection_function {
+            mapt_config::strategy::kSelectionTagFirstNegative => SelectionFunction::FirstNegative,
+            _ => SelectionFunction::None,
+        };
+        let ordering = match preset.ordering {
+            mapt_config::strategy::kOrderingTagLpo => crate::inference::OrderingKind::Lpo,
+            _ => crate::inference::OrderingKind::Kbo,
+        };
+        SearchOptions {
+            strategy,
+            ordering,
+            selection,
+            inference_budget: kMaxInferences,
+            conjecture: preset.conjecture,
+            set_of_support: preset.set_of_support,
         }
     }
 }
@@ -416,6 +486,118 @@ impl SelectionWeight {
                     sum = sum.saturating_add(Self::of_term(terms, symbols, child, depth + 1));
                 }
                 sum
+            }
+        }
+    }
+
+    /// CEP:WHAT: Computes the conjecture distance of one clause (design 15.2 row 2, CEP-1035): the summed symbol weight of the clause's DISTINCT symbols that do not occur in the frozen conjecture symbol set.
+    /// CEP:WHY: The conjecture-distance strategy pops clauses closest to the conjecture's vocabulary first; the distance is fixed at birth (computed once at push against the same frozen set) so the heap order stays a pure function of the push sequence (CEP&CC 38.10); a None set (never provided) makes every distance 0, degenerating the priority to the clause-id tiebreak (birth order, AgeOnly-like fair - documented in Spec 08 section 4); the distinct-symbol collection is bounded by kConjectureDistanceSymbols and truncation lowers the distance deterministically (documented sound degradation, never a soundness or determinism change); unknown symbol ids fall back to kDefaultSymbolWeight like the selection weight.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: saturates at u32::MAX on overflow (unreachable for legal clauses, documented like SelectionWeight::of).
+    /// CEP:ASSUMES: the conjecture set (when present) is sorted ascending; atoms interned by the store.
+    /// CEP:COST: O(total term nodes) plus O(foreign distinct symbols x set size) membership checks (binary search over the sorted set).
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{heap_orders_by_conjecture_distance, conjecture_distance_ignores_conjecture_symbols, conjecture_distance_unset_degenerates_to_id_order}.
+    /// CEP:SECURITY: depth-bounded recursion; bounded scratch.
+    pub fn conjecture_distance(
+        terms: &TermStore<'_>,
+        symbols: &SymbolTable<'_>,
+        conjecture: Option<&[core::cell::Cell<u32>]>,
+        literals: &[Literal],
+    ) -> u32 {
+        // Distinct foreign symbol collection: sorted insertion into a bounded
+        // stack array keeps the walk allocation-free (no_std discipline) and the
+        // dedup exact up to the documented truncation.
+        let mut foreign: [u32; kConjectureDistanceSymbols] = [0; kConjectureDistanceSymbols];
+        let mut foreign_count: usize = 0;
+        for literal in literals.iter() {
+            Self::collect_foreign(
+                terms,
+                conjecture,
+                literal.atom(),
+                0,
+                &mut foreign,
+                &mut foreign_count,
+            );
+        }
+        let mut total: u64 = 0;
+        for symbol in foreign[..foreign_count].iter() {
+            let weight = symbols
+                .symbol_weight(*symbol)
+                .unwrap_or(kDefaultSymbolWeight);
+            total = total.saturating_add(weight as u64);
+        }
+        if total > u32::MAX as u64 {
+            u32::MAX
+        } else {
+            total as u32
+        }
+    }
+
+    // CEP:WHAT: Recursive foreign-symbol collector for the conjecture distance: walks one atom, inserting every symbol id outside the conjecture set into the sorted distinct array.
+    // CEP:WHY: The distance counts DISTINCT symbols (design 15.2's "symbol overlap" reads occurrence classes, not multiplicities); equality atoms contribute their arguments (the equality tag carries no symbol-table entry, matching SelectionWeight::of_term); depth-bounded like the weight walk; the array is full-truncated (a symbol beyond kConjectureDistanceSymbols is skipped deterministically).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none (truncation documented in conjecture_distance).
+    // CEP:ASSUMES: the conjecture set is sorted ascending (binary search).
+    // CEP:COST: O(term nodes) plus O(cap) insert scans.
+    // CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::conjecture_distance_ignores_conjecture_symbols.
+    // CEP:SECURITY: depth-bounded.
+    fn collect_foreign(
+        terms: &TermStore<'_>,
+        conjecture: Option<&[core::cell::Cell<u32>]>,
+        term: crate::ir::term::TermPtr,
+        depth: u32,
+        foreign: &mut [u32; kConjectureDistanceSymbols],
+        foreign_count: &mut usize,
+    ) {
+        if depth > mapt_config::limits::kMaxTermDepth as u32 {
+            return;
+        }
+        let view = match terms.term(term) {
+            Ok(value) => value,
+            Err(_) => return,
+        };
+        match view.tag() {
+            crate::ir::term::TermTag::Variable => {}
+            crate::ir::term::TermTag::Equality => {
+                for child in view.children() {
+                    Self::collect_foreign(
+                        terms,
+                        conjecture,
+                        child,
+                        depth + 1,
+                        foreign,
+                        foreign_count,
+                    );
+                }
+            }
+            _ => {
+                let symbol = view.symbol();
+                let in_conjecture = match conjecture {
+                    None => false,
+                    Some(set) => set
+                        .binary_search_by(|probe| probe.get().cmp(&symbol))
+                        .is_ok(),
+                };
+                if !in_conjecture
+                    && !foreign[..*foreign_count].contains(&symbol)
+                    && *foreign_count < foreign.len()
+                {
+                    // Full array: the symbol is skipped deterministically (the
+                    // documented truncation - a missed foreign symbol only
+                    // lowers the distance, never changes soundness).
+                    foreign[*foreign_count] = symbol;
+                    *foreign_count += 1;
+                }
+                for child in view.children() {
+                    Self::collect_foreign(
+                        terms,
+                        conjecture,
+                        child,
+                        depth + 1,
+                        foreign,
+                        foreign_count,
+                    );
+                }
             }
         }
     }
@@ -517,6 +699,15 @@ pub struct SearchSpace<'a> {
     /// CEP:EVIDENCE: unit/hot/conjecture_test.rs::{proof_watermark_bounds_harvest_scans, two_harvests_stay_sound}.
     /// CEP:SECURITY: soundness boundary of the conjecture feature.
     proof_base: core::cell::Cell<u64>,
+    /// CEP:WHAT: The frozen conjecture symbol set (sorted, arena-backed), or None before the driver sets it (CEP-1035).
+    /// CEP:WHY: Design 15.2 row 2's conjecture-distance strategy measures symbol overlap against the conjecture; the set is a CEP-1-style frozen input (set once before saturate, like the symbol table), stored as a sorted arena array so the per-push distance walk binary-searches it; None makes every distance 0 (the documented degenerate fairness, Spec 08 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: set before saturate when the ConjectureDistance strategy is selected; never mutated after set_conjecture_symbols.
+    /// CEP:COST: 8 bytes plus the arena array.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{heap_orders_by_conjecture_distance, conjecture_distance_ignores_conjecture_symbols}.
+    /// CEP:SECURITY: none.
+    conjecture_symbols: core::cell::Cell<Option<&'a [core::cell::Cell<u32>]>>,
 }
 
 impl<'a> SearchSpace<'a> {
@@ -582,7 +773,141 @@ impl<'a> SearchSpace<'a> {
             input_age: core::cell::Cell::new(0),
             arena,
             proof_base: core::cell::Cell::new(kInvalidClauseId),
+            conjecture_symbols: core::cell::Cell::new(None),
         })
+    }
+
+    /// CEP:WHAT: Freezes the conjecture symbol set (design 15.2 row 2, CEP-1035): copies the ids into a sorted arena array consumed by the conjecture-distance weight.
+    /// CEP:WHY: The distance walk binary-searches the set, so it is frozen sorted once before the search (CEP-1 discipline: inputs are frozen before the hot path); calling it twice replaces the set loudly by contract (the doc'd assume forbids it in production, and the deterministic rebuild keeps tests honest).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates SearchError on arena exhaustion.
+    /// CEP:ASSUMES: called before saturate; symbol ids come from the frozen symbol table.
+    /// CEP:COST: O(n log n) sort plus one arena allocation.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{heap_orders_by_conjecture_distance, conjecture_distance_ignores_conjecture_symbols}.
+    /// CEP:SECURITY: none.
+    pub fn set_conjecture_symbols(&self, symbols: &[u32]) -> Result<(), SearchError> {
+        let range = self
+            .arena
+            .alloc_array::<core::cell::Cell<u32>>(symbols.len() as u32)
+            .map_err(|_| SearchError::Passive(PassiveError::Full))?;
+        let slot = self
+            .arena
+            .array_mut::<core::cell::Cell<u32>>(range)
+            .map_err(|_| SearchError::Passive(PassiveError::Full))?;
+        for (index, value) in symbols.iter().enumerate() {
+            slot[index].set(*value);
+        }
+        // In-place insertion sort (CEP-0: no allocation, no Vec) so the frozen
+        // form is canonical for the distance walk's binary search, independent
+        // of the caller's input order (CEP&CC 38.10).
+        for index in 1..symbols.len() {
+            let key = slot[index].get();
+            let mut position = index;
+            while position > 0 && slot[position - 1].get() > key {
+                slot[position].set(slot[position - 1].get());
+                position -= 1;
+            }
+            slot[position].set(key);
+        }
+        let frozen = self
+            .arena
+            .array::<core::cell::Cell<u32>>(range)
+            .map_err(|_| SearchError::Passive(PassiveError::Full))?;
+        self.conjecture_symbols.set(Some(frozen));
+        Ok(())
+    }
+
+    // CEP:WHAT: Pushes a clause into the passive set through the strategy's push path.
+    // CEP:WHY: One branch point for the design 15.2 strategies (CEP-1035): the conjecture-distance strategy computes the distance once per clause and pushes through push_with_distance, every other strategy keeps the plain push - so no new work lands on the existing hot path (Law 1) and the priority is fixed at birth in both cases (determinism, CEP&CC 38.10); pub(crate) because the AVATAR controller's materialization paths push through the same discipline (a direct heap push under ConjectureDistance would rank the clause priority 0 and jump the queue).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates PassiveError (capacity).
+    // CEP:ASSUMES: literals are the staged clause's literals (the distance walk reads their atoms).
+    // CEP:COST: one enum compare for the non-conjecture strategies; the distance walk only under ConjectureDistance.
+    // CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::heap_orders_by_conjecture_distance.
+    // CEP:SECURITY: capacity bound.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn push_passive(
+        &self,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        clause_id: u64,
+        ptr: ClausePtr,
+        age: u32,
+        weight: u32,
+        literals: &[Literal],
+    ) -> Result<(), PassiveError> {
+        if options.strategy == SelectionStrategy::ConjectureDistance {
+            let distance = SelectionWeight::conjecture_distance(
+                context.terms,
+                context.symbols,
+                self.conjecture_symbols.get(),
+                literals,
+            );
+            self.passive
+                .push_with_distance(clause_id, ptr.as_u32(), distance)
+        } else {
+            self.passive.push(clause_id, ptr.as_u32(), age, weight)
+        }
+    }
+
+    // CEP:WHAT: Marks a clause record with the set-of-support bit when the SOS option is on and the derivation licenses it (CEP-1035).
+    // CEP:WHY: Design 15.2 row 5: supported clauses are the NegatedConjecture/ConjectureNegation seeds and every derivation descendant (a parent carries the mark); the mark rides the record's flag field (kClauseFlagSos, written through the sanctioned set_flag mutator) so clause count scales without a side table; the option-off path is a no-op (zero cost when the strategy is not selected - Law 1); pub(crate) because the AVATAR controller's materialization paths (activate_under_model, transfer_learnts, the supported-input variant) create passive-bound records through the same discipline.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError on unreadable parents or the flag write.
+    // CEP:ASSUMES: parents are store ids of previously created records (monotonic ids: their flags are final).
+    // CEP:COST: one rule compare plus, for derivations, one record read per parent; one flag write when the mark lands.
+    // CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{sos_flag_marks_conjecture_seeds, sos_flag_inherits_through_parents}.
+    // CEP:SECURITY: none.
+    pub(crate) fn mark_sos(
+        &self,
+        options: &SearchOptions,
+        ptr: ClausePtr,
+        rule: InferenceRule,
+        parents: &[u64; kMaxDerivationParents],
+        parent_count: u8,
+    ) -> Result<(), SearchError> {
+        if !options.set_of_support {
+            return Ok(());
+        }
+        let mut supported =
+            rule == InferenceRule::NegatedConjecture || rule == InferenceRule::ConjectureNegation;
+        if !supported {
+            for parent_id in parents.iter().take(parent_count as usize) {
+                if *parent_id == kInvalidClauseId {
+                    continue;
+                }
+                let parent = self
+                    .store
+                    .clause_by_id(crate::ir::clause::ClauseId(*parent_id))
+                    .map_err(SearchError::Clause)?;
+                if parent.flags & kClauseFlagSos != 0 {
+                    supported = true;
+                    break;
+                }
+            }
+        }
+        if supported {
+            self.store
+                .set_flag(ptr, kClauseFlagSos)
+                .map_err(SearchError::Clause)?;
+        }
+        Ok(())
+    }
+
+    // CEP:WHAT: Reads a clause's set-of-support mark by store id (CEP-1035).
+    // CEP:WHY: The loop's selection restriction asks the flag of every popped clause; ids come from the passive heap and resolve through the store's id side table.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: propagates SearchError on an unreadable record (the caller treats a missing flag as unsupported only after the read succeeded).
+    // CEP:ASSUMES: the id is store-produced.
+    // CEP:COST: one record read.
+    // CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::sos_restriction_spares_nonsupport_clauses.
+    // CEP:SECURITY: bounds-checked.
+    fn clause_is_sos(&self, clause_id: u64) -> Result<bool, SearchError> {
+        let record = self
+            .store
+            .clause_by_id(crate::ir::clause::ClauseId(clause_id))
+            .map_err(SearchError::Clause)?;
+        Ok(record.flags & kClauseFlagSos != 0)
     }
 
     /// CEP:WHAT: Adds one input clause: computes the selection flags, the selection weight, creates the record with the Input derivation, and pushes it into the passive set.
@@ -687,10 +1012,17 @@ impl<'a> SearchSpace<'a> {
         derivation: DerivationStep,
     ) -> Result<u32, SearchError> {
         let (staged, count, _weight) = self.stage_clause(context, options, literals)?;
+        let (rule, parents, parent_count) =
+            (derivation.rule, derivation.parents, derivation.parent_count);
         let ptr = self
             .store
             .new_clause(context.terms, &staged[..count], age, derivation)
             .map_err(SearchError::Clause)?;
+        // Proof-only clauses still carry the set-of-support mark (CEP-1035):
+        // imported ConjectureLemma derivations cite the imported negation
+        // premise as a parent, and the parent's mark is what makes the lemma a
+        // supported descendant.
+        self.mark_sos(options, ptr, rule, &parents, parent_count)?;
         let id = self.store.clause(ptr).map_err(SearchError::Clause)?.id.0;
         // The import watermark: the first proof-only id. Monotone by the
         // store's dense id counter; every harvest scan stops here.
@@ -767,12 +1099,12 @@ impl<'a> SearchSpace<'a> {
     }
 
     // CEP:WHAT: Runs the full staging pipeline and pushes the created clause into the passive set.
-    // CEP:WHY: The body shared by add_input_clause, add_theory_clause, add_assumption_clause, and add_derived_clause: stage, create with the derivation, push; the age comes from the shared input counter.
+    // CEP:WHY: The body shared by add_input_clause, add_theory_clause, add_assumption_clause, and add_derived_clause: stage, create with the derivation, mark the set-of-support flag (CEP-1035: parentless theory rules are supported only through their rule seed), and push through the strategy's path (CEP-1035 conjecture distance); the age comes from the shared input counter.
     // CEP:STATUS: complete
     // CEP:FAILURE: propagates SearchError.
     // CEP:ASSUMES: as stage_clause.
-    // CEP:COST: stage_clause plus one store insert plus one heap push.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::refutes_contradiction; unit/hot/induction_test.rs::schemes_enter_passive_set.
+    // CEP:COST: stage_clause plus one store insert, one flag scan, and one heap push.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::refutes_contradiction; unit/hot/induction_test.rs::schemes_enter_passive_set; unit/hot/strategy_selection_test.rs::sos_flag_marks_conjecture_seeds.
     // CEP:SECURITY: store bounds enforced.
     fn stage_and_push(
         &self,
@@ -798,12 +1130,23 @@ impl<'a> SearchSpace<'a> {
         }
         let weight = SelectionWeight::of(context.terms, context.symbols, &staged[..deduped]);
         let age = self.next_input_age();
+        let (rule, parents, parent_count) =
+            (derivation.rule, derivation.parents, derivation.parent_count);
         let ptr = self
             .store
             .new_clause(context.terms, &staged[..deduped], age, derivation)
             .map_err(SearchError::Clause)?;
+        self.mark_sos(options, ptr, rule, &parents, parent_count)?;
         let record = self.store.clause(ptr).map_err(SearchError::Clause)?;
-        self.passive.push(record.id.0, ptr.as_u32(), age, weight)?;
+        self.push_passive(
+            context,
+            options,
+            record.id.0,
+            ptr,
+            age,
+            weight,
+            &staged[..deduped],
+        )?;
         Ok(ptr.as_u32())
     }
 
@@ -897,15 +1240,15 @@ fn saturate_inner<F: Fn(u64) -> bool>(
         [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
     let mut given_len: usize = 0;
     let mut iterations: u64 = 0;
-    // CEP:WHAT: The demodulation step chain buffer (CEP-1036).
-    // CEP:WHY: Cleared per given clause; simplify_given records one snapshot per rewrite and the park point stores one clause record per step so the derivation DAG carries the full rewrite history for the kernel's exact replay (Spec 19).
+    // CEP:WHAT: The simplification step chain buffer (CEP-1036, extended by CEP-1034).
+    // CEP:WHY: Cleared per given clause; simplify_given records one snapshot per rewrite (demodulation, subsumption resolution, or condensation) and the park point stores one clause record per step so the derivation DAG carries the full simplification history for the kernel's exact replay (Spec 19).
     // CEP:STATUS: complete
     // CEP:FAILURE: none.
     // CEP:ASSUMES: consumed in the same iteration it was filled (the park point runs before the next simplify).
     // CEP:COST: kMaxSimplifyRounds step records of stack.
     // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
     // CEP:SECURITY: none.
-    let mut demod_steps = DemodulationSteps::new();
+    let mut simplify_steps = SimplificationSteps::new();
     let mut chain_scratch: [Literal; kMaxClauseLiterals as usize] =
         [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
     loop {
@@ -973,16 +1316,18 @@ fn saturate_inner<F: Fn(u64) -> bool>(
                 refutation: given_offset,
             });
         }
-        // Simplify: tautology deletion and bounded demodulation (design 10.3 step 1).
-        demod_steps.count = 0;
+        // Simplify: tautology deletion, bounded demodulation, condensation, and
+        // subsumption resolution against the active set (design 10.3 step 1).
+        simplify_steps.count = 0;
         match simplify_given(
             space,
             context,
             options,
+            given_id,
             &mut given,
             &mut given_len,
             stats,
-            &mut demod_steps,
+            &mut simplify_steps,
         )? {
             SimplifyStatus::Discarded => {
                 stats.given_processed += 1;
@@ -991,74 +1336,120 @@ fn saturate_inner<F: Fn(u64) -> bool>(
             SimplifyStatus::Kept => {}
         }
         // Defensive re-check after simplification: demodulation rewrites in
-        // place and never removes literals, so a clause that was non-empty at
-        // entry stays non-empty here (the empty clause arrives through
-        // SimplifyStatus::Discarded's drain path or the entry check above);
-        // the guard is kept as defense in depth, deliberately.
-        if given_len == 0 {
+        // place and never removes literals, and condensation/SR deletions
+        // (CEP-1034) record a chain step, so an empty buffer with NO recorded
+        // chain is unreachable from a non-empty entry (the guard is kept as
+        // defense in depth, deliberately). An empty buffer WITH a recorded
+        // chain takes the chain path below: it parks the chain's last record
+        // (the empty clause, e.g. a unit SR against a unit disequation) and
+        // the next pop returns Theorem anchored at THAT record, whose
+        // derivation chain reaches the axioms - returning the raw given offset
+        // here would anchor the proof at a non-empty record.
+        if given_len == 0 && simplify_steps.count == 0 {
             return Ok(SearchOutcome::Theorem {
                 refutation: given_offset,
             });
         }
-        // Forward subsumption: an active clause subsumes the given clause.
-        if forward_subsumed(space, context, &given[..given_len])? {
-            stats.forward_subsumed += 1;
-            stats.given_processed += 1;
-            continue;
+        // Forward/backward subsumption run only on a non-empty given: the
+        // empty clause (a recorded SR chain's terminal, CEP-1034) is the
+        // refutation itself - running backward subsumption with it would
+        // delete the entire active set (the empty clause subsumes everything)
+        // before the chain path parks the derivation.
+        if given_len > 0 {
+            // Forward subsumption: an active clause subsumes the given clause.
+            if forward_subsumed(space, context, &given[..given_len])? {
+                stats.forward_subsumed += 1;
+                stats.given_processed += 1;
+                continue;
+            }
+            // Backward subsumption: the given clause subsumes active clauses.
+            backward_subsume(space, context, &given[..given_len], stats)?;
         }
-        // Backward subsumption: the given clause subsumes active clauses.
-        backward_subsume(space, context, &given[..given_len], stats)?;
-        // Activate the given clause, or park a rewritten demodulant back to passive
-        // (the stored record is immutable; a rewritten clause is a new record).
-        if demod_steps.count > 0 {
-            // CEP:WHAT: The CEP-1036 chain path: one stored clause record per rewrite step.
-            // CEP:WHY: Each record's derivation cites parents [previous, rule] (the rule clause's id), so the certified kernel replays demodulation EXACTLY per step over the chain (Spec 19); the last record is the demodulant that re-enters the passive set, the intermediates are inert derivation anchors like the AvatarSplit originals; the pre-Phase-5 single-record park below remains as the defensive fallback for a clause rewritten without a recorded chain (corruption: its derivation cannot cite the rule, and the kernel rejects it as UnrecordedRule).
+        // Activate the given clause, or park a rewritten simplification chain back
+        // to passive (the stored record is immutable; a rewritten clause is a new
+        // record).
+        if simplify_steps.count > 0 {
+            // CEP:WHAT: The CEP-1036 chain path, extended by CEP-1034 to all three recorded simplification rules: one stored clause record per rewrite step.
+            // CEP:WHY: Each record's derivation cites its own rule kind and parents ([previous, rule] for Demodulation and SubsumptionResolution, [previous] for Condensation), so the certified kernel replays each rule EXACTLY per step over the chain (Spec 19); the last record is the simplifier that re-enters the passive set, the intermediates are inert derivation anchors like the AvatarSplit originals; the pre-Phase-5 single-record park below remains as the defensive fallback for a clause rewritten without a recorded chain (corruption: its derivation cannot cite the rule, and the kernel rejects it as UnrecordedRule).
             // CEP:STATUS: complete
-            // CEP:FAILURE: propagates SearchError on store or passive failures.
+            // CEP:FAILURE: propagates SearchError on store, flag, or passive failures.
             // CEP:ASSUMES: the snapshots were restandardized + deduped at record time; the chain is contiguous from the given clause's id.
-            // CEP:COST: one new_clause + one flags computation + one weight per step.
-            // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+            // CEP:COST: one new_clause + one flags computation + one weight + one flag scan + one push per step.
+            // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids; unit/hot/given_clause_test.rs::{condensation_simplifies_given, subsumption_resolution_simplifies_given}.
             // CEP:SECURITY: none.
             let mut previous_id = given_id;
-            let mut last_ptr = crate::ir::clause::ClausePtr::from_u32(given_offset);
+            let mut last_ptr = ClausePtr::from_u32(given_offset);
             let mut last_age = 0u32;
-            for step_index in 0..demod_steps.count {
-                let step = &demod_steps.steps[step_index];
+            let mut last_count = 0usize;
+            for step_index in 0..simplify_steps.count {
+                let step = &simplify_steps.steps[step_index];
                 let count = step.count as usize;
                 for (target, source) in chain_scratch.iter_mut().zip(step.literals.iter()) {
                     *target = *source;
                 }
-                compute_selection_flags(context, options.selection, &mut chain_scratch[..count])
+                // The empty-clause chain step (a unit SR against a unit
+                // disequation) skips flag computation like every empty record.
+                if count > 0 {
+                    compute_selection_flags(
+                        context,
+                        options.selection,
+                        &mut chain_scratch[..count],
+                    )
                     .map_err(SearchError::Inference)?;
+                }
                 let age = space.next_input_age();
+                let (rule, parent_count, parents) = match step.rule {
+                    InferenceRule::Condensation => (
+                        InferenceRule::Condensation,
+                        kUnaryRuleParents,
+                        [
+                            previous_id,
+                            kInvalidClauseId,
+                            kInvalidClauseId,
+                            kInvalidClauseId,
+                        ],
+                    ),
+                    rule => (
+                        rule,
+                        kBinaryRuleParents,
+                        [
+                            previous_id,
+                            step.rule_id,
+                            kInvalidClauseId,
+                            kInvalidClauseId,
+                        ],
+                    ),
+                };
                 let derivation = DerivationStep {
-                    rule: InferenceRule::Demodulation,
-                    parent_count: kBinaryRuleParents,
+                    rule,
+                    parent_count,
                     reserved: 0,
-                    parents: [
-                        previous_id,
-                        step.rule_id,
-                        kInvalidClauseId,
-                        kInvalidClauseId,
-                    ],
+                    parents,
                     substitution: kInvalidSubstitutionOffset,
                 };
                 let ptr = space
                     .store
                     .new_clause(context.terms, &chain_scratch[..count], age, derivation)
                     .map_err(SearchError::Clause)?;
+                space.mark_sos(options, ptr, rule, &parents, parent_count)?;
                 previous_id = space.store.clause(ptr).map_err(SearchError::Clause)?.id.0;
                 last_ptr = ptr;
                 last_age = age;
+                last_count = count;
             }
-            let last_count = demod_steps.steps[demod_steps.count - 1].count as usize;
+            let last_step = &simplify_steps.steps[simplify_steps.count - 1];
             let weight =
                 SelectionWeight::of(context.terms, context.symbols, &chain_scratch[..last_count]);
             let record = space.store.clause(last_ptr).map_err(SearchError::Clause)?;
-            space
-                .passive
-                .push(record.id.0, last_ptr.as_u32(), last_age, weight)
-                .map_err(SearchError::Passive)?;
+            space.push_passive(
+                context,
+                options,
+                record.id.0,
+                last_ptr,
+                last_age,
+                weight,
+                &chain_scratch[..last_step.count as usize],
+            )?;
             stats.given_processed += 1;
             continue;
         }
@@ -1126,22 +1517,32 @@ fn saturate_inner<F: Fn(u64) -> bool>(
             continue;
         }
         stats.given_processed += 1;
+        // Set-of-support restriction (design 15.2 row 5, CEP-1035): with the
+        // option on, only conjecture descendants become given clauses. A
+        // non-supported clause was simplified, subsumption-checked, and is now
+        // ACTIVATED above (it serves as an inference partner for every later
+        // given clause) but starts no generation - every inference involves at
+        // least one supported clause, the classical SOS strategy (Wos, Robinson
+        // & Carson 1965; Spec 08 section 7's completeness position).
+        if options.set_of_support && !space.clause_is_sos(given_id)? {
+            continue;
+        }
         // Establish the in-progress generation state; the generation runs on the
         // next iteration through the in-progress branch.
         in_progress = Some((given_offset, given_id, GenerationCursor::new()));
     }
 }
 
-// CEP:WHAT: One recorded demodulation rewrite step (CEP-1036): the restandardized, deduplicated snapshot of the clause after one rewrite, with the demodulating rule clause's id.
-// CEP:WHY: The certified kernel (Spec 19) replays demodulation EXACTLY per step; that needs the rule's identity (the Phase 3/4 derivation recorded only the structural variant, ticket CEP-1036) and the exact intermediate clause. The snapshot is restandardized + deduped at record time so the stored chain record equals the snapshot bit for bit, and the in-loop buffer keeps its own namespace for the next rewrite (demodulation is renaming-invariant, so the replay over the restandardized chain is sound).
+// CEP:WHAT: One recorded simplification rewrite step (CEP-1036 demodulation, extended by CEP-1034 to subsumption resolution and condensation): the restandardized, deduplicated snapshot of the clause after one simplification, with the simplifying rule clause's id and the rule kind.
+// CEP:WHY: The certified kernel (Spec 19) replays demodulation, subsumption resolution, and condensation EXACTLY per step; that needs the rule's identity (the Phase 3/4 derivation recorded only the structural variant, ticket CEP-1036) and the kind (the three rules have distinct replay arms and parent shapes: demodulation and SR cite [previous, rule], condensation cites [previous] alone). The snapshot is restandardized + deduped at record time so the stored chain record equals the snapshot bit for bit, and the in-loop buffer keeps its own namespace for the next rewrite (all three rules are renaming-invariant, so the replay over the restandardized chain is sound).
 // CEP:STATUS: complete
 // CEP:FAILURE: none; a data record.
-// CEP:ASSUMES: count <= kMaxClauseLiterals; rule_id != kInvalidClauseId.
+// CEP:ASSUMES: count <= kMaxClauseLiterals; rule_id != kInvalidClauseId for Demodulation and SubsumptionResolution (kInvalidClauseId is legal for Condensation, whose only parent is the chain predecessor); rule is one of the three recorded simplification rules.
 // CEP:COST: kMaxClauseLiterals x 8 bytes of stack per step.
-// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids; unit/hot/given_clause_test.rs::{condensation_simplifies_given, subsumption_resolution_simplifies_given}.
 // CEP:SECURITY: none.
 #[derive(Clone, Copy)]
-pub(crate) struct DemodulationStep {
+pub(crate) struct SimplificationStep {
     /// CEP:WHAT: The post-rewrite clause snapshot (restandardized, deduplicated).
     /// CEP:WHY: The chain record's literals.
     /// CEP:STATUS: complete
@@ -1160,26 +1561,35 @@ pub(crate) struct DemodulationStep {
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
     /// CEP:SECURITY: none.
     pub count: u16,
-    /// CEP:WHAT: The demodulating rule clause's store id (derivation parent 1).
-    /// CEP:WHY: The kernel's exact per-step replay needs the rule; kInvalidClauseId would make the step unverifiable (UnrecordedRule).
+    /// CEP:WHAT: The simplifying rule clause's store id (derivation parent 1).
+    /// CEP:WHY: The kernel's exact per-step replay needs the rule; kInvalidClauseId makes the step unverifiable for Demodulation and SubsumptionResolution (UnrecordedRule) and is the legal Condensation shape (the clause simplifies itself).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: none.
-    /// CEP:ASSUMES: the rule clause is live in the store.
+    /// CEP:ASSUMES: the rule clause is live in the store when the id is valid.
     /// CEP:COST: 8 bytes.
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
     /// CEP:SECURITY: none.
     pub rule_id: u64,
+    /// CEP:WHAT: The recorded rule kind (Demodulation, SubsumptionResolution, or Condensation).
+    /// CEP:WHY: CEP-1034: the park point stores one record per step with the step's own rule label, and the kernel dispatches the replay arm on it; a rule outside the three recorded kinds would make the chain unverifiable and is rejected loudly at record time.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: record() fails loudly on a rule outside the recorded vocabulary.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 1 byte (enum copy).
+    /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{condensation_simplifies_given, subsumption_resolution_simplifies_given}.
+    /// CEP:SECURITY: none.
+    pub rule: InferenceRule,
 }
 
-// CEP:WHAT: The per-simplify-call demodulation step buffer (CEP-1036): one slot per simplify round.
-// CEP:WHY: simplify_given performs at most one rewrite per round (the first successful demodulate breaks the round), and the round count is kMaxSimplifyRounds, so the buffer capacity is exact and overflow is unreachable; saturate consumes the recorded chain right after the call by storing one clause record per step with parents [previous, rule], giving the derivation DAG the full rewrite history the kernel replays.
+// CEP:WHAT: The per-simplify-call simplification step buffer (CEP-1036, extended by CEP-1034): one slot per simplify round.
+// CEP:WHY: simplify_given performs at most one recorded simplification per round (the first successful demodulation, condensation, or subsumption resolution breaks the round), and the round count is kMaxSimplifyRounds, so the buffer capacity is exact and overflow is unreachable; saturate consumes the recorded chain right after the call by storing one clause record per step with the step's rule and parents, giving the derivation DAG the full simplification history the kernel replays.
 // CEP:STATUS: complete
 // CEP:FAILURE: none; the fixed arrays keep the buffer stack-allocated (no allocation in the hot loop).
 // CEP:ASSUMES: one buffer per given clause iteration (cleared before each simplify_given call).
-// CEP:COST: kMaxSimplifyRounds x (kMaxClauseLiterals x 8 + 10) bytes of stack.
+// CEP:COST: kMaxSimplifyRounds x (kMaxClauseLiterals x 8 + 12) bytes of stack.
 // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
 // CEP:SECURITY: none.
-pub(crate) struct DemodulationSteps {
+pub(crate) struct SimplificationSteps {
     /// CEP:WHAT: The recorded steps in rewrite order.
     /// CEP:WHY: The chain order is the replay order.
     /// CEP:STATUS: complete
@@ -1188,7 +1598,7 @@ pub(crate) struct DemodulationSteps {
     /// CEP:COST: kMaxSimplifyRounds step records.
     /// CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
     /// CEP:SECURITY: none.
-    pub steps: [DemodulationStep; kMaxSimplifyRounds as usize],
+    pub steps: [SimplificationStep; kMaxSimplifyRounds as usize],
     /// CEP:WHAT: The recorded step count.
     /// CEP:WHY: Extent.
     /// CEP:STATUS: complete
@@ -1200,7 +1610,7 @@ pub(crate) struct DemodulationSteps {
     pub count: usize,
 }
 
-impl DemodulationSteps {
+impl SimplificationSteps {
     // CEP:WHAT: Constructs an empty step buffer.
     // CEP:WHY: Explicit init with filler literals (the count governs reads).
     // CEP:STATUS: complete
@@ -1209,35 +1619,50 @@ impl DemodulationSteps {
     // CEP:COST: constant.
     // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
     // CEP:SECURITY: none.
-    pub fn new() -> DemodulationSteps {
-        DemodulationSteps {
-            steps: [DemodulationStep {
+    pub fn new() -> SimplificationSteps {
+        SimplificationSteps {
+            steps: [SimplificationStep {
                 literals: [Literal::new(crate::ir::term::TermPtr::invalid(), true);
                     kMaxClauseLiterals as usize],
                 count: 0,
                 rule_id: kInvalidClauseId,
+                rule: InferenceRule::Demodulation,
             }; kMaxSimplifyRounds as usize],
             count: 0,
         }
     }
 
-    // CEP:WHAT: Records one rewrite snapshot: restandardizes and dedupes a copy of the rewritten clause and stores it with the rule clause's id.
-    // CEP:WHY: CEP-1036: the stored chain record must equal the snapshot bit for bit (the kernel replays the production pipeline over it), so the restandardize + dedupe happens at record time, not at store time; the in-loop buffer keeps its own namespace because demodulation is renaming-invariant.
+    // CEP:WHAT: Records one simplification snapshot: restandardizes and dedupes a copy of the rewritten clause and stores it with the rule clause's id and the rule kind.
+    // CEP:WHY: CEP-1036/CEP-1034: the stored chain record must equal the snapshot bit for bit (the kernel replays the production pipeline over it), so the restandardize + dedupe happens at record time, not at store time; the in-loop buffer keeps its own namespace because demodulation, subsumption resolution, and condensation are all renaming-invariant; a rule outside the recorded vocabulary fails loudly (a partial chain would be silently unverifiable).
     // CEP:STATUS: complete
-    // CEP:FAILURE: propagates SearchError on restandardization failure; a full buffer is structurally unreachable (one rewrite per round, kMaxSimplifyRounds rounds) and fails loudly rather than recording a partial chain.
-    // CEP:ASSUMES: literals.len() <= kMaxClauseLiterals; rule_id != kInvalidClauseId.
+    // CEP:FAILURE: propagates SearchError on restandardization failure; a full buffer or unrecorded rule kind fails loudly rather than recording a partial chain.
+    // CEP:ASSUMES: literals.len() <= kMaxClauseLiterals; rule_id != kInvalidClauseId unless rule is Condensation.
     // CEP:COST: O(clause term nodes) restandardization plus O(n^2) dedupe.
-    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids.
+    // CEP:EVIDENCE: unit/hot/given_clause_test.rs::demodulation_chain_records_rule_ids; unit/hot/given_clause_test.rs::{condensation_simplifies_given, subsumption_resolution_simplifies_given}.
     // CEP:SECURITY: none.
     pub fn record(
         &mut self,
         context: &InferenceContext<'_>,
         literals: &[Literal],
         rule_id: u64,
+        rule: InferenceRule,
     ) -> Result<(), SearchError> {
-        if self.count >= self.steps.len() || rule_id == kInvalidClauseId {
-            // Unreachable by the one-rewrite-per-round invariant; a partial chain
-            // would be silently unverifiable, so the failure is loud instead.
+        if self.count >= self.steps.len() {
+            // Unreachable by the one-recorded-simplification-per-round invariant;
+            // a partial chain would be silently unverifiable, so the failure is
+            // loud instead.
+            return Err(SearchError::Clause(
+                crate::ir::clause::ClauseError::TooManyLiterals,
+            ));
+        }
+        let recorded = matches!(
+            rule,
+            InferenceRule::Demodulation
+                | InferenceRule::SubsumptionResolution
+                | InferenceRule::Condensation
+        );
+        let rule_id_ok = rule == InferenceRule::Condensation || rule_id != kInvalidClauseId;
+        if !recorded || !rule_id_ok {
             return Err(SearchError::Clause(
                 crate::ir::clause::ClauseError::TooManyLiterals,
             ));
@@ -1268,6 +1693,7 @@ impl DemodulationSteps {
         }
         step.count = write as u16;
         step.rule_id = rule_id;
+        step.rule = rule;
         self.count += 1;
         Ok(())
     }
@@ -1406,22 +1832,24 @@ fn given_is_stored(
     Ok(true)
 }
 
-// CEP:WHAT: Simplifies the given clause in place: tautology deletion, then bounded demodulation rounds against the active unit equations.
-// CEP:WHY: Design 10.3 step 1; a rewrite recomputes the literal flags (with the configured selection function) because the rewritten atoms have new maximalities.
+// CEP:WHAT: Simplifies the given clause in place: tautology deletion, then bounded rounds of demodulation against the active unit equations, condensation (CEP-1034), and subsumption resolution against the active set (CEP-1034).
+// CEP:WHY: Design 10.3 step 1 with the CEP-1034 rows: a demodulation rewrite or a condensation/subsumption-resolution deletion recomputes the literal flags (with the configured selection function) because the surviving atoms carry new maximalities; every recorded simplification stores a chain step (with the simplifying rule clause's id and kind) so the park point can store the exact per-step derivation the kernel replays; the round count bounds the whole pass (kMaxSimplifyRounds).
 // CEP:STATUS: complete
 // CEP:FAILURE: propagates SearchError; the substitution trail is unwound per rewrite.
-// CEP:ASSUMES: literal_count >= 1 on entry.
-// CEP:COST: O(rounds x rules x positions), rounds bounded by kMaxSimplifyRounds.
-// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{tautologies_discarded, demodulation_simplifies}.
-// CEP:SECURITY: rounds bounded.
+// CEP:ASSUMES: literal_count >= 1 on entry; given_id is the given clause's store id (the condensation step's own parent).
+// CEP:COST: O(rounds x (rules x positions + active x SR decision)), rounds bounded by kMaxSimplifyRounds; the SR scan runs behind the head-symbol prefilter and the attempt budget.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::{tautologies_discarded, demodulation_simplifies, condensation_simplifies_given, subsumption_resolution_simplifies_given}.
+// CEP:SECURITY: rounds bounded; the SR decision is attempt-bounded (kMaxSrMatchAttempts).
+#[allow(clippy::too_many_arguments)]
 fn simplify_given(
     space: &SearchSpace<'_>,
     context: &InferenceContext<'_>,
     options: &SearchOptions,
+    given_id: u64,
     given: &mut [Literal; kMaxClauseLiterals as usize],
     literal_count: &mut usize,
     stats: &mut SearchStats,
-    steps: &mut DemodulationSteps,
+    steps: &mut SimplificationSteps,
 ) -> Result<SimplifyStatus, SearchError> {
     if is_tautology(&given[..*literal_count]) {
         stats.tautologies += 1;
@@ -1515,7 +1943,12 @@ fn simplify_given(
                         // CEP-1036: record the rewrite snapshot (restandardized +
                         // deduped, with the rule clause's id) so the park point can
                         // store the exact per-step chain the kernel replays.
-                        steps.record(context, &given[..count], clause.id.0)?;
+                        steps.record(
+                            context,
+                            &given[..count],
+                            clause.id.0,
+                            InferenceRule::Demodulation,
+                        )?;
                         stats.demodulations += 1;
                         changed = true;
                         applied = true;
@@ -1540,7 +1973,37 @@ fn simplify_given(
             literal_index += 1;
         }
         if !changed {
-            break;
+            // CEP-1034: with no demodulation site left, try condensation (the
+            // clause against itself) and then subsumption resolution (an active
+            // clause deleting one literal); a fired attempt keeps the round
+            // going so the shorter clause demodulates further within the same
+            // budget.
+            let condensed = simplify_attempt_condensation(
+                space,
+                context,
+                options,
+                given_id,
+                given,
+                literal_count,
+                stats,
+                steps,
+            )?;
+            let resolved = if condensed {
+                false
+            } else {
+                simplify_attempt_subsumption_resolution(
+                    space,
+                    context,
+                    options,
+                    given,
+                    literal_count,
+                    stats,
+                    steps,
+                )?
+            };
+            if !(condensed || resolved) {
+                break;
+            }
         }
         if is_tautology(&given[..*literal_count]) {
             stats.tautologies += 1;
@@ -1548,6 +2011,245 @@ fn simplify_given(
         }
     }
     Ok(SimplifyStatus::Kept)
+}
+
+// CEP:WHAT: The reserved head class of equality atoms in the SR prefilter (CEP-1034).
+// CEP:WHY: The prefilter compares head classes; the equality pseudo-head (design 8.3: comparable with every predicate head) is its own class and must not collide with a real symbol id - real ids are bounded far below u32::MAX by kMaxSymbolCount.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: kMaxSymbolCount < u32::MAX (static-asserted in config/limits.rs).
+// CEP:COST: compile-time constant.
+// CEP:EVIDENCE: unit/hot/subsumption_resolution_test.rs::sr_head_prefilter_soundness.
+// CEP:SECURITY: none.
+const kSrEqualityHead: u32 = u32::MAX;
+
+// CEP:WHAT: Head-symbol class of one atom: the predicate symbol, the equality class for equality atoms, None for unreadable or variable atoms (the prefilter disables itself rather than guessing).
+// CEP:WHY: A sound necessary condition bounds both the condensation attempt and the SR scan: a sigma-match between two literals keeps the head class (substitution changes arguments, never the head), so a condensation needs an opposite-polarity same-head pair inside the clause and an SR side literal's head must occur in the main premise.
+// CEP:STATUS: complete
+// CEP:FAILURE: None on an unreadable atom - callers degrade to the unfiltered path, never to a wrong rejection of a legal inference... (the condensation prefilter's None means "skip the attempt": the pair scan cannot prove a candidate exists; the SR prefilter's None disables the filter for the whole scan, which keeps every legal SR reachable).
+// CEP:ASSUMES: atoms interned by the store.
+// CEP:COST: one term view.
+// CEP:EVIDENCE: unit/hot/subsumption_resolution_test.rs::sr_head_prefilter_soundness.
+// CEP:SECURITY: bounds-checked reads.
+fn head_class(terms: &TermStore<'_>, atom: crate::ir::term::TermPtr) -> Option<u32> {
+    let view = terms.term(atom).ok()?;
+    match view.tag() {
+        crate::ir::term::TermTag::Equality => Some(kSrEqualityHead),
+        crate::ir::term::TermTag::Variable => None,
+        _ => Some(view.symbol()),
+    }
+}
+
+// CEP:WHAT: Whether the clause contains two literals whose atoms share the head class (the condensation prefilter, CEP-1034).
+// CEP:WHY: Condensation (the Bachmair-Ganzinger instance condition, Spec 07 section 12) needs some clause literal to be a sigma-instance of another kept literal - sigma preserves the head, so a repeated head class inside the clause is a necessary condition; the pair scan is capped at the first 32 literals (sound truncation: clauses beyond the cap skip the prefilter and run the bounded decision directly); without a repeated head the bounded decision cannot fire and the attempt is skipped (a pure scan-bound win).
+// CEP:STATUS: complete
+// CEP:FAILURE: false only when no repeated head exists in the scanned window (the attempt is skipped, never a wrong simplification).
+// CEP:ASSUMES: atoms interned; unreadable or variable atoms disable the prefilter (returns true conservatively).
+// CEP:COST: O(min(n, 32)^2) head comparisons.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::condensation_simplifies_given; unit/hot/subsumption_resolution_test.rs::condensation_keeps_unmatched_clause.
+// CEP:SECURITY: none.
+fn has_repeated_head_pair(context: &InferenceContext<'_>, literals: &[Literal]) -> bool {
+    const kCondensationScanLiterals: usize = 32;
+    let scanned = literals.len().min(kCondensationScanLiterals);
+    let mut heads: [Option<u32>; kCondensationScanLiterals] = [None; kCondensationScanLiterals];
+    for (index, literal) in literals[..scanned].iter().enumerate() {
+        heads[index] = head_class(context.terms, literal.atom());
+    }
+    for i in 0..scanned {
+        for j in (i + 1)..scanned {
+            let (left, right) = (heads[i], heads[j]);
+            if left.is_none() || right.is_none() {
+                // Unreadable or variable head: keep the decision reachable.
+                return true;
+            }
+            if left == right {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+// CEP:WHAT: One condensation attempt against the given clause (CEP-1034): removes the first self-subsumption-resolution literal, records the chain step, and recounts.
+// CEP:WHY: Design 10.1 condensation as a given-time simplification: the clause condenses to C \ {m'} when the self-SR conditions hold (Spec 07 section 12), which strictly strengthens it; the live buffer keeps its namespace (the rule is renaming-invariant) and the recorded snapshot is restandardized at record time for the kernel's per-step replay; the attempt runs behind the head-pair prefilter so the bounded decision only executes when a candidate pair exists.
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates SearchError; Ok(false) when condensation does not apply.
+// CEP:ASSUMES: literal_count >= 2 for a fire (condensation_target rejects shorter clauses); the caller re-checks the empty-clause outcome after simplify.
+// CEP:COST: the prefilter scan plus (when it passes) the attempt-bounded decision plus O(n) removal.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::condensation_simplifies_given; unit/cold/kernel_test.rs::condensation_replay_accepts_recorded_step.
+// CEP:SECURITY: attempt-bounded.
+#[allow(clippy::too_many_arguments)]
+fn simplify_attempt_condensation(
+    _space: &SearchSpace<'_>,
+    context: &InferenceContext<'_>,
+    options: &SearchOptions,
+    given_id: u64,
+    given: &mut [Literal; kMaxClauseLiterals as usize],
+    literal_count: &mut usize,
+    stats: &mut SearchStats,
+    steps: &mut SimplificationSteps,
+) -> Result<bool, SearchError> {
+    if *literal_count < 2 || !has_repeated_head_pair(context, &given[..*literal_count]) {
+        return Ok(false);
+    }
+    let target =
+        condensation_target(context, &given[..*literal_count]).map_err(SearchError::Inference)?;
+    let position = match target {
+        Some(value) => value,
+        None => return Ok(false),
+    };
+    // Remove the resolution literal by compaction; the buffer keeps its own
+    // namespace (removal may leave variable gaps - renaming-invariant for the
+    // remaining in-buffer work, and the recorded snapshot is restandardized).
+    let new_count = *literal_count - 1;
+    for index in position..new_count {
+        given[index] = given[index + 1];
+    }
+    compute_selection_flags(context, options.selection, &mut given[..new_count])
+        .map_err(SearchError::Inference)?;
+    *literal_count = new_count;
+    stats.condensations += 1;
+    steps.record(
+        context,
+        &given[..new_count],
+        given_id,
+        InferenceRule::Condensation,
+    )?;
+    Ok(true)
+}
+
+// CEP:WHAT: One subsumption-resolution pass over the active set (CEP-1034): the first active clause that subsumption-resolves the given clause deletes its resolution literal from the given clause.
+// CEP:WHY: Design 10.1's subsumption resolution as given-time forward simplification (Riazanov 2003): the renamed active clause is the side premise, the given clause the main premise, and the deleted literal is the resolution literal; the scan cannot use the feature-vector dominance filter (the set-inclusion condition allows two side literals to map onto one main literal - the paper's S5 shape - which violates symbol-count dominance), so it runs behind a SOUND head-symbol prefilter instead: every side literal sigma-equals an exact main literal, so its head occurs in the main premise (clauses with more distinct head symbols than kSrHeadSymbols disable the prefilter - documented sound degradation); the decision itself is attempt-bounded (kMaxSrMatchAttempts).
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates SearchError; Ok(false) when no active clause subsumption-resolves the given clause.
+// CEP:ASSUMES: the given clause is non-empty and not yet active; active slots are the frozen candidate source (the loop's invariant I4).
+// CEP:COST: O(active) prefiltered scans plus one attempt-bounded decision per surviving candidate.
+// CEP:EVIDENCE: unit/hot/given_clause_test.rs::subsumption_resolution_simplifies_given; unit/hot/subsumption_resolution_test.rs::sr_head_prefilter_soundness; unit/cold/kernel_test.rs::subsumption_resolution_replay_accepts_recorded_step.
+// CEP:SECURITY: attempt-bounded; bounded by the active capacity.
+#[allow(clippy::too_many_arguments)]
+fn simplify_attempt_subsumption_resolution(
+    space: &SearchSpace<'_>,
+    context: &InferenceContext<'_>,
+    options: &SearchOptions,
+    given: &mut [Literal; kMaxClauseLiterals as usize],
+    literal_count: &mut usize,
+    stats: &mut SearchStats,
+    steps: &mut SimplificationSteps,
+) -> Result<bool, SearchError> {
+    // The main premise's head-symbol set (bounded; overflow or an unreadable
+    // head disables the prefilter for the whole scan).
+    let mut heads: [u32; kSrHeadSymbols] = [0; kSrHeadSymbols];
+    let mut head_count: usize = 0;
+    let mut prefilter = true;
+    for literal in given[..*literal_count].iter() {
+        match head_class(context.terms, literal.atom()) {
+            Some(head) => {
+                if !heads[..head_count].contains(&head) {
+                    if head_count < heads.len() {
+                        heads[head_count] = head;
+                        head_count += 1;
+                    } else {
+                        prefilter = false;
+                        break;
+                    }
+                }
+            }
+            None => {
+                prefilter = false;
+                break;
+            }
+        }
+    }
+    let mut premise: [Literal; kMaxClauseLiterals as usize] =
+        [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
+    let mut raw: [Literal; kMaxClauseLiterals as usize] =
+        [Literal::new(crate::ir::term::TermPtr::invalid(), true); kMaxClauseLiterals as usize];
+    let given_variables =
+        crate::inference::count_clause_variables(context.terms, &given[..*literal_count])
+            .map_err(SearchError::Inference)?;
+    for slot_index in 0..space.active.len() {
+        let slot = match space.active.slot(slot_index) {
+            Some(value) => value,
+            None => break,
+        };
+        let clause = match space.store.clause(ClausePtr::from_u32(slot.offset)) {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
+        // Size guard: |side| <= |main| is a necessary SR condition.
+        if clause.literal_count as usize > *literal_count {
+            continue;
+        }
+        let mut side_ok = true;
+        for position in 0..clause.literal_count {
+            let literal = match space.store.literal(clause, position) {
+                Ok(value) => value,
+                Err(_) => {
+                    side_ok = false;
+                    break;
+                }
+            };
+            if prefilter {
+                match head_class(context.terms, literal.atom()) {
+                    Some(head) if heads[..head_count].contains(&head) => {}
+                    _ => {
+                        side_ok = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if !side_ok {
+            continue;
+        }
+        for position in 0..clause.literal_count {
+            match space.store.literal(clause, position) {
+                Ok(value) => raw[position as usize] = value,
+                Err(_) => {
+                    return Err(SearchError::Clause(
+                        crate::ir::clause::ClauseError::InvalidPointer,
+                    ))
+                }
+            }
+        }
+        let renamed = crate::inference::rename_clause_apart(
+            context.terms,
+            context.symbols,
+            &raw[..clause.literal_count as usize],
+            given_variables as u32,
+            &mut premise,
+        );
+        let premise_len = match renamed {
+            Ok(_) => clause.literal_count as usize,
+            Err(_) => continue,
+        };
+        let target =
+            subsumption_resolves(context, &premise[..premise_len], &given[..*literal_count])
+                .map_err(SearchError::Inference)?;
+        if let Some(resolution) = target {
+            let new_count = *literal_count - 1;
+            for index in resolution..new_count {
+                given[index] = given[index + 1];
+            }
+            // A unit SR against a unit disequation leaves the empty clause:
+            // skip flag computation like every empty record (the loop's
+            // post-simplify re-check takes the chain path).
+            if new_count > 0 {
+                compute_selection_flags(context, options.selection, &mut given[..new_count])
+                    .map_err(SearchError::Inference)?;
+            }
+            *literal_count = new_count;
+            stats.subsumption_resolutions += 1;
+            steps.record(
+                context,
+                &given[..new_count],
+                clause.id.0,
+                InferenceRule::SubsumptionResolution,
+            )?;
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 // CEP:WHAT: Checks whether any active clause subsumes the given clause (forward subsumption) by an FV-filtered active scan.
@@ -1755,10 +2457,13 @@ fn drain_buffer(
                 ],
                 substitution: kInvalidSubstitutionOffset,
             };
+            let (rule, parents, parent_count) =
+                (derivation.rule, derivation.parents, derivation.parent_count);
             let ptr = space
                 .store
                 .new_clause(context.terms, &[], age, derivation)
                 .map_err(SearchError::Clause)?;
+            space.mark_sos(options, ptr, rule, &parents, parent_count)?;
             return Ok(DrainStatus::EmptyClause(ptr.as_u32()));
         }
         let mut staged: [Literal; kMaxClauseLiterals as usize] =
@@ -1804,14 +2509,24 @@ fn drain_buffer(
             ],
             substitution: kInvalidSubstitutionOffset,
         };
+        let (rule, parents, parent_count) =
+            (derivation.rule, derivation.parents, derivation.parent_count);
         let ptr = space
             .store
             .new_clause(context.terms, &staged[..deduped], age, derivation)
             .map_err(SearchError::Clause)?;
+        space.mark_sos(options, ptr, rule, &parents, parent_count)?;
         let record = space.store.clause(ptr).map_err(SearchError::Clause)?;
         if space
-            .passive
-            .push(record.id.0, ptr.as_u32(), age, weight)
+            .push_passive(
+                context,
+                options,
+                record.id.0,
+                ptr,
+                age,
+                weight,
+                &staged[..deduped],
+            )
             .is_err()
         {
             return Ok(DrainStatus::PassiveFull);

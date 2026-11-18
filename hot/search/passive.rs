@@ -1,6 +1,6 @@
 // CEP:FILE: hot/search/passive.rs
-// CEP:WHAT: The passive set (design 8.4): a flat binary min-heap of pending clauses keyed by the selection strategy's priority with clause-id tiebreak, supporting the design 15.2 strategies (age/weight ratio, weight-only, age-only).
-// CEP:WHY: Design 8.4: the passive set is a priority queue ordered by (age, weight, clause id) implemented as a flat arena array with O(log n) insertion and extraction and no allocation per insertion; design 15.2 names three deterministic strategies - the default age/weight ratio (priority = age * scale / weight in u64 fixed point: old light clauses win, and because age grows monotonically with the birth order while weights are positive, every clause's priority is fixed at birth, so finitely many clauses can precede any given one under bounded weight growth and selection is fair up to that documented bound), weight-only, and age-only (trivially fair breadth-first); the clause-id tiebreak makes the heap order total and the selection deterministic (CEP&CC 38.10), which is what the design's fairness claim (15.1) and the determinism gate rely on.
+// CEP:WHAT: The passive set (design 8.4): a flat binary min-heap of pending clauses keyed by the selection strategy's priority with clause-id tiebreak, supporting the design 15.2 strategies (age/weight ratio, weight-only, age-only, conjecture distance - CEP-1035).
+// CEP:WHY: Design 8.4: the passive set is a priority queue ordered by (age, weight, clause id) implemented as a flat arena array with O(log n) insertion and extraction and no allocation per insertion; design 15.2 names four priority strategies - the default age/weight ratio (priority = age * scale / weight in u64 fixed point: old light clauses win, and because age grows monotonically with the birth order while weights are positive, every clause's priority is fixed at birth, so finitely many clauses can precede any given one under bounded weight growth and selection is fair up to that documented bound), weight-only, age-only (trivially fair breadth-first), and conjecture distance (CEP-1035: the summed weight of symbols foreign to the conjecture, fixed at birth, not fair in isolation - Spec 08 section 4); the fifth design 15.2 row, set of support, is a selection RESTRICTION (which clauses may become given), not a priority function, and lives in the loop (given_clause.rs) with the clause flag mark; the clause-id tiebreak makes the heap order total and the selection deterministic (CEP&CC 38.10), which is what the design's fairness claim (15.1) and the determinism gate rely on.
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
@@ -51,13 +51,13 @@ impl Default for SelectionStrategy {
 }
 
 /// CEP:WHAT: Selection strategy of the given-clause loop (design 15.2).
-/// CEP:WHY: The strategy fixes the priority function; three deterministic strategies are delivered and the remaining two of design 15.2 (conjecture distance, set of support) are ticketed with owners (CEP-1035).
+/// CEP:WHY: The strategy fixes the priority function; the four priority strategies of design 15.2 are delivered (ratio, weight, age, and conjecture distance per CEP-1035) and the fifth row (set of support) is a selection restriction carried by SearchOptions and the clause flag, not a priority function.
 /// CEP:CLASS: CEP-0
 /// CEP:STATUS: complete
 /// CEP:FAILURE: none; a vocabulary type.
 /// CEP:ASSUMES: fixed for the lifetime of one search.
 /// CEP:COST: enum copy.
-/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, heap_orders_by_weight, heap_orders_by_age}.
+/// CEP:EVIDENCE: unit/hot/search_db_test.rs::{heap_orders_by_ratio, heap_orders_by_weight, heap_orders_by_age}; unit/hot/strategy_selection_test.rs::heap_orders_by_conjecture_distance.
 /// CEP:SECURITY: none.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +89,15 @@ pub enum SelectionStrategy {
     /// CEP:EVIDENCE: unit/hot/search_db_test.rs::heap_orders_by_age.
     /// CEP:SECURITY: none.
     AgeOnly,
+    /// CEP:WHAT: Minimum conjecture distance: the summed symbol weight of the clause's symbols that do not occur in the conjecture (design 15.2 row 2, CEP-1035).
+    /// CEP:WHY: Design 15.2's "closest to the conjecture in symbol overlap": clauses reusing the conjecture's vocabulary pop first; the distance is computed once at push by SelectionWeight::conjecture_distance against the frozen conjecture symbol set, so the priority is fixed at birth like the other strategies and the order stays deterministic; not fair in isolation (a clause far from the conjecture may starve - documented in Spec 08 section 4, bounded by the inference and time budgets like WeightOnly); with no conjecture set every distance is 0 and the pop order degenerates to the clause-id tiebreak (birth order, AgeOnly-like fair).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: distances are computed with the same frozen conjecture symbol set for every push of one search.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{heap_orders_by_conjecture_distance, conjecture_distance_unset_degenerates_to_id_order}.
+    /// CEP:SECURITY: none.
+    ConjectureDistance,
 }
 
 /// CEP:WHAT: Error cases of the passive heap.
@@ -252,7 +261,51 @@ impl<'a> PassiveHeap<'a> {
             }
             SelectionStrategy::WeightOnly => weight as u64,
             SelectionStrategy::AgeOnly => age as u64,
+            SelectionStrategy::ConjectureDistance => 0,
         }
+    }
+
+    /// CEP:WHAT: Computes the strategy priority of one clause under the conjecture-distance strategy.
+    /// CEP:WHY: Design 15.2 row 2 (CEP-1035): the conjecture distance IS the priority (smaller pops first); the other strategies never call this (their push path keeps priority_of, so no new work lands on their hot path - Law 1); the value is fixed at birth like every other priority, which is what the determinism gate relies on.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none (the distance saturates at u32::MAX like the selection weight).
+    /// CEP:ASSUMES: distance is the SelectionWeight::conjecture_distance value of the same clause.
+    /// CEP:COST: one cast.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::heap_orders_by_conjecture_distance.
+    /// CEP:SECURITY: none.
+    pub fn priority_of_distance(&self, distance: u32) -> u64 {
+        match self.strategy {
+            SelectionStrategy::ConjectureDistance => distance as u64,
+            _ => self.priority_of(0, 0),
+        }
+    }
+
+    /// CEP:WHAT: Pushes a clause into the heap with an explicit conjecture distance.
+    /// CEP:WHY: The ConjectureDistance push path (design 15.2 row 2, CEP-1035): the caller computes the distance once per clause (SelectionWeight::conjecture_distance) and the heap stores it as the priority; the other strategies keep push, so the plain hot path gains nothing (Law 1); sift-up restores the invariant identically.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns Full at the capacity.
+    /// CEP:ASSUMES: clause_id strictly greater than every pushed id; consumed only with the ConjectureDistance strategy (other strategies see the distance ignored through priority_of_distance).
+    /// CEP:COST: O(log n) like push.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::heap_orders_by_conjecture_distance.
+    /// CEP:SECURITY: capacity bound.
+    pub fn push_with_distance(
+        &self,
+        clause_id: u64,
+        offset: u32,
+        distance: u32,
+    ) -> Result<(), PassiveError> {
+        let next = self.count.get() as usize;
+        if next >= self.entries.len() {
+            return Err(PassiveError::Full);
+        }
+        self.entries[next].set(PassiveEntry {
+            priority: self.priority_of_distance(distance),
+            clause_id,
+            offset,
+        });
+        self.count.set(self.count.get() + 1);
+        self.sift_up(next);
+        Ok(())
     }
 
     /// CEP:WHAT: Pushes a clause into the heap.

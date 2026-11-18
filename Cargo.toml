@@ -325,6 +325,14 @@ name = "mpmc_pool_test"
 path = "tests/unit/hot/mpmc_pool_test.rs"
 
 [[test]]
+name = "subsumption_resolution_test"
+path = "tests/unit/hot/subsumption_resolution_test.rs"
+
+[[test]]
+name = "strategy_selection_test"
+path = "tests/unit/hot/strategy_selection_test.rs"
+
+[[test]]
 name = "clause_codec_test"
 path = "tests/unit/hot/clause_codec_test.rs"
 

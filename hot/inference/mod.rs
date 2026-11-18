@@ -21,7 +21,7 @@ pub mod factoring;
 pub mod resolution;
 /// Literal selection and maximality: the ordering-driven premises of the inference rules.
 pub mod selection;
-/// Forward and backward subsumption with the feature-vector prefilter.
+/// Forward and backward subsumption with the feature-vector prefilter; subsumption resolution and condensation (CEP-1034).
 pub mod subsumption;
 /// Superposition left and right: ordered equality inferences at term positions with the position scan.
 pub mod superposition;

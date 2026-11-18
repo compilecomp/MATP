@@ -743,3 +743,226 @@ fn forged_sat_learn_rejected_outside_vocabulary() {
     .expect("finishes");
     assert_eq!(verdict, KernelVerdict::Valid);
 }
+
+// CEP:WHAT: The kernel's SubsumptionResolution arm accepts the recorded step the loop's simplify path produces, and rejects a tampered conclusion (CEP-1034).
+// CEP:WHY: Spec 19's one-arm-per-rule discipline extends to the CEP-1034 rules: the replay renames the side parent apart exactly like the loop's simplify scan, enumerates every resolution literal with the production bounded decision, and accepts only when the piped remainder matches; a forged conclusion must be rejected loudly.
+// CEP:STATUS: complete
+// CEP:FAILURE: tests fail on a false accept or a false reject.
+// CEP:ASSUMES: hand-built records; main = p(a) v not q(x0,a) v not q(x1,b), side = not p(x2) v not q(x3,a), conclusion = the main minus the resolution literal p(a).
+// CEP:COST: two step verifications.
+// CEP:EVIDENCE: cited by cold/kernel.rs's SubsumptionResolution arm and hot/inference/subsumption.rs.
+// CEP:SECURITY: proof validation.
+#[test]
+fn subsumption_resolution_replay_accepts_recorded_step() {
+    let fixture = make_proof_fixture(4096);
+    let context = context_of(&fixture);
+    let a = constant(&fixture, "a");
+    let b = constant(&fixture, "b");
+    let x0 = fixture.terms.intern_var(0).expect("x0");
+    let x1 = fixture.terms.intern_var(1).expect("x1");
+    let x2 = fixture.terms.intern_var(2).expect("x2");
+    let x3 = fixture.terms.intern_var(3).expect("x3");
+    let ga = function(&fixture, "g", &[a]);
+    let mut main_literals = vec![
+        lit(&fixture, "p", &[a], true),
+        lit(&fixture, "q", &[x0, a], false),
+        lit(&fixture, "q", &[x1, b], false),
+    ];
+    flagged(&context, &fixture, &mut main_literals);
+    let main = fixture
+        .space
+        .store
+        .new_clause(&fixture.terms, &main_literals, 0, input_derivation())
+        .expect("main");
+    let _ = ga;
+    let mut side_literals = vec![
+        lit(&fixture, "p", &[x2], false),
+        lit(&fixture, "q", &[x3, a], false),
+    ];
+    flagged(&context, &fixture, &mut side_literals);
+    let side = fixture
+        .space
+        .store
+        .new_clause(&fixture.terms, &side_literals, 1, input_derivation())
+        .expect("side");
+    let mut conclusion_literals = vec![
+        lit(&fixture, "q", &[x0, a], false),
+        lit(&fixture, "q", &[x1, b], false),
+    ];
+    flagged(&context, &fixture, &mut conclusion_literals);
+    let conclusion = fixture
+        .space
+        .store
+        .new_clause(
+            &fixture.terms,
+            &conclusion_literals,
+            2,
+            DerivationStep {
+                rule: InferenceRule::SubsumptionResolution,
+                parent_count: 2,
+                reserved: 0,
+                parents: [
+                    id_of(&fixture, main),
+                    id_of(&fixture, side),
+                    kInvalidClauseId,
+                    kInvalidClauseId,
+                ],
+                substitution: kInvalidSubstitutionOffset,
+            },
+        )
+        .expect("conclusion");
+    let verdict = verify_clause_step(
+        &context,
+        &fixture.space.store,
+        id_of(&fixture, conclusion),
+        mapt_config::limits::kKernelReplayBudget,
+    )
+    .expect("finishes");
+    assert_eq!(
+        verdict,
+        KernelVerdict::Valid,
+        "the recorded SR step replays"
+    );
+    // Tampered conclusion: an extra literal the decision cannot justify.
+    let mut forged_literals = conclusion_literals.clone();
+    forged_literals.push(lit(&fixture, "p", &[b], false));
+    flagged(&context, &fixture, &mut forged_literals);
+    let forged = fixture
+        .space
+        .store
+        .new_clause(
+            &fixture.terms,
+            &forged_literals,
+            3,
+            DerivationStep {
+                rule: InferenceRule::SubsumptionResolution,
+                parent_count: 2,
+                reserved: 0,
+                parents: [
+                    id_of(&fixture, main),
+                    id_of(&fixture, side),
+                    kInvalidClauseId,
+                    kInvalidClauseId,
+                ],
+                substitution: kInvalidSubstitutionOffset,
+            },
+        )
+        .expect("forged");
+    let verdict = verify_clause_step(
+        &context,
+        &fixture.space.store,
+        id_of(&fixture, forged),
+        mapt_config::limits::kKernelReplayBudget,
+    )
+    .expect("finishes");
+    assert_eq!(
+        verdict,
+        KernelVerdict::Invalid {
+            clause_id: id_of(&fixture, forged),
+            rejection: KernelRejection::BrokenSubsumptionResolution,
+        },
+        "the tampered SR step is rejected"
+    );
+}
+
+// CEP:WHAT: The kernel's Condensation arm accepts the recorded self-subsumption step and rejects a tampered conclusion (CEP-1034).
+// CEP:WHY: The condensation replay runs the production condensation_resolves_onto (the renamed-apart side copy) over every candidate resolution literal; a forged deletion must be rejected loudly.
+// CEP:STATUS: complete
+// CEP:FAILURE: tests fail on a false accept or a false reject.
+// CEP:ASSUMES: hand-built records; clause = p(x0) v not p(f(x0)) v not p(f(f(x0))), conclusion = p(x0) v not p(f(f(x0))).
+// CEP:COST: two step verifications.
+// CEP:EVIDENCE: cited by cold/kernel.rs's Condensation arm and hot/inference/subsumption.rs::condensation_resolves_onto.
+// CEP:SECURITY: proof validation.
+#[test]
+fn condensation_replay_accepts_recorded_step() {
+    let fixture = make_proof_fixture(4096);
+    let context = context_of(&fixture);
+    let _ = constant(&fixture, "a");
+    let x0 = fixture.terms.intern_var(0).expect("x0");
+    let mut clause_literals = vec![
+        lit(&fixture, "p", &[x0], true),
+        lit(&fixture, "p", &[function(&fixture, "f", &[x0])], true),
+    ];
+    flagged(&context, &fixture, &mut clause_literals);
+    let clause = fixture
+        .space
+        .store
+        .new_clause(&fixture.terms, &clause_literals, 0, input_derivation())
+        .expect("clause");
+    let mut conclusion_literals = vec![lit(&fixture, "p", &[x0], true)];
+    flagged(&context, &fixture, &mut conclusion_literals);
+    let conclusion = fixture
+        .space
+        .store
+        .new_clause(
+            &fixture.terms,
+            &conclusion_literals,
+            1,
+            DerivationStep {
+                rule: InferenceRule::Condensation,
+                parent_count: 1,
+                reserved: 0,
+                parents: [
+                    id_of(&fixture, clause),
+                    kInvalidClauseId,
+                    kInvalidClauseId,
+                    kInvalidClauseId,
+                ],
+                substitution: kInvalidSubstitutionOffset,
+            },
+        )
+        .expect("conclusion");
+    let verdict = verify_clause_step(
+        &context,
+        &fixture.space.store,
+        id_of(&fixture, conclusion),
+        mapt_config::limits::kKernelReplayBudget,
+    )
+    .expect("finishes");
+    assert_eq!(
+        verdict,
+        KernelVerdict::Valid,
+        "the recorded condensation replays"
+    );
+    // Tampered conclusion: deleting p(x0) instead of the licensed literal
+    // (P(x0) is not an instance-set cover of the clause, so the deletion of
+    // the KEPT literal is not licensed).
+    let mut forged_literals = vec![lit(&fixture, "p", &[function(&fixture, "f", &[x0])], true)];
+    flagged(&context, &fixture, &mut forged_literals);
+    let forged = fixture
+        .space
+        .store
+        .new_clause(
+            &fixture.terms,
+            &forged_literals,
+            2,
+            DerivationStep {
+                rule: InferenceRule::Condensation,
+                parent_count: 1,
+                reserved: 0,
+                parents: [
+                    id_of(&fixture, clause),
+                    kInvalidClauseId,
+                    kInvalidClauseId,
+                    kInvalidClauseId,
+                ],
+                substitution: kInvalidSubstitutionOffset,
+            },
+        )
+        .expect("forged");
+    let verdict = verify_clause_step(
+        &context,
+        &fixture.space.store,
+        id_of(&fixture, forged),
+        mapt_config::limits::kKernelReplayBudget,
+    )
+    .expect("finishes");
+    assert_eq!(
+        verdict,
+        KernelVerdict::Invalid {
+            clause_id: id_of(&fixture, forged),
+            rejection: KernelRejection::BrokenCondensation,
+        },
+        "the tampered condensation step is rejected"
+    );
+}

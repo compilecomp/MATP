@@ -39,6 +39,8 @@ pub mod feature_gates;
 pub mod limits;
 /// Security policy constants and the trust-level vocabulary for MAPT components.
 pub mod security_policy;
+/// Named strategy presets (design 21.1/15.2): the tag vocabulary shared with the hot crate's strategy enums, the preset record, and the deterministic default schedule.
+pub mod strategy;
 /// Central target-configuration switch: re-exports exactly one target module selected by Cargo feature and rejects ambiguous selections at compile time.
 pub mod target;
 /// Target configuration constants for AArch64 (AAPCS64 ABI, little-endian, 64-byte cache line, 16 KiB conservative page bound).

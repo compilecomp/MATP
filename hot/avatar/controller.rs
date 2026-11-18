@@ -702,7 +702,7 @@ impl<'a> AvatarController<'a> {
     }
 
     /// CEP:WHAT: Adds one input clause: splits it when the gate passes, otherwise the plain Phase 3 path.
-    /// CEP:WHY: Design 12.2 rule 1 with the Spec 12 section 7 degradation policy: the original record is created (Input derivation, never pushed to passive - inert by construction) so the components' AvatarSplit derivations cite it; each component is restandardized to its own dense namespace, canonicalized, interned (sharing assertion variables across splits), and its assertion literal joins the split's disjunction a1 or ... or an (a problem clause - permanent, never registry-reduced); table-full and word-full degradations keep the clause whole (sound).
+    /// CEP:WHY: Design 12.2 rule 1 with the Spec 12 section 7 degradation policy: the original record is created (Input derivation, never pushed to passive - inert by construction) so the components' AvatarSplit derivations cite it; each component is restandardized to its own dense namespace, canonicalized, interned (sharing assertion variables across splits), and its assertion literal joins the split's disjunction a1 or ... or an (a problem clause - permanent, never registry-reduced); table-full and word-full degradations keep the clause whole (sound); under the set-of-support option a conjecture seed must enter through add_input_clause_supported (CEP-1035: the seed rule and flag ride the original record, and the components inherit the mark).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: propagates ControllerError on structural failures; degradation is NOT a failure (counted in stats.unsplit).
     /// CEP:ASSUMES: literal atoms were interned by the context's term store; the caller standardized the clause's variables densely; the space and the controller share one arena.
@@ -716,16 +716,64 @@ impl<'a> AvatarController<'a> {
         options: &SearchOptions,
         literals: &[Literal],
     ) -> Result<AddOutcome, ControllerError> {
+        self.add_input_clause_inner(space, context, options, literals, false)
+    }
+
+    /// CEP:WHAT: Adds one set-of-support seed input clause (CEP-1035): the supported variant of add_input_clause.
+    /// CEP:WHY: Design 15.2 row 5 under AVATAR: the conjecture's negation is the supported seed; when it splits, the inert original record carries the NegatedConjecture rule and the kClauseFlagSos mark (the kernel's NegatedConjecture arm accepts the parentless introduction exactly like Input, Spec 19 section 5), and every component inherits the mark through its AvatarSplit parent - without this path a split conjecture would silently lose its supported status and the SOS restriction would exclude it from selection; the unsplit degradation stores through add_theory_clause(NegatedConjecture) so the rule survives.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: as add_input_clause.
+    /// CEP:ASSUMES: as add_input_clause; the caller passes true only for conjecture-derived clauses.
+    /// CEP:COST: as add_input_clause.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::sos_split_conjecture_stays_supported.
+    /// CEP:SECURITY: none.
+    pub fn add_input_clause_supported(
+        &self,
+        space: &SearchSpace<'_>,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+    ) -> Result<AddOutcome, ControllerError> {
+        self.add_input_clause_inner(space, context, options, literals, true)
+    }
+
+    // CEP:WHAT: The shared body of add_input_clause and add_input_clause_supported.
+    // CEP:WHY: The supported variant differs only in the seed rule (NegatedConjecture vs Input), the flag mark, and the degradation path; one body keeps the split discipline identical (CEP&CC Law 5).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: as add_input_clause.
+    // CEP:ASSUMES: as add_input_clause.
+    // CEP:COST: as add_input_clause.
+    // CEP:EVIDENCE: as add_input_clause.
+    // CEP:SECURITY: as add_input_clause.
+    fn add_input_clause_inner(
+        &self,
+        space: &SearchSpace<'_>,
+        context: &InferenceContext<'_>,
+        options: &SearchOptions,
+        literals: &[Literal],
+        supported: bool,
+    ) -> Result<AddOutcome, ControllerError> {
         if literals.len() > kMaxClauseLiterals as usize {
             return Err(ControllerError::Search(crate::search::SearchError::Clause(
                 ClauseError::TooManyLiterals,
             )));
         }
+        let seed_rule = if supported {
+            InferenceRule::NegatedConjecture
+        } else {
+            InferenceRule::Input
+        };
         match try_split_with(context.terms, literals, self.min_component_size) {
             SplitDecision::Unsplittable => {
-                space
-                    .add_input_clause(context, options, literals)
-                    .map_err(ControllerError::Search)?;
+                if supported {
+                    space
+                        .add_theory_clause(context, options, literals, seed_rule)
+                        .map_err(ControllerError::Search)?;
+                } else {
+                    space
+                        .add_input_clause(context, options, literals)
+                        .map_err(ControllerError::Search)?;
+                }
                 self.stats.unsplit.set(self.stats.unsplit.get() + 1);
                 Ok(AddOutcome::Added(0))
             }
@@ -736,11 +784,13 @@ impl<'a> AvatarController<'a> {
                 for (slot, literal) in staged.iter_mut().zip(literals.iter()) {
                     *slot = *literal;
                 }
-                // The original record: Input derivation, inert (never pushed to passive);
-                // the store computes the record's weight at creation (design 5.3).
+                // The original record: seed-rule derivation, inert (never pushed to
+                // passive); the store computes the record's weight at creation
+                // (design 5.3). A supported seed carries NegatedConjecture so the
+                // mark and the proof presentation survive the split (CEP-1035).
                 let age = space.next_input_age();
                 let original_derivation = DerivationStep {
-                    rule: InferenceRule::Input,
+                    rule: seed_rule,
                     parent_count: 0,
                     reserved: 0,
                     parents: [kInvalidClauseId; 4],
@@ -755,6 +805,15 @@ impl<'a> AvatarController<'a> {
                         original_derivation,
                     )
                     .map_err(wrap_clause)?;
+                space
+                    .mark_sos(
+                        options,
+                        original,
+                        seed_rule,
+                        &original_derivation.parents,
+                        0,
+                    )
+                    .map_err(ControllerError::Search)?;
                 let original_id = space.store.clause(original).map_err(wrap_clause)?.id.0;
                 // Intern every component; collect assertion literals.
                 let mut assertion: [SatLiteral; kMaxSplitComponents] =
@@ -807,10 +866,17 @@ impl<'a> AvatarController<'a> {
                         | Err(AvatarError::WordBudgetExceeded) => {
                             // Sound degradation (Spec 12 section 7): keep the clause whole.
                             // The original record stays as the inert proof anchor; the plain
-                            // clause joins the search through the standard path.
-                            space
-                                .add_input_clause(context, options, literals)
-                                .map_err(ControllerError::Search)?;
+                            // clause joins the search through the standard path (with the
+                            // seed rule preserved for supported inputs, CEP-1035).
+                            if supported {
+                                space
+                                    .add_theory_clause(context, options, literals, seed_rule)
+                                    .map_err(ControllerError::Search)?;
+                            } else {
+                                space
+                                    .add_input_clause(context, options, literals)
+                                    .map_err(ControllerError::Search)?;
+                            }
                             self.stats.unsplit.set(self.stats.unsplit.get() + 1);
                             return Ok(AddOutcome::Added(0));
                         }
@@ -880,17 +946,22 @@ impl<'a> AvatarController<'a> {
                 .components
                 .source_clause(slot)
                 .ok_or(ControllerError::Avatar(AvatarError::InvalidClause))?;
-            let derivation = DerivationStep {
-                rule: InferenceRule::AvatarSplit,
-                parent_count: 1,
-                reserved: 0,
-                parents: [
+            let (rule, parents, parent_count) = (
+                InferenceRule::AvatarSplit,
+                [
                     source_id,
                     kInvalidClauseId,
                     kInvalidClauseId,
                     kInvalidClauseId,
                 ],
-                substitution: kInvalidClauseOffset,
+                1u8,
+            );
+            let derivation = DerivationStep {
+                rule,
+                parent_count,
+                reserved: 0,
+                parents,
+                substitution: kInvalidSubstitutionOffset,
             };
             compute_selection_flags(context, options.selection, &mut component_literals[..count])
                 .map_err(wrap_inference)?;
@@ -901,14 +972,27 @@ impl<'a> AvatarController<'a> {
                 .store
                 .new_clause(context.terms, &component_literals[..count], age, derivation)
                 .map_err(wrap_clause)?;
+            // The component inherits the source clause's set-of-support mark
+            // through its AvatarSplit parent (CEP-1035): a split conjecture's
+            // components stay supported and selectable.
+            space
+                .mark_sos(options, ptr, rule, &parents, parent_count)
+                .map_err(ControllerError::Search)?;
             space
                 .store
                 .set_split_level(ptr, (slot + 1) as u16)
                 .map_err(wrap_clause)?;
             let record = space.store.clause(ptr).map_err(wrap_clause)?;
             space
-                .passive
-                .push(record.id.0, ptr.as_u32(), age, weight)
+                .push_passive(
+                    context,
+                    options,
+                    record.id.0,
+                    ptr,
+                    age,
+                    weight,
+                    &component_literals[..count],
+                )
                 .map_err(wrap_passive)?;
             self.components
                 .set_materialized(slot, ptr.as_u32())
@@ -1126,6 +1210,7 @@ impl<'a> AvatarController<'a> {
         &self,
         space: &SearchSpace<'_>,
         context: &InferenceContext<'_>,
+        options: &SearchOptions,
     ) -> Result<(), ControllerError> {
         if self.learning_symbol_count == 0 {
             return Ok(());
@@ -1234,11 +1319,30 @@ impl<'a> AvatarController<'a> {
                 .store
                 .new_clause(context.terms, &literals[..count], age, derivation)
                 .map_err(wrap_clause)?;
+            // A parentless SatLearn transfer is not a conjecture descendant, so
+            // the SOS mark never lands here (CEP-1035); the push goes through the
+            // strategy's path so the conjecture-distance ranking stays consistent.
+            space
+                .mark_sos(
+                    options,
+                    ptr,
+                    InferenceRule::SatLearn,
+                    &derivation.parents,
+                    0,
+                )
+                .map_err(ControllerError::Search)?;
             let record = space.store.clause(ptr).map_err(wrap_clause)?;
             let weight = SelectionWeight::of(context.terms, context.symbols, &literals[..count]);
             space
-                .passive
-                .push(record.id.0, ptr.as_u32(), age, weight)
+                .push_passive(
+                    context,
+                    options,
+                    record.id.0,
+                    ptr,
+                    age,
+                    weight,
+                    &literals[..count],
+                )
                 .map_err(wrap_passive)?;
             self.stats
                 .learning_transfers
@@ -1318,7 +1422,7 @@ pub fn saturate_with_avatar<F: Fn(u64) -> bool>(
         SolveResult::Satisfiable => {
             // Spec 18 section 4: transfer the abstraction's new learnts into
             // FOL lemmas after every unconditional solve, before activation.
-            controller.transfer_learnts(space, context)?;
+            controller.transfer_learnts(space, context, options)?;
             controller.activate_under_model(space, context, options)?;
         }
         SolveResult::Unsatisfiable => {
@@ -1380,7 +1484,7 @@ pub fn saturate_with_avatar<F: Fn(u64) -> bool>(
                         // Spec 18 section 4: transfer after the unconditional
                         // solve; the conflict lemma was staged below when the
                         // ban was added.
-                        controller.transfer_learnts(space, context)?;
+                        controller.transfer_learnts(space, context, options)?;
                         controller.activate_under_model(space, context, options)?;
                         continue;
                     }

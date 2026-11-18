@@ -340,6 +340,15 @@ pub const kClauseFlagSplitComponent: u16 = 4;
 /// CEP:EVIDENCE: reserved for Phase 3.
 /// CEP:SECURITY: none.
 pub const kClauseFlagLocked: u16 = 8;
+/// CEP:WHAT: Bit marking a clause as set-of-support (a conjecture descendant; CEP-1035).
+/// CEP:WHY: Design 15.2 row 5: the set-of-support selection restricts given-clause selection to conjecture descendants; the mark rides the record's flag field (design 5.3) instead of a side table so clause count scales without extra memory; set at creation time by the search layer's derivation scan (rule seeds or a flagged parent).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none.
+/// CEP:ASSUMES: written once at record creation through ClauseStore::set_flag; never toggled afterwards.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{sos_flag_marks_conjecture_seeds, sos_flag_inherits_through_parents}.
+/// CEP:SECURITY: none.
+pub const kClauseFlagSos: u16 = 16;
 
 /// CEP:WHAT: Fixed-layout clause header followed by the literal storage strategy (inline up to kInlineClauseLiterals, arena overflow beyond).
 /// CEP:WHY: Design 5.3 field list; the inline array keeps small clauses in one cache line pair and the overflow pointer keeps the representation general.
@@ -648,6 +657,28 @@ impl<'a> ClauseStore<'a> {
             .array_mut::<Clause>(range)
             .map_err(|_| ClauseError::InvalidPointer)?;
         slot[0].split_level = level;
+        Ok(())
+    }
+
+    /// CEP:WHAT: ORs one flag mask into a stored record's header flags field.
+    /// CEP:WHY: Design 5.3 flags field (CEP-1035): the set-of-support mark is search-layer metadata written once at record creation, exactly like set_split_level; the OR keeps every existing bit (the store never clears search-layer flags), and the write locates the record through the same bounds-checked reader and arena array_mut discipline as set_split_level.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: returns InvalidPointer for unreadable or misaligned offsets.
+    /// CEP:ASSUMES: the record exists; single-threaded store; the mask is one of the kClauseFlag* constants.
+    /// CEP:COST: bounds check plus one load and one store.
+    /// CEP:EVIDENCE: unit/hot/strategy_selection_test.rs::{sos_flag_marks_conjecture_seeds, sos_flag_inherits_through_parents}.
+    /// CEP:SECURITY: bounds-checked; the write touches exactly the 2-byte flags field inside the record header.
+    pub fn set_flag(&self, ptr: ClausePtr, mask: u16) -> Result<(), ClauseError> {
+        let offset = ptr.as_u32();
+        let end = offset
+            .checked_add(core::mem::size_of::<Clause>() as u32)
+            .ok_or(ClauseError::InvalidPointer)?;
+        let range = ArenaRange::new(offset, end).map_err(|_| ClauseError::InvalidPointer)?;
+        let slot = self
+            .arena
+            .array_mut::<Clause>(range)
+            .map_err(|_| ClauseError::InvalidPointer)?;
+        slot[0].flags |= mask;
         Ok(())
     }
 

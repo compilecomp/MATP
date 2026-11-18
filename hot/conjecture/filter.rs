@@ -244,6 +244,12 @@ pub fn refute_and_maybe_import(
         selection: main_options.selection,
         inference_budget: budgets.refute_inferences,
         conjecture: false,
+        // The mini refutation space must select EVERY clause (the refutation
+        // needs the candidate negation and the axioms to collide), so the
+        // main search's set-of-support restriction never propagates here
+        // (CEP-1035: the restriction is a main-loop selection policy, not a
+        // soundness mechanism of the filter, Spec 16 section 2).
+        set_of_support: false,
     };
     let mini = match SearchSpace::new_with(
         main.arena,

@@ -368,7 +368,7 @@ fn transfer_budget_enforced() {
     }
     fixture
         .controller
-        .transfer_learnts(&fixture.space, &context)
+        .transfer_learnts(&fixture.space, &context, &fixture.options)
         .expect("transfer");
     assert_eq!(fixture.controller.stats.learning_transfers.get(), 1);
     assert_eq!(fixture.controller.stats.learning_skipped.get(), 1);
@@ -376,7 +376,7 @@ fn transfer_budget_enforced() {
     // budget is still exhausted, so the deferral is counted again.
     fixture
         .controller
-        .transfer_learnts(&fixture.space, &context)
+        .transfer_learnts(&fixture.space, &context, &fixture.options)
         .expect("transfer");
     assert_eq!(fixture.controller.stats.learning_transfers.get(), 1);
 }
@@ -432,7 +432,7 @@ fn transfer_policy_filters() {
     );
     fixture
         .controller
-        .transfer_learnts(&fixture.space, &context)
+        .transfer_learnts(&fixture.space, &context, &fixture.options)
         .expect("transfer");
     assert_eq!(fixture.controller.stats.learning_transfers.get(), 1);
     assert_eq!(fixture.controller.stats.learning_skipped.get(), 3);
@@ -464,7 +464,7 @@ fn transfer_learnts_enter_passive() {
     );
     fixture
         .controller
-        .transfer_learnts(&fixture.space, &context)
+        .transfer_learnts(&fixture.space, &context, &fixture.options)
         .expect("transfer");
     assert_eq!(fixture.controller.stats.learning_transfers.get(), 1);
     assert_eq!(fixture.space.passive.len(), before + 1);

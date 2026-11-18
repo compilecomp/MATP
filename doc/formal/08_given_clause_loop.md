@@ -8,7 +8,7 @@ This document is the normative reference for `hot/search/{passive,active,given_c
 
 ### 1. The clause database
 
-**Passive set.** A binary min-heap over (priority, clause_id) where priority is fixed at push: `age * kSelectionRatioScale / max(weight, 1)` for the default AgeWeightRatio strategy, `weight` for WeightOnly, `age` for AgeOnly (design 15.2). The clause-id tiebreak makes the order total and deterministic.
+**Passive set.** A binary min-heap over (priority, clause_id) where priority is fixed at push: `age * kSelectionRatioScale / max(weight, 1)` for the default AgeWeightRatio strategy, `weight` for WeightOnly, `age` for AgeOnly, and the conjecture distance for ConjectureDistance (design 15.2 row 2, CEP-1035). The clause-id tiebreak makes the order total and deterministic.
 
 **Active set.** A dense slot array (swap-remove on deletion) plus three indexes: the atom discrimination tree (every literal of every active clause, payload = clause offset + literal index), the rule tree (left sides of positive equations, payload + unit flag), and the feature-vector index (design 8.4/9). Insertion happens when the clause is selected as given (design 15.1 step 2); deletion by backward subsumption removes the tree payloads and swaps the last slot into the hole.
 
@@ -28,7 +28,7 @@ Subsumption is the matching-based decision of Spec 07 section 8. Forward subsump
 
 ### 4. Selection fairness
 
-**Theorem (fairness of the strategies).** AgeOnly is unconditionally fair (every clause is selected after finitely many others). AgeWeightRatio is fair under bounded weight growth: a clause's priority is fixed at birth, so only clauses born with smaller priority can precede it; weights are positive and bounded by the symbol-weight sums, so under bounded weight growth only finitely many clauses precede any given one. WeightOnly is not fair in isolation (documented: heavy clauses may starve; the inference and time budgets bound the run regardless).
+**Theorem (fairness of the strategies).** AgeOnly is unconditionally fair (every clause is selected after finitely many others). AgeWeightRatio is fair under bounded weight growth: a clause's priority is fixed at birth, so only clauses born with smaller priority can precede it; weights are positive and bounded by the symbol-weight sums, so under bounded weight growth only finitely many clauses precede any given one. WeightOnly is not fair in isolation (documented: heavy clauses may starve; the inference and time budgets bound the run regardless). ConjectureDistance (CEP-1035) is not fair in isolation for the same reason: the priority is the clause's conjecture distance - the summed symbol weight of the clause's distinct symbols outside the frozen conjecture set (fixed at birth) - and a clause far from the conjecture's vocabulary may starve under the same budget-bounded honesty; with no conjecture set frozen, every distance is 0 and the pop order degenerates to the clause-id tiebreak (birth order, AgeOnly-like fair).
 
 **Fairness implies completeness**: with a fair strategy and the ordered calculus (Spec 07), if the empty clause is derivable the loop derives it (saturation framework, BG 2001 §4); budget exhaustion pre-empts this guarantee with an honest GaveUp.
 
@@ -48,7 +48,7 @@ The given-clause loop (`hot/search/given_clause.rs::saturate<F: Fn(u64) -> bool>
 
 1. Budget checks: the injected stop callback fires every `kBudgetCheckInterval` iterations (CEP-1005) → GaveUp(Timeout); the inference budget → GaveUp(InferenceBudget); the capacity family — arena or term-table exhaustion surfacing from the rules with honest kinds (CEP-1056), clause-store capacity, active-set capacity — → GaveUp(MemoryBudget), never Err: a bound firing is a legal bounded outcome, and the saturate wrapper converts the family in one place so every propagation site inside the loop is covered.
 2. Pop the given clause (or continue deferred generation). Empty clause → Theorem.
-3. Simplify: tautology deletion, bounded demodulation rounds. A rewritten clause is stored as a new record (records are immutable) and re-queued.
+3. Simplify: tautology deletion, bounded rounds of demodulation, condensation, and subsumption resolution (Spec 07 sections 11-12, CEP-1034). A rewritten clause is stored as a chain of new records (one per simplification step, records immutable) and the chain's last record re-queues.
 4. Forward subsumption discards; backward subsumption removes.
 5. Activate; generate; conclusions (deduplicated, re-standardized, flag-computed) enter the passive set.
 6. Passive empty → Saturated.
@@ -80,7 +80,8 @@ Time per iteration is the generation cost of Spec 07 plus the subsumption scans;
 Depends on:
 
 - `hot/inference/` (Specification 07) for all rule applications inside the generation machine.
-- `hot/search/passive.rs` (`PassiveHeap::priority_of(&self, age: u32, weight: u32) -> u64`, `PassiveHeap::push`) and `hot/search/active.rs` (`ActiveSet::insert`, payload packing `pack_payload(offset: u32, literal_index: u16, unit: bool) -> u64`) for the database of section 1.
+- `hot/search/passive.rs` (`PassiveHeap::priority_of(&self, age: u32, weight: u32) -> u64`, `PassiveHeap::priority_of_distance(&self, distance: u32) -> u64`, `PassiveHeap::push`, `PassiveHeap::push_with_distance`) and `hot/search/active.rs` (`ActiveSet::insert`, payload packing `pack_payload(offset: u32, literal_index: u16, unit: bool) -> u64`) for the database of section 1; the search space routes every passive push through one branch point (`SearchSpace::push_passive`), so the conjecture-distance strategy computes its weight exactly once per clause and the other strategies gain nothing (Law 1).
+- `config/strategy.rs` (CEP-1035) for the named presets: the tag vocabulary is pinned against the hot enums by `unit/hot/strategy_selection_test.rs::preset_tags_match_hot_enums`, and `SearchOptions::from_preset` is the single translation point.
 - `hot/index/feature_vector.rs` (`FeatureVectorIndex::may_subsume(&self, candidate: FeatureVector, target: FeatureVector) -> bool`) for the forward/backward subsumption prefilter.
 - `config/limits.rs` (`kMaxInferencesPerClause`, `kBudgetCheckInterval`, `kFeatureVectorSlots`, `kSelectionRatioScale`) for the budgets and strategy constants.
 
@@ -91,9 +92,16 @@ Depended on by:
 - `hot/conjecture/filter.rs`, which runs a bounded instance of the same loop as the mini refutation space (Specification 16).
 - `hot/induction/` and `hot/search/given_clause.rs::saturate_probe_forward`, the probe entry used by the induction and conjecture harnesses.
 
+## 7. The set-of-support selection restriction (design 15.2 row 5, CEP-1035) and the conjecture-distance weight
+
+**Set of support (SOS).** With `SearchOptions::set_of_support` on, only conjecture descendants become given clauses: a clause is *supported* iff its derivation rule is NegatedConjecture or ConjectureNegation (the seeds) or some derivation parent carries the mark (the kClauseFlagSos record flag, written once at creation through the sanctioned mutator). A popped non-supported clause is simplified, subsumption-checked, and ACTIVATED (it serves as an inference partner for every later given clause) but starts no generation - so every inference involves at least one supported clause, the classical set-of-support strategy (Wos, Robinson & Carson 1965).
+
+**Theorem (SOS completeness position).** The restriction preserves refutational completeness when the non-supported clause set is satisfiable: no inference between two non-supported clauses is ever generated, so a model of the non-supported set extends to a model of every clause the saturated search derives. *Proof sketch:* every derived clause descends (through the recorded derivations) from at least one supported premise; under the model of the non-supported set, the supported premises' refutations cannot close without involving a supported clause derived against the model. ∎ The driver's contract: mark the conjecture's negation with the NegatedConjecture rule (or ConjectureNegation); with NO marked clause the loop activates everything and saturates without generation (the honest empty-support behavior, unit-pinned). Under AVATAR, supported seeds enter through the controller's supported-add path so the split's inert original record carries the seed rule and the mark, and the components inherit it through their AvatarSplit parent.
+
+**Conjecture distance.** `distance(C) = Σ_{s distinct symbol of C, s ∉ conjecture set} symbol_weight(s)` (variables contribute nothing; the equality pseudo-head contributes its arguments), computed once at push against the frozen sorted conjecture symbol set (`SearchSpace::set_conjecture_symbols`) and fixed at birth like every priority; the distinct-symbol collection truncates at kConjectureDistanceSymbols (documented degradation that only lowers the distance deterministically).
+
 ## Known Limitations
 
-- WeightOnly selection is not fair in isolation (section 4); fairness-dependent completeness claims require AgeOnly or bounded-weight AgeWeightRatio.
+- WeightOnly and ConjectureDistance selection are not fair in isolation (section 4); fairness-dependent completeness claims require AgeOnly or bounded-weight AgeWeightRatio, and SOS claims additionally require the non-supported set's satisfiability (section 7).
 - Candidate retrieval scans the active array with prefilters; indexed retrieval is open under ticket CEP-1027 and the remaining index types under CEP-1029.
-- Conjecture-distance and set-of-support strategies and the config/strategy.rs module of design 15.2 are not implemented (ticket CEP-1035); the three deterministic strategies of section 1 are delivered.
 - Term-bound conclusions are dropped and counted (CEP-1050), so the dropped-candidate work is spent and never retried within the same given clause; a family whose members all exceed the caps silently shrinks the saturation closure (the honest accounting is in `stats.dropped`). The simplification path's demodulation materialization failure remains a loud structural error (Spec 07 Known Limitations).

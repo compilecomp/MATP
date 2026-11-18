@@ -1,8 +1,8 @@
-# Formal Specification 07: The Inference Rules: Resolution, Factoring, Superposition, Equality Resolution and Factoring, Demodulation, Subsumption
+# Formal Specification 07: The Inference Rules: Resolution, Factoring, Superposition, Equality Resolution and Factoring, Demodulation, Subsumption, Subsumption Resolution and Condensation
 
 ## Abstract
 
-This document is the normative reference for `hot/inference/{resolution,factoring,superposition,demodulation,subsumption,selection,builder}.rs`, cited by their `CEP:HPC-PASS-LEGALITY` fields (design 10.1/10.2; design 26 build order "Superposition + resolution + factoring"). It defines the ordered resolution calculus with equality (binary resolution, factoring, equality factoring, superposition, equality resolution), the simplification rules (demodulation, subsumption, tautology detection, duplicate removal), their soundness theorems, and the conclusion-construction algorithm. Inputs are premise clauses with selection flags from the active set; outputs are `GeneratedClause` conclusions over the shared term store, each sound by the theorems below. References: Robinson 1965; Bachmair & Ganzinger 1994/2001; Nieuwenhuis & Rubio 2001; Plotkin 1972; Formal Specs 02 (substitutions) and 03 (orderings).
+This document is the normative reference for `hot/inference/{resolution,factoring,superposition,demodulation,subsumption,selection,builder}.rs`, cited by their `CEP:HPC-PASS-LEGALITY` fields (design 10.1/10.2; design 26 build order "Superposition + resolution + factoring"). It defines the ordered resolution calculus with equality (binary resolution, factoring, equality factoring, superposition, equality resolution), the simplification rules (demodulation, subsumption, tautology detection, duplicate removal), the strengthening simplifications subsumption resolution (Riazanov & Voronkov 2003; sections 11) and condensation (section 12, CEP-1034), their soundness theorems, and the conclusion-construction algorithm. Inputs are premise clauses with selection flags from the active set; outputs are `GeneratedClause` conclusions over the shared term store, each sound by the theorems below. References: Robinson 1965; Bachmair & Ganzinger 1994/2001; Nieuwenhuis & Rubio 2001; Plotkin 1972; Formal Specs 02 (substitutions) and 03 (orderings).
 
 ## Formal Definitions
 
@@ -76,6 +76,22 @@ A clause is a tautology iff it contains two literals with pointer-equal atoms an
 
 Stored clauses are deduplicated at creation (design 7.2 stage 10): a disjunction with a repeated literal is logically identical, and duplicates would make the duplicated literal non-strictly-maximal (blocking both resolution on it and the factoring that would merge it). Dedup is part of clause normalization in the search layer.
 
+### 11. Subsumption resolution (Riazanov & Voronkov 2003; CEP-1034)
+
+**Rule.** Clauses S (side premise) and M (main premise) admit subsumption resolution SR iff there is a substitution σ, a non-empty set of literals S′ ⊆ S, and a literal m′ ∈ M such that σ(S′) = {¬m′} and σ(S \ S′) ⊆ M \ {m′}, where every σ-image equals its target literal EXACTLY (one-directional matching: σ instantiates only the side's variables; this is Definition 2 of Coutelier, Just, Suda et al., "SAT Solving for Variants of First-Order Subsumption", arXiv:2412.16058, restating RV03 verbatim). The conclusion replaces M by M \ {m′}.
+
+**Theorem (soundness).** S ∪ {M} ⊨ M \ {m′}. *Proof.* Let I ⊨ S ∪ {M} and suppose I ⊭ M \ {m′}: there is a valuation ν with every literal of M \ {m′} false at ν; M holds at ν, so m′ is true at ν. Every literal of σ(S) is false at ν: for s ∈ S′, σ(s) = ¬m′ is false at ν (m′ true); for s ∈ S \ S′, σ(s) is exactly a member of M \ {m′}, false at ν by assumption. Hence σ(S) is false at ν, so I ⊭ S (σ(S) is an instance of S) — contradiction. ∎ (The exact-match semantics is what makes the proof work: instance-of witnesses would not compose with the falsifying valuation.) The replacement preserves refutational completeness: M \ {m′} ⊨ M (subclause) and S ∪ {M} ⊨ M \ {m′}, so the logical force of the set is unchanged.
+
+**Decision procedure.** A backtracking role assignment: every side literal either joins S′ (opposite-polarity match onto m′'s atom, so σ(s) = ¬m′ exactly) or σ-matches an exact member of M \ {m′} of the same polarity (set semantics: targets reusable across positions); success requires S′ non-empty. The search shares one substitution, unwinds its trail per branch (section 4's discipline), and is bounded by kMaxSrMatchAttempts match attempts (`config/limits.rs`) — exhaustion aborts the attempt as a documented decision incompleteness that only misses a simplification, never applies an unsound one; the certified kernel replays with the same bound, so every recorded step verifies. The paper's examples are pinned executably: S4 (fires), S5 (two S′ literals map onto the resolution literal), S6/S7/S8 (rejected). Complexity: NP-complete (arXiv:2412.16058 section 2); the loop's simplify scan runs behind a sound head-symbol prefilter (every side literal σ-equals an exact main literal, so its head occurs in the main premise).
+
+### 12. Condensation (Bachmair & Ganzinger 1994; CEP-1034)
+
+**Rule.** Clause C condenses at literal m′ ∈ C when m′ is a σ-instance of some OTHER literal k ∈ C \ {m′}: there is a substitution σ with m′ = kσ (the kept literal is the pattern, the deleted literal its instance; polarity is preserved). The conclusion replaces C by C \ {m′}. Canonical shape: P(x) ∨ P(f(x)) ⊢ P(x) with σ = {x ↦ f(x)}.
+
+**Theorem (soundness).** C \ {m′} ⊨ C. *Proof.* Every literal of C other than m′ is in C \ {m′}; the deleted literal m′ = kσ for k ∈ C \ {m′}, and any model of C \ {m′} satisfies k universally, hence satisfies its instance kσ = m′. ∎ The replacement is a legal strengthening: a refutation of the strengthened set refutes the original (C \ {m′} ⊨ C), and unsatisfiability is preserved (S₀ ∪ {C} unsat means S₀ ⊨ ¬C, hence S₀ ⊨ ¬(C \ {m′})).
+
+**Decision procedure.** For each candidate m′ (ascending index order), each same-polarity kept literal k ≠ m′ is renamed apart above the clause's variable window (the standardize-apart discipline of section 1 applies to the self-match: matching a clause against its own namespace binds variables to themselves and corrupts the substitution trail) and the instance match runs under the shared substitution; the first licensed m′ wins (deterministic, CEP&CC 38.10). The loop's attempt runs behind a repeated-head prefilter (σ preserves the head, so a repeated head class inside the clause is a necessary condition).
+
 ## Algorithm
 
 Every rule runs inside the shared `InferenceContext` (ordering, term store, substitution, trail) and produces conclusions through one construction path:
@@ -90,7 +106,7 @@ Superposition enumerates into-positions by subterm scan (`subterm_at_public`) ov
 
 ## Invariants
 
-1. Soundness: each rule's conclusion is entailed by its premises (Theorems of sections 4, 5, 6, 7); property-tested exhaustively in `tests/property/inference_property_test.rs`.
+1. Soundness: each rule's conclusion is entailed by its premises (Theorems of sections 4, 5, 6, 7, 11, 12); property-tested exhaustively in `tests/property/inference_property_test.rs`, and the SR/condensation decisions pinned in `tests/unit/hot/subsumption_resolution_test.rs`.
 2. Namespace discipline: `vars(left) + vars(right) <= kMaxVariablesPerClause` is checked loudly before unification; conclusions are re-standardized to dense namespaces (section 1).
 3. Eligibility totality: every generated inference's premises carry flags consistent with the configured selection function (section 3; flags ride along through renaming by the theorems of section 2).
 4. Trail hygiene: every failed inference restores the substitution trail to its entry depth (`restore_trail`, Algorithm step 4), so rule attempts compose without state leakage.
@@ -115,7 +131,7 @@ Depended on by:
 
 ## Known Limitations
 
-- Subsumption resolution (Riazanov 2003) and condensation are not implemented (ticket CEP-1034); subsumption is deletion-only (section 8).
+- Subsumption resolution and condensation are delivered as given-time simplifications (sections 11-12, CEP-1034): the simplify pass runs demodulation, condensation, and subsumption resolution per round and records each step in the simplification chain (Spec 19's per-step replay covers all three); subsumption itself remains deletion-only (section 8). The SR decision is attempt-bounded (section 11), and the loop's SR scan is head-prefiltered rather than feature-vector-filtered (the FV dominance filter is unsound for SR's set-inclusion condition - two side literals may map onto one main literal, the paper's S5 shape).
 - Candidate retrieval scans the active array with head-symbol prefilters instead of indexed retrieval (ticket CEP-1027); the discrimination tree of Spec 04 is maintained and queried by tests but has no loop consumer yet (CEP-1029).
 - The into-equation orientation condition of NR01 is omitted by documented deviation (section 6): soundness is unaffected; some redundant inferences are generated.
 - A generator conclusion whose materialization exceeds `kMaxTermDepth`/`kMaxTermWeight` is dropped and counted (CEP-1050): every rule materialization runs through the trail-restoring helpers (`builder.rs` `restore_trail`/`apply_unwind`/`apply_literal_unwind`), so the pre-unification trail is unwound on every `Err` and the generation scan resumes with a clean substitution; the candidate is counted in `stats.dropped` (Spec 08, the generation machine). The structural catch-all still aborts the search loudly, with the capacity carve-out of Spec 08 (`ArenaFull` converts to `GaveUp(MemoryBudget)`); the simplification path's demodulation materialization failure remains a loud structural error (a bounded rewrite of a stored rule against a stored clause exceeding the caps indicates an inconsistency, not a routine search event). Pinned by `unit/hot/inference_test.rs` (the failing-materialization trail unwind) and `unit/hot/substitution_test.rs::term_bound_errors_not_misclassified`.

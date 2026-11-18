@@ -29,6 +29,8 @@ MAPT is a first-order automated theorem prover with an integrated CDCL SAT solve
 | Unified proof reconstruction (walk, pruning, TSTP writer, replay checker) | complete | `cold/proof_output/tstp.rs` |
 | Clause-id side table (proof walks, ancestry, export scans) | complete | `hot/ir/clause.rs` |
 | Formal specs 12-14 (AVATAR, concurrency, proof reconstruction) | complete | `doc/formal/` |
+| Subsumption resolution + condensation (CEP-1034: RV03 exact-match SR, BG94 per-literal condensation, the simplify-chain extension, the two kernel replay arms) | complete | `hot/inference/subsumption.rs`, `hot/search/given_clause.rs`, `cold/kernel.rs` |
+| Conjecture-distance + set-of-support selection (CEP-1035: the fourth priority strategy and the fifth restriction row of design 15.2, the kClauseFlagSos mark, config/strategy.rs presets) | complete | `hot/search/passive.rs`, `hot/search/given_clause.rs`, `hot/ir/clause.rs`, `config/strategy.rs` |
 
 ## Phase 3 contents (design section 26)
 

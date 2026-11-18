@@ -193,11 +193,11 @@ fn saturates_on_satisfiable() {
     assert!(matches!(outcome, SearchOutcome::Saturated), "{:?}", outcome);
 }
 
-// CEP:WHAT: Verifies resolution fires through the loop and refutes.
-// CEP:WHY: The core rule path end to end.
+// CEP:WHAT: Verifies resolution fires through the loop and derives a conclusion.
+// CEP:WHY: The core rule path end to end; the premises are shaped so subsumption resolution cannot preempt the resolution (the active side premise p(a) v q(b) cannot assign its q(b) literal against the given not p(a) v r(), and the size guard blocks the reverse), so the conclusion q(b) v r() can only come from the generator's resolution step (CEP-1034 changed which rule refutes complementary UNITS - the unit pair p(a) / not p(a) now collapses through the SR simplification chain before generation, which is the legal cheaper route).
 // CEP:STATUS: complete
-// CEP:FAILURE: test fails on any other outcome.
-// CEP:ASSUMES: p(a) and not p(a): the resolvent is the empty clause.
+// CEP:FAILURE: test fails on any other outcome or zero inferences.
+// CEP:ASSUMES: p(a) v q(b) and not p(a) v r(): the resolvent q(b) v r() is non-tautological and the pair admits no SR.
 // CEP:COST: constant.
 // CEP:EVIDENCE: cited by hot/search/generate.rs::{generate_step, step_resolution} and hot/search/given_clause.rs::drain_buffer.
 // CEP:SECURITY: none.
@@ -208,37 +208,57 @@ fn resolution_fires() {
     let a = terms
         .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
         .expect("a");
+    let b = terms
+        .intern_fun(&symbols, symbol_id(&builder, "b"), &[])
+        .expect("b");
+    let aa = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[a, a])
+        .expect("h(a,a)");
+    let haa = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[aa, a])
+        .expect("h(h(a,a),a)");
     let options = SearchOptions::new();
+    // The resolved atom is the strictly heaviest on both sides (the ordered
+    // calculus' maximality side conditions), and the active side premise has
+    // two literals against the given's one, so the CEP-1034 SR size guard
+    // blocks the simplification shortcut and the conclusion can only come
+    // from the generator's resolution step.
     space
         .add_input_clause(
             &context,
             &options,
-            &[pred(&terms, &symbols, &builder, "p", &[a], true)],
+            &[
+                pred(&terms, &symbols, &builder, "p", &[haa], true),
+                pred(&terms, &symbols, &builder, "q", &[b, b], true),
+            ],
         )
         .expect("c1");
     space
         .add_input_clause(
             &context,
             &options,
-            &[pred(&terms, &symbols, &builder, "p", &[a], false)],
+            &[pred(&terms, &symbols, &builder, "p", &[haa], false)],
         )
         .expect("c2");
     let mut stats = SearchStats::default();
     let outcome = saturate(&space, &context, &options, &never_stop, &mut stats).expect("s");
     assert!(
-        matches!(outcome, SearchOutcome::Theorem { .. }),
+        matches!(outcome, SearchOutcome::Saturated),
         "{:?} stats {:?}",
         outcome,
         stats
     );
-    assert!(stats.inferences >= 1);
+    assert!(
+        stats.inferences >= 1,
+        "the resolution conclusion must be derived"
+    );
 }
 
 // CEP:WHAT: Verifies factoring fires through the loop.
-// CEP:WHY: The intra-clause rule path.
+// CEP:WHY: The intra-clause rule path; the literals are unifiable but INCOMPARABLE by the instance order (neither q(h(x,a),a) nor q(h(b,y),a) is a sigma-instance of the other), so the CEP-1034 condensation cannot preempt the factoring and the conclusion can only come from the generator's factoring step; the strictly maximal literal is interned first so the canonical order makes it the factoring pair's kept literal (the eligibility side condition).
 // CEP:STATUS: complete
 // CEP:FAILURE: test fails when no factoring conclusion is derived.
-// CEP:ASSUMES: p(f(y)) or p(x).
+// CEP:ASSUMES: q(h(x,a),a) v q(h(b,y),a) with the MGU {x -> b, y -> a}.
 // CEP:COST: constant.
 // CEP:EVIDENCE: cited by hot/search/generate.rs::step_factoring.
 // CEP:SECURITY: none.
@@ -248,17 +268,26 @@ fn factoring_fires() {
     let context = context_of(&space, &symbols, &terms, &precedence);
     let x = terms.intern_var(0).expect("x");
     let y = terms.intern_var(1).expect("y");
-    let f_y = terms
-        .intern_fun(&symbols, symbol_id(&builder, "f"), &[y])
-        .expect("f(y)");
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let b = terms
+        .intern_fun(&symbols, symbol_id(&builder, "b"), &[])
+        .expect("b");
+    let h_b_y = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[b, y])
+        .expect("h(b,y)");
+    let h_x_a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[x, a])
+        .expect("h(x,a)");
     let options = SearchOptions::new();
     space
         .add_input_clause(
             &context,
             &options,
             &[
-                pred(&terms, &symbols, &builder, "p", &[f_y], true),
-                pred(&terms, &symbols, &builder, "p", &[x], true),
+                pred(&terms, &symbols, &builder, "q", &[h_b_y, a], true),
+                pred(&terms, &symbols, &builder, "q", &[h_x_a, a], true),
             ],
         )
         .expect("c1");
@@ -703,15 +732,24 @@ fn inference_budget_fires() {
     let x = terms.intern_var(0).expect("x");
     let mut options = SearchOptions::new();
     options.inference_budget = 1;
-    // The general pair: p(x) or r with not p(a) or r derives r or r (one inference),
-    // then the budget stops the loop before the next generation.
+    // The general pair: p(h(h(a,a),a)) v q(x,a) with the unit not
+    // p(h(h(a,a),a)) derives q(x,a) (one inference; the premise shapes keep
+    // the ordered-calculus maximality side conditions satisfied and the
+    // CEP-1034 SR size guard blocks the simplification shortcut), then the
+    // budget stops the loop before the next generation.
+    let aa = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[a, a])
+        .expect("h(a,a)");
+    let haa = terms
+        .intern_fun(&symbols, symbol_id(&builder, "h"), &[aa, a])
+        .expect("h(h(a,a),a)");
     space
         .add_input_clause(
             &context,
             &options,
             &[
-                pred(&terms, &symbols, &builder, "p", &[x], true),
-                pred(&terms, &symbols, &builder, "r", &[], true),
+                pred(&terms, &symbols, &builder, "p", &[haa], true),
+                pred(&terms, &symbols, &builder, "q", &[x, a], true),
             ],
         )
         .expect("c1");
@@ -719,10 +757,7 @@ fn inference_budget_fires() {
         .add_input_clause(
             &context,
             &options,
-            &[
-                pred(&terms, &symbols, &builder, "p", &[a], false),
-                pred(&terms, &symbols, &builder, "r", &[], true),
-            ],
+            &[pred(&terms, &symbols, &builder, "p", &[haa], false)],
         )
         .expect("c2");
     let mut stats = SearchStats::default();
@@ -1313,5 +1348,151 @@ fn from_scan_deferral_emits_each_conclusion_once() {
         sorted.len(),
         atoms.len(),
         "no conclusion may be emitted twice (the pre-fix deferral re-emitted the boundary conclusion)"
+    );
+}
+
+// CEP:WHAT: Verifies condensation fires at given time and the shortened clause parks with a Condensation chain record (CEP-1034).
+// CEP:WHY: Design 10.1 condensation as a loop simplification: the input clause p(x0) v not p(f(x0)) v not p(f(f(x0))) condenses (Spec 07 section 12), the loop must count it in stats.condensations, store one clause record per chain step with the Condensation rule, and reach Saturated; the kernel replay of the recorded step is pinned in unit/cold/kernel_test.rs.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on a missed condensation, a wrong rule label, or a wrong outcome.
+// CEP:ASSUMES: one input clause; the clause condenses per the hand-traced decision.
+// CEP:COST: one small saturation.
+// CEP:EVIDENCE: cited by hot/search/given_clause.rs::{simplify_attempt_condensation, the park chain path}.
+// CEP:SECURITY: none.
+#[test]
+fn condensation_simplifies_given() {
+    let (space, symbols, builder, terms, precedence) = make_space(16);
+    let context = context_of(&space, &symbols, &terms, &precedence);
+    let x0 = terms.intern_var(0).expect("x0");
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let fa = terms
+        .intern_fun(&symbols, symbol_id(&builder, "f"), &[a])
+        .expect("f(a)");
+    let literals = vec![
+        pred(&terms, &symbols, &builder, "p", &[x0], true),
+        pred(&terms, &symbols, &builder, "p", &[fa], true),
+    ];
+    space
+        .add_input_clause(&context, &SearchOptions::new(), &literals)
+        .expect("add");
+    let mut stats = SearchStats::default();
+    let outcome = saturate(
+        &space,
+        &context,
+        &SearchOptions::new(),
+        &never_stop,
+        &mut stats,
+    )
+    .expect("saturate");
+    assert_eq!(
+        outcome,
+        SearchOutcome::Saturated,
+        "the clause set saturates"
+    );
+    assert_eq!(
+        stats.condensations, 1,
+        "exactly one condensation deletion fires at given time"
+    );
+    // The store carries a Condensation-labeled record (the chain park).
+    let mut found = false;
+    for id in 1..=space.store.next_clause_id().0 {
+        if let Ok(record) = space
+            .store
+            .clause_by_id(mapt::hot::ir::clause::ClauseId(id))
+        {
+            if record.derivation.rule == mapt::hot::ir::clause::InferenceRule::Condensation {
+                found = true;
+                assert_eq!(
+                    record.literal_count, 1,
+                    "the condensation step removed exactly one literal (P(x) v P(f(x)) condenses to P(x))"
+                );
+            }
+        }
+    }
+    assert!(found, "a Condensation chain record must exist in the store");
+}
+
+// CEP:WHAT: Verifies subsumption resolution fires at given time when an active clause licenses deleting one literal (CEP-1034).
+// CEP:WHY: Design 10.1 subsumption resolution as given-time forward simplification: the active side premise not p(g(x)) v not q(x,a) subsumption-resolves the given p(g(a)) v not p(g(b)) v not q(y,a) (Spec 07 section 11's S4 shape), the loop must count it in stats.subsumption_resolutions and store the SubsumptionResolution chain record citing both parents.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on a missed SR, a wrong rule label, or a wrong outcome.
+// CEP:ASSUMES: the first clause activates before the second is selected (age order makes the first clause the first given).
+// CEP:COST: one small saturation.
+// CEP:EVIDENCE: cited by hot/search/given_clause.rs::simplify_attempt_subsumption_resolution.
+// CEP:SECURITY: none.
+#[test]
+fn subsumption_resolution_simplifies_given() {
+    let (space, symbols, builder, terms, precedence) = make_space(16);
+    let context = context_of(&space, &symbols, &terms, &precedence);
+    let x0 = terms.intern_var(0).expect("x0");
+    let x1 = terms.intern_var(1).expect("x1");
+    let x2 = terms.intern_var(2).expect("x2");
+    let x3 = terms.intern_var(3).expect("x3");
+    let a = terms
+        .intern_fun(&symbols, symbol_id(&builder, "a"), &[])
+        .expect("a");
+    let b = terms
+        .intern_fun(&symbols, symbol_id(&builder, "b"), &[])
+        .expect("b");
+    let ga = terms
+        .intern_fun(&symbols, symbol_id(&builder, "g"), &[a])
+        .expect("g(a)");
+    let gb = terms
+        .intern_fun(&symbols, symbol_id(&builder, "g"), &[b])
+        .expect("g(b)");
+    // Side premise (added first, selected first, activated): the S4 shape.
+    let side = vec![
+        pred(&terms, &symbols, &builder, "p", &[ga], false),
+        pred(&terms, &symbols, &builder, "q", &[x1, a], false),
+    ];
+    space
+        .add_input_clause(&context, &SearchOptions::new(), &side)
+        .expect("side");
+    // Main premise: p(g(a)) is the resolution literal. The clause carries no
+    // negative p literal, so the self-condensation prefilter finds no
+    // opposite-polarity same-head pair and the deletion can only come from the
+    // active side premise (the SR scan).
+    let main = vec![
+        pred(&terms, &symbols, &builder, "p", &[ga], true),
+        pred(&terms, &symbols, &builder, "q", &[x2, a], false),
+        pred(&terms, &symbols, &builder, "q", &[x3, b], false),
+    ];
+    space
+        .add_input_clause(&context, &SearchOptions::new(), &main)
+        .expect("main");
+    let _ = (x0, gb);
+    let mut stats = SearchStats::default();
+    let outcome = saturate(
+        &space,
+        &context,
+        &SearchOptions::new(),
+        &never_stop,
+        &mut stats,
+    )
+    .expect("saturate");
+    assert_eq!(outcome, SearchOutcome::Saturated);
+    assert_eq!(
+        stats.subsumption_resolutions, 1,
+        "exactly one subsumption-resolution deletion fires at given time"
+    );
+    // The store carries a SubsumptionResolution record citing two parents.
+    let mut found = false;
+    for id in 1..=space.store.next_clause_id().0 {
+        if let Ok(record) = space
+            .store
+            .clause_by_id(mapt::hot::ir::clause::ClauseId(id))
+        {
+            if record.derivation.rule == mapt::hot::ir::clause::InferenceRule::SubsumptionResolution
+            {
+                found = true;
+                assert_eq!(record.derivation.parent_count, 2, "SR cites both premises");
+            }
+        }
+    }
+    assert!(
+        found,
+        "a SubsumptionResolution chain record must exist in the store"
     );
 }

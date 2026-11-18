@@ -22,6 +22,16 @@ use mapt_config::limits::{kFirstClauseId, kInvalidClauseId, kMaxClauseLiterals};
 // CEP:SECURITY: none.
 const kBinaryPremises: usize = 2;
 
+// CEP:WHAT: The parent count of the unary replay arms (factoring, equality factoring, equality resolution, condensation).
+// CEP:WHY: CEP&CC 11.3: the arm's parent-count tests name their value instead of a bare 1; the constant completes the vocabulary (the Factoring arm referenced it without a definition - the committed baseline did not compile, and this delivery restores the workspace build alongside the CEP-1034 arms).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: none.
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: cited by the unary arms below and unit/cold/kernel_test.rs.
+// CEP:SECURITY: none.
+const kUnaryPremises: usize = 1;
+
 // CEP:WHAT: The gate the kernel's AvatarSplit replay uses: the FINEST legal split gate.
 // CEP:WHY: The splitter's variable-connectivity partition is gate-independent (the gate only refuses a whole split, it never merges or splits cells), so replaying at gate 1 yields the finest legal partition and every production component - recorded under any injectable gate >= 1 - is exactly one cell of it; the replay is therefore gate-free (no false accept, no gate-mismatch false reject).
 // CEP:STATUS: complete
@@ -199,6 +209,24 @@ pub enum KernelRejection {
     /// CEP:EVIDENCE: unit/cold/tstp_test.rs::checker_rejects_unrecorded_demodulation.
     /// CEP:SECURITY: proof validation.
     BrokenDemodulation,
+    /// CEP:WHAT: No legal subsumption-resolution application reproduces the conclusion (CEP-1034).
+    /// CEP:WHY: The arm replays the production subsumption_resolves_onto() over every resolution literal of the main parent, with the side parent renamed apart exactly like the loop's simplify scan, and accepts only when the bounded decision licenses the deletion and the piped remaining clause matches the recorded conclusion.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::{subsumption_resolution_replay_accepts_recorded_step, subsumption_resolution_replay_rejects_tampered_step}.
+    /// CEP:SECURITY: proof validation.
+    BrokenSubsumptionResolution,
+    /// CEP:WHAT: No legal condensation application reproduces the conclusion (CEP-1034).
+    /// CEP:WHY: The arm replays the production condensation_resolves_onto() (the self-subsumption decision with the renamed-apart side copy, Spec 02 section 5's standardize-apart discipline) over every candidate resolution literal and accepts only when the bounded decision licenses the deletion and the piped remaining clause matches the recorded conclusion.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: enum value.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::{condensation_replay_accepts_recorded_step, condensation_replay_rejects_tampered_step}.
+    /// CEP:SECURITY: proof validation.
+    BrokenCondensation,
     /// CEP:WHAT: The recorded component clause is not a component of the production split of its parent.
     /// CEP:WHY: The arm replays try_split_with and compares each restandardized component multiset (the pointer-equality check was a false rejector, fixed in Phase 5).
     /// CEP:STATUS: complete
@@ -649,11 +677,100 @@ fn verify_step(
         }
         InferenceRule::ForwardSubsumption
         | InferenceRule::BackwardSubsumption
-        | InferenceRule::SubsumptionResolution
-        | InferenceRule::TautologyDeletion
-        | InferenceRule::Condensation => {
-            // Deletion never derives a stored record (Spec 19 section 4).
+        | InferenceRule::TautologyDeletion => {
+            // Deletion never derives a stored record (Spec 19 section 4); the
+            // strengthening simplifications (SubsumptionResolution, Condensation,
+            // CEP-1034) DO derive records and replay below.
             Ok(Err(KernelRejection::DeletedRuleDerivation))
+        }
+        InferenceRule::SubsumptionResolution => {
+            // CEP-1034 exact per-step replay: parent 0 is the chain predecessor
+            // (the main premise M), parent 1 the simplifying side premise S; the
+            // replay renames S above M's variables exactly like the loop's
+            // simplify scan, then enumerates every resolution literal m' and
+            // accepts when the bounded decision licenses M \ {m'} and the piped
+            // remaining clause matches the recorded conclusion (a unit SR
+            // against a unit disequation leaves the empty conclusion - the
+            // piped-empty comparison covers it).
+            if parent_count != kBinaryPremises || left.is_empty() || right.is_empty() {
+                return Ok(Err(KernelRejection::BrokenSubsumptionResolution));
+            }
+            let renamed = match renamed_apart(context, &left, &right) {
+                Some(value) => value,
+                None => return Ok(Err(KernelRejection::BrokenSubsumptionResolution)),
+            };
+            for resolution in 0..left.len() {
+                state.charge(1)?;
+                let licensed = match mapt_hot::inference::subsumption::subsumption_resolves_onto(
+                    context, &renamed, &left, resolution,
+                ) {
+                    Ok(value) => value,
+                    Err(_) => return Ok(Err(KernelRejection::BrokenSubsumptionResolution)),
+                };
+                if !licensed {
+                    continue;
+                }
+                let mut replay: Vec<Literal> = Vec::new();
+                for (index, literal) in left.iter().enumerate() {
+                    if index != resolution {
+                        replay.push(*literal);
+                    }
+                }
+                let raw_count = replay.len();
+                let piped = match pipeline(
+                    context,
+                    &mut replay,
+                    raw_count,
+                    KernelRejection::BrokenSubsumptionResolution,
+                ) {
+                    Ok(value) => value,
+                    Err(rejection) => return Ok(Err(rejection)),
+                };
+                if same_multiset(&replay[..piped], &conclusion) {
+                    return Ok(Ok(()));
+                }
+            }
+            Ok(Err(KernelRejection::BrokenSubsumptionResolution))
+        }
+        InferenceRule::Condensation => {
+            // CEP-1034 condensation replay: one parent (the chain predecessor);
+            // every candidate deletion literal is enumerated and the piped
+            // remainder is compared exactly like the SR arm.
+            if parent_count != kUnaryPremises || left.is_empty() {
+                return Ok(Err(KernelRejection::BrokenCondensation));
+            }
+            for resolution in 0..left.len() {
+                state.charge(1)?;
+                let licensed = match mapt_hot::inference::subsumption::condensation_resolves_onto(
+                    context, &left, resolution,
+                ) {
+                    Ok(value) => value,
+                    Err(_) => return Ok(Err(KernelRejection::BrokenCondensation)),
+                };
+                if !licensed {
+                    continue;
+                }
+                let mut replay: Vec<Literal> = Vec::new();
+                for (index, literal) in left.iter().enumerate() {
+                    if index != resolution {
+                        replay.push(*literal);
+                    }
+                }
+                let raw_count = replay.len();
+                let piped = match pipeline(
+                    context,
+                    &mut replay,
+                    raw_count,
+                    KernelRejection::BrokenCondensation,
+                ) {
+                    Ok(value) => value,
+                    Err(rejection) => return Ok(Err(rejection)),
+                };
+                if same_multiset(&replay[..piped], &conclusion) {
+                    return Ok(Ok(()));
+                }
+            }
+            Ok(Err(KernelRejection::BrokenCondensation))
         }
         InferenceRule::Resolution => {
             if parent_count != kBinaryPremises || left.is_empty() || right.is_empty() {
