@@ -255,3 +255,105 @@ fn vivify_budget_enforced() {
         mapt::hot::sat::preprocess::SimplifyStatus::VivifyBudgetExhausted
     );
 }
+
+// CEP:WHAT: Verifies the preprocessing probe budget fires.
+// CEP:WHY: The preprocessing denial-of-service boundary.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the pass claims completion past the bound.
+// CEP:ASSUMES: probe budget 1.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by config/limits.rs kSatProbeBudget and hot/sat/preprocess.rs::{probe_literal, SimplifyStatus::ProbeBudgetExhausted}.
+// CEP:SECURITY: the denial-of-service bound under test.
+#[test]
+fn probe_budget_enforced() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver.add_clause(&[lit(2, true), lit(3, true)]).expect("b");
+    let mut options = SimplifyOptions::new();
+    options.probe_budget = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(
+        outcome.status,
+        mapt::hot::sat::preprocess::SimplifyStatus::ProbeBudgetExhausted
+    );
+}
+
+// CEP:WHAT: Verifies the preprocessing hyper-binary pair budget fires.
+// CEP:WHY: The preprocessing denial-of-service boundary.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the pass claims completion past the bound.
+// CEP:ASSUMES: three binaries make three pairs; pair budget 1.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by config/limits.rs kSatHyperBinaryPairBudget and hot/sat/preprocess.rs::{hyper_binary_pair, SimplifyStatus::HyperBinaryBudgetExhausted}.
+// CEP:SECURITY: the denial-of-service bound under test.
+#[test]
+fn hyper_binary_budget_enforced() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver.add_clause(&[lit(0, true), lit(2, true)]).expect("b");
+    solver.add_clause(&[lit(3, true), lit(4, true)]).expect("c");
+    let mut options = SimplifyOptions::new();
+    options.hyper_binary_budget = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(
+        outcome.status,
+        mapt::hot::sat::preprocess::SimplifyStatus::HyperBinaryBudgetExhausted
+    );
+}
+
+// CEP:WHAT: Verifies the preprocessing BVE variable budget fires.
+// CEP:WHY: The preprocessing denial-of-service boundary.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the pass claims completion past the bound.
+// CEP:ASSUMES: variable budget 1.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by config/limits.rs kSatBveVariableLimit and hot/sat/preprocess.rs::{bve_eliminate, SimplifyStatus::BveBudgetExhausted}.
+// CEP:SECURITY: the denial-of-service bound under test.
+#[test]
+fn bve_budget_enforced() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver
+        .add_clause(&[lit(0, false), lit(2, true)])
+        .expect("b");
+    solver.add_clause(&[lit(3, true), lit(4, true)]).expect("c");
+    let mut options = SimplifyOptions::new();
+    options.bve_variables = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(
+        outcome.status,
+        mapt::hot::sat::preprocess::SimplifyStatus::BveBudgetExhausted
+    );
+}
+
+// CEP:WHAT: Verifies the preprocessing BCE check budget fires.
+// CEP:WHY: The preprocessing denial-of-service boundary.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the pass claims completion past the bound.
+// CEP:ASSUMES: check budget 1 against a candidate whose negation occurs in ten clauses.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by config/limits.rs kSatBceCheckBudget and hot/sat/preprocess.rs::{bce_eliminate, SimplifyStatus::BceBudgetExhausted}.
+// CEP:SECURITY: the denial-of-service bound under test.
+#[test]
+fn bce_budget_enforced() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 13, RestartPolicy::Luby, false).expect("solver");
+    solver
+        .add_clause(&[lit(0, true), lit(1, true), lit(2, true)])
+        .expect("candidate");
+    for variable in 3..13u32 {
+        solver
+            .add_clause(&[lit(0, false), lit(variable, true)])
+            .expect("neg");
+    }
+    let mut options = SimplifyOptions::new();
+    options.bce_checks = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(
+        outcome.status,
+        mapt::hot::sat::preprocess::SimplifyStatus::BceBudgetExhausted
+    );
+}

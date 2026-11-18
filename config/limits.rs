@@ -859,6 +859,106 @@ pub const kSatVivifyCandidateLimit: u32 = 10_000;
 /// CEP:SECURITY: denial-of-service bound on preprocessing.
 pub const kSatVivifyPropagationBudget: u32 = 100_000;
 
+/// CEP:WHAT: Probe-attempt budget of one failed-literal probing round (design 11.1 S35).
+/// CEP:WHY: Probing drives one decide+propagate excursion per candidate literal; the budget bounds the excursions per round with a loud partial outcome instead of an unbounded scan of every literal.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the round stops early with probes_attempted < candidates; reported in stats.
+/// CEP:ASSUMES: 4_096 probes per round cover production preprocessing; injectable for tests.
+/// CEP:COST: one decide+propagate excursion per budget unit.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{probe_derives_unit, probe_budget_stops_early}; security/phase3_bounds_test.rs::probe_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatProbeBudget: u32 = 4_096;
+
+/// CEP:WHAT: Pair-check budget of one hyper-binary resolution round (design 11.1 S37).
+/// CEP:WHY: Hyper-binary resolution derives binary resolvents from complementary binary pairs; the budget bounds the pair checks per round (additions are RUP-justified and counted), keeping the O(binaries^2) scan loud and bounded.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the round stops early with hyper_pairs_examined < budget; reported in stats.
+/// CEP:ASSUMES: 16_384 pair checks per round cover production preprocessing; injectable for tests.
+/// CEP:COST: one pair check per budget unit.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::hyper_binary_derives_unit; security/phase3_bounds_test.rs::hyper_binary_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatHyperBinaryPairBudget: u32 = 16_384;
+
+/// CEP:WHAT: Live binary clauses one hyper-binary round may collect into its workspace (design 11.1 S37).
+/// CEP:WHY: The pair scan addresses binaries from a fixed workspace buffer (no allocation); binaries beyond the cap are skipped this round with the honest status so no scan is unbounded.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the round stops with HyperBinaryBudgetExhausted when the live binaries exceed the cap.
+/// CEP:ASSUMES: 1_024 binaries cover production preprocessing; injectable for tests.
+/// CEP:COST: 8 bytes of workspace per slot.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{hyper_binary_derives_unit, hyper_binary_budget_stops_early}.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatHyperBinaryClauseLimit: u32 = 1_024;
+
+/// CEP:WHAT: Variables one BVE round may attempt (design 11.1 S32).
+/// CEP:WHY: Each attempt scans the registry twice (occurrence collection and resolvent commit); the bound keeps a round's cost linear in clauses times candidates with a loud partial outcome.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the round stops early with bve_attempts < candidates; reported in stats.
+/// CEP:ASSUMES: 256 variable attempts per round cover production preprocessing; injectable for tests.
+/// CEP:COST: two registry scans per attempt.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bve_eliminates_variable, bve_budget_stops_early}; security/phase3_bounds_test.rs::bve_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatBveVariableLimit: u32 = 256;
+
+/// CEP:WHAT: Clauses one BVE candidate may collect per polarity side (design 11.1 S32).
+/// CEP:WHY: Occurrence lists live in fixed workspace buffers (no allocation); a candidate with more clauses on either side is skipped this round (honest, sound — skipping never mutates the database).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the candidate is skipped and counted as skipped; the pass stays sound.
+/// CEP:ASSUMES: 64 clauses per side cover production candidates; injectable for tests.
+/// CEP:COST: 4 bytes of workspace per slot.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_occurrence_bound_skips.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatBveOccurrenceLimit: u32 = 64;
+
+/// CEP:WHAT: Non-tautological resolvents one BVE candidate may commit (design 11.1 S32).
+/// CEP:WHY: Resolvent count growth is the cost of elimination; the bound skips candidates whose elimination would add too many clauses (a first pass counts before any mutation, so skipping never mutates the database).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the candidate is skipped and counted as skipped; the pass stays sound.
+/// CEP:ASSUMES: 128 resolvents per candidate cover production candidates; injectable for tests.
+/// CEP:COST: one resolvent check per budget unit.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_resolvent_bound_skips.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatBveResolventBudget: u32 = 128;
+
+/// CEP:WHAT: Entries of the blocked-clause model-extension stack (design 11.1 S31).
+/// CEP:WHY: BCE deletion is equisatisfiable only, so every eliminated clause is recorded for the model reconstruction; the stack lives inline in the solver (bounded memory) and overflow stops the pass honestly.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the round stops with BceBudgetExhausted when the stack is full.
+/// CEP:ASSUMES: 64 eliminated clauses cover production preprocessing; injectable for tests.
+/// CEP:COST: (kSatBceMaxClauseLength + 2) literals per entry, inline.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_eliminates_blocked_clause, bce_stack_overflow_stops}.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatBceStackDepth: u32 = 64;
+
+/// CEP:WHAT: Maximum clause length a BCE candidate may have to be recorded for model reconstruction.
+/// CEP:WHY: The stack entries copy their clause literals inline; the length cap bounds the solver's inline stack memory (kSatBceStackDepth x length x 4 bytes); longer clauses are skipped this round (sound — skipping never mutates the database).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the candidate is skipped and counted as skipped.
+/// CEP:ASSUMES: 16 literals cover typical blocked clauses; must stay within kMaxSatClauseLiterals.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_eliminates_blocked_clause.
+/// CEP:SECURITY: memory bound on the solver's inline stack.
+pub const kSatBceMaxClauseLength: u32 = 16;
+
+/// CEP:WHAT: Subsumption-resolution checks one BCE round may perform (design 11.1 S31).
+/// CEP:WHY: Blockedness of one candidate costs one tautology check per clause containing the negated blocking literal; the budget bounds the total checks per round with a loud partial outcome.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the round stops early with bce_checks_examined < budget; reported in stats.
+/// CEP:ASSUMES: 16_384 checks per round cover production preprocessing; injectable for tests.
+/// CEP:COST: one pair check per budget unit.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_budget_stops_early; security/phase3_bounds_test.rs::bce_budget_enforced.
+/// CEP:SECURITY: denial-of-service bound on preprocessing.
+pub const kSatBceCheckBudget: u32 = 16_384;
+
+/// CEP:WHAT: Literal cells of one model-extension stack entry (design 11.1 S31/S32).
+/// CEP:WHY: The stack stores clause copies inline with a fixed per-entry stride, so both entry kinds (blocked clause: up to kSatBceMaxClauseLength literals; eliminated variable: the flat deleted-clause payload with length markers) fit one layout without variable-size bookkeeping; payloads beyond the stride are skipped honestly by the pass (sound - skipping never mutates the database).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none (the pass pre-checks the payload length before any mutation).
+/// CEP:ASSUMES: kSatBceMaxClauseLength <= kSatExtEntryLiterals.
+/// CEP:COST: 4 bytes per cell, kSatBceStackDepth x stride inline.
+/// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_eliminates_blocked_clause, bve_eliminates_variable}.
+/// CEP:SECURITY: memory bound on the solver's inline stack.
+pub const kSatExtEntryLiterals: u32 = 32;
+
 /// CEP:WHAT: Maximum clauses one RUP/RAT check step of the internal DRAT checker may scan (design 11.1 S43).
 /// CEP:WHY: A RAT check scans every clause containing the negated pivot; the named bound turns adversarial proof files into a loud CheckBudgetExceeded instead of unbounded scanning.
 /// CEP:STATUS: complete
@@ -1362,6 +1462,17 @@ const _: () = {
     assert!(kSatSubsumptionPairBudget >= 1);
     assert!(kSatVivifyCandidateLimit >= 1);
     assert!(kSatVivifyPropagationBudget >= 1);
+    assert!(kSatProbeBudget >= 1);
+    assert!(kSatHyperBinaryPairBudget >= 1);
+    assert!(kSatHyperBinaryClauseLimit >= 1);
+    assert!(kSatBveVariableLimit >= 1);
+    assert!(kSatBveOccurrenceLimit >= 1);
+    assert!(kSatBveResolventBudget >= 1);
+    assert!(kSatBceStackDepth >= 1);
+    assert!(kSatBceMaxClauseLength >= 2);
+    assert!(kSatBceMaxClauseLength <= kMaxSatClauseLiterals);
+    assert!(kSatBceCheckBudget >= 1);
+    assert!(kSatExtEntryLiterals >= kSatBceMaxClauseLength);
     assert!(kDratRatScanLimit >= 1);
     assert!(kPassiveHeapCapacity >= 1);
     assert!(kActiveSetCapacity >= 1);

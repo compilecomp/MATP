@@ -1,41 +1,43 @@
 // CEP:FILE: hot/sat/preprocess.rs
-// CEP:WHAT: SAT preprocessing (design 11.1 S30/S33/S34/S36): bounded rounds of tautology deletion, duplicate-literal removal, forward subsumption, self-subsuming resolution strengthening, and vivification over the registry-enumerated clause database, with proof-trace integration for every database mutation.
-// CEP:WHY: Design 26 Phase 3 build order ("SAT: preprocessing (subsumption, vivification)") and design 7.2 stage 10 discipline: preprocessing shrinks the clause database before search using only equivalence- or entailment-preserving rewrites, so the first search starts from a smaller formula; the pass is bounded (rounds, pairs, candidates, propagation budget) with honest partial outcomes instead of unbounded scanning (CEP&CC 22.10, Law 6); every deletion and addition is mirrored into the proof recorder so the trace stays a valid DRAT prefix (S41) - deletions need no justification, deduped and strengthened clauses are added before their originals are deleted so each addition is RUP-derivable from the recorded database, and vivified clauses are added after their originals are deleted because the vivification check itself derives them from the database minus the candidate (Spec 09).
+// CEP:WHAT: SAT preprocessing (design 11.1 S30-S37): bounded rounds of tautology deletion, duplicate-literal removal, forward subsumption, self-subsuming resolution strengthening, vivification, failed-literal probing, hyper-binary resolution, bounded variable elimination, and blocked-clause elimination over the registry-enumerated clause database, with proof-trace integration for every database mutation and model-reconstruction records for the equisatisfiable deletions.
+// CEP:WHY: Design 26 Phase 3 build order ("SAT: preprocessing (subsumption, vivification)") completed to the full design 11.1 preprocessing inventory and design 7.2 stage 10 discipline: preprocessing shrinks the clause database before search using entailment-preserving rewrites (tautology, duplicates, subsumption, strengthening, vivification, probing, hyper-binary, BVE) plus the one equisatisfiable rewrite (BCE) whose model extension the solver reconstructs (Spec 09 sections 11-12), so the first search starts from a smaller formula; the pass is bounded (rounds, pairs, candidates, probes, checks, propagation budget) with honest partial outcomes instead of unbounded scanning (CEP&CC 22.10, Law 6); every deletion and addition is mirrored into the proof recorder so the trace stays a valid DRAT prefix (S41) - deletions need no justification, deduped and strengthened clauses are added before their originals are deleted so each addition is RUP-derivable from the recorded database, and vivified clauses are added after their originals are deleted because the vivification check itself derives them from the database minus the candidate (Spec 09).
 // CEP:CLASS: CEP-0
 // CEP:HPC-CLASS: HPC-0
 // CEP:STATUS: complete
 // CEP:FAILURE: Returns CdclError on storage, registry, or proof failures; SimplifyStatus::Unsatisfiable when preprocessing refutes the formula (a falsified unit or an empty strengthened clause); budget statuses report honest partial passes; never panics.
 // CEP:ASSUMES: Called at decision level 0 before the first solve (design 7.1 pipeline position); the solver's registry enumerates every live clause; clause literal buffers of kMaxSatClauseLiterals suffice for every clause; vivification candidates are isolated by the raw deleted mark and every mark is resolved (permanent deletion or restore) before the pass returns.
-// CEP:COST: per round: O(clauses x clause_length) for the tautology/dedup scan, O(pairs x clause_length) for subsumption (bounded by the pair budget), and per vivification candidate up to O(length) decide+propagate cycles (bounded by the candidate and propagation budgets); measured in bench CEP-BENCH-0013, artifact benches/artifacts/sat_preprocess_round.json.
-// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::{preprocessing_preserves_satisfiability, preprocessing_shrinks_or_preserves}; security/phase3_bounds_test.rs::{subsumption_budget_enforced, vivify_budget_enforced}; bench CEP-BENCH-0013.
+// CEP:COST: per round: O(clauses x clause_length) for the tautology/dedup scan, O(pairs x clause_length) for subsumption (bounded by the pair budget), per vivification candidate up to O(length) decide+propagate cycles (bounded by the candidate and propagation budgets), O(probes) decide+propagate excursions, O(binaries^2) pair checks under the hyper-binary budget, O(variables x clauses) occurrence scans under the BVE budget, and O(checks) blockedness checks under the BCE budget; measured in bench CEP-BENCH-0013, artifact benches/artifacts/sat_preprocess_round.json.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::{preprocessing_preserves_satisfiability, preprocessing_shrinks_or_preserves}; security/phase3_bounds_test.rs::{subsumption_budget_enforced, vivify_budget_enforced, probe_budget_enforced, hyper_binary_budget_enforced, bve_budget_enforced, bce_budget_enforced}; bench CEP-BENCH-0013.
 // CEP:SECURITY: every scan is bounded by a named budget; no unbounded loop exists in this file.
 // CEP:UNSAFE: none; this file is safe Rust.
 // CEP:HPC-DETERMINISM: deterministic; clause order is the registry entry order, literals are read in storage order, and all budgets are counted identically per run (CEP&CC 38.10).
 // CEP:HPC-PASS: sat_preprocess
-// CEP:HPC-PASS-KIND: formula simplification pass (design 11.1 S30/S33/S34/S36)
+// CEP:HPC-PASS-KIND: formula simplification pass (design 11.1 S30-S37)
 // CEP:HPC-PASS-INPUT: solver at decision level 0 with the registry enumerating every live clause
-// CEP:HPC-PASS-OUTPUT: the same solver with tautologies, duplicates, subsumed clauses removed, clauses strengthened by self-subsuming resolution and vivification, and the proof trace extended
-// CEP:HPC-PASS-ANALYSIS-REQUIRED: clause enumeration (registry), literal reads (storage), unit propagation (BCP) for vivification
-// CEP:HPC-PASS-ANALYSIS-PRODUCED: the shrunken clause database
+// CEP:HPC-PASS-OUTPUT: the same solver with tautologies, duplicates, subsumed clauses removed, clauses strengthened by self-subsuming resolution and vivification, units derived by probing and hyper-binary resolution, variables eliminated by resolution, blocked clauses eliminated, the model-extension stack filled for the equisatisfiable deletions, and the proof trace extended
+// CEP:HPC-PASS-ANALYSIS-REQUIRED: clause enumeration (registry), literal reads (storage), unit propagation (BCP) for vivification and probing
+// CEP:HPC-PASS-ANALYSIS-PRODUCED: the shrunken clause database and the reconstruction records
 // CEP:HPC-PASS-ANALYSIS-INVALIDATED: clause offsets of deleted clauses (registry tombstones)
-// CEP:HPC-PASS-PRESERVES: satisfiability (Spec 09 theorems 1-4); the proof-trace validity (every addition RUP at its recording point)
-// CEP:HPC-PASS-LEGALITY: Formal Spec 09 sections 2-5 fix the four rewrites: tautology deletion and subsumption deletion preserve logical equivalence; duplicate removal and self-subsuming strengthening add the replacement before deleting the original so each addition is RUP; vivification deletes the candidate before adding the shortened clause because the check derived the shortening from the database minus the candidate; the property test verifies satisfiability preservation against a brute-force oracle.
-// CEP:HPC-PASS-COST: bounded rounds x (clauses + budgeted pairs + budgeted vivification), see CEP:COST.
+// CEP:HPC-PASS-PRESERVES: satisfiability (Spec 09 theorems 1-8); the proof-trace validity (every addition RUP at its recording point)
+// CEP:HPC-PASS-LEGALITY: Formal Spec 09 sections 2-12 fix the eight rewrites: tautology deletion and subsumption deletion preserve logical equivalence; duplicate removal and self-subsuming strengthening add the replacement before deleting the original so each addition is RUP; vivification deletes the candidate before adding the shortened clause because the check derived the shortening from the database minus the candidate; probing and hyper-binary additions are RUP (the negated probe and the negated resolvent propagate to a conflict); BVE commits all non-tautological resolvents before deleting the variable's clauses and records the deleted clauses for the model flip; BCE records the blocked clause and its blocking literal for the model override; the property test verifies satisfiability preservation against a brute-force oracle.
+// CEP:HPC-PASS-COST: bounded rounds x (clauses + budgeted pairs + budgeted vivification + budgeted probes + budgeted hyper-binary pairs + budgeted BVE candidates + budgeted BCE checks), see CEP:COST.
 // CEP:HPC-PASS-FAILURE: budget exhaustion stops the pass with an honest partial status; a refutation stops it with Unsatisfiable.
 // CEP:HPC-PASS-TARGET: target-independent.
 // CEP:HPC-PASS-EVIDENCE: unit/hot/sat_preprocess_test.rs; property/sat_preprocess_property_test.rs::preprocessing_preserves_satisfiability.
 // CEP:OPTIMAL: not-optimal
 // CEP:OPTPROOF: N/A.
-// CEP:OPTNOTE: pairwise subsumption without the feature-vector filter is O(n^2); the SAT-side filter is deferred until measurement on production preprocessing workloads (the ATP side builds its own filter, CEP-1028); ticket CEP-1035.
+// CEP:OPTNOTE: pairwise subsumption without the feature-vector filter is O(n^2); the SAT-side filter is deferred until measurement on production preprocessing workloads (the ATP side builds its own filter, CEP-1028); ticket CEP-1035. BVE resolvent deduplication and the BCE occurrence index are deferred pending the same measurement (the budgets bound the additions and checks instead).
 
 use crate::sat::assignment::SatValue;
 use crate::sat::bcp::PropagationOutcome;
 use crate::sat::database::AttachOutcome;
-use crate::sat::literal::SatLiteral;
+use crate::sat::literal::{SatLiteral, SatVar};
 use crate::sat::solver::CdclSolver;
 use mapt_config::limits::{
-    kMaxSatClauseLiterals, kMaxSimplifyRounds, kSatSubsumptionPairBudget, kSatVivifyCandidateLimit,
-    kSatVivifyPropagationBudget,
+    kMaxSatClauseLiterals, kMaxSimplifyRounds, kSatBceCheckBudget, kSatBceMaxClauseLength,
+    kSatBceStackDepth, kSatBveOccurrenceLimit, kSatBveResolventBudget, kSatBveVariableLimit,
+    kSatExtEntryLiterals, kSatHyperBinaryClauseLimit, kSatHyperBinaryPairBudget, kSatProbeBudget,
+    kSatSubsumptionPairBudget, kSatVivifyCandidateLimit, kSatVivifyPropagationBudget,
 };
 
 // CEP:WHAT: Minimum clause length a vivification candidate must have.
@@ -122,6 +124,96 @@ pub struct SimplifyStats {
     /// CEP:EVIDENCE: security/phase3_bounds_test.rs::vivify_budget_enforced.
     /// CEP:SECURITY: none.
     pub vivify_attempts: u32,
+    /// CEP:WHAT: Probe excursions attempted (one decide+propagate per candidate literal).
+    /// CEP:WHY: S35 budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{probe_derives_unit, probe_budget_stops_early}.
+    /// CEP:SECURITY: none.
+    pub probes_attempted: u32,
+    /// CEP:WHAT: Units derived by failed-literal probing.
+    /// CEP:WHY: S35 work accounting (Law 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::probe_derives_unit.
+    /// CEP:SECURITY: none.
+    pub probe_units: u32,
+    /// CEP:WHAT: Binary-pair checks performed by the hyper-binary scan.
+    /// CEP:WHY: S37 budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: security/phase3_bounds_test.rs::hyper_binary_budget_enforced.
+    /// CEP:SECURITY: none.
+    pub hyper_pairs_examined: u32,
+    /// CEP:WHAT: Resolvents added by hyper-binary resolution (units and binaries).
+    /// CEP:WHY: S37 work accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::hyper_binary_derives_unit.
+    /// CEP:SECURITY: none.
+    pub hyper_binaries: u32,
+    /// CEP:WHAT: Variables attempted by bounded variable elimination.
+    /// CEP:WHY: S32 budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bve_eliminates_variable, bve_budget_stops_early}.
+    /// CEP:SECURITY: none.
+    pub bve_attempts: u32,
+    /// CEP:WHAT: Variables skipped by BVE (occurrence, resolvent, or reconstruction bounds).
+    /// CEP:WHY: S32 honesty accounting: skips are sound but must be visible.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_occurrence_bound_skips.
+    /// CEP:SECURITY: none.
+    pub bve_skipped: u32,
+    /// CEP:WHAT: Resolvents committed by bounded variable elimination.
+    /// CEP:WHY: S32 work accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_eliminates_variable.
+    /// CEP:SECURITY: none.
+    pub bve_resolvents: u32,
+    /// CEP:WHAT: Blockedness checks performed by the BCE scan.
+    /// CEP:WHY: S31 budget accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: security/phase3_bounds_test.rs::bce_budget_enforced.
+    /// CEP:SECURITY: none.
+    pub bce_checks_examined: u32,
+    /// CEP:WHAT: Clauses skipped by BCE (length, occurrence, or stack bounds).
+    /// CEP:WHY: S31 honesty accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_stack_overflow_stops.
+    /// CEP:SECURITY: none.
+    pub bce_skipped: u32,
+    /// CEP:WHAT: Clauses eliminated as blocked.
+    /// CEP:WHY: S31 work accounting.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_eliminates_blocked_clause.
+    /// CEP:SECURITY: none.
+    pub bce_clauses: u32,
     /// CEP:WHAT: Rounds executed.
     /// CEP:WHY: Budget accounting.
     /// CEP:STATUS: complete
@@ -180,6 +272,42 @@ pub enum SimplifyStatus {
     /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::candidate_budget_stops_early; security/phase3_bounds_test.rs::vivify_budget_enforced.
     /// CEP:SECURITY: none.
     VivifyBudgetExhausted,
+    /// CEP:WHAT: The probe budget ran out before the rounds completed.
+    /// CEP:WHY: Honest partial pass (S35).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: stats report the work done.
+    /// CEP:COST: none.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::probe_budget_stops_early; security/phase3_bounds_test.rs::probe_budget_enforced.
+    /// CEP:SECURITY: none.
+    ProbeBudgetExhausted,
+    /// CEP:WHAT: The hyper-binary pair budget or binary collection cap ran out before the rounds completed.
+    /// CEP:WHY: Honest partial pass (S37).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: stats report the work done.
+    /// CEP:COST: none.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::hyper_binary_budget_stops_early; security/phase3_bounds_test.rs::hyper_binary_budget_enforced.
+    /// CEP:SECURITY: none.
+    HyperBinaryBudgetExhausted,
+    /// CEP:WHAT: The BVE variable budget ran out before the rounds completed.
+    /// CEP:WHY: Honest partial pass (S32).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: stats report the work done.
+    /// CEP:COST: none.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_budget_stops_early; security/phase3_bounds_test.rs::bve_budget_enforced.
+    /// CEP:SECURITY: none.
+    BveBudgetExhausted,
+    /// CEP:WHAT: The BCE check budget ran out or the model-extension stack filled before the rounds completed.
+    /// CEP:WHY: Honest partial pass (S31).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: stats report the work done.
+    /// CEP:COST: none.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_budget_stops_early; security/phase3_bounds_test.rs::bce_budget_enforced.
+    /// CEP:SECURITY: none.
+    BceBudgetExhausted,
 }
 
 /// CEP:WHAT: Result record of one preprocessing run: status plus counters.
@@ -260,6 +388,51 @@ pub struct SimplifyOptions {
     /// CEP:EVIDENCE: security/phase3_bounds_test.rs::vivify_budget_enforced.
     /// CEP:SECURITY: denial-of-service bound.
     pub vivify_budget: u32,
+    /// CEP:WHAT: Probe excursions per run (one per candidate literal).
+    /// CEP:WHY: kSatProbeBudget default (S35).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: security/phase3_bounds_test.rs::probe_budget_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    pub probe_budget: u32,
+    /// CEP:WHAT: Hyper-binary pair checks per run.
+    /// CEP:WHY: kSatHyperBinaryPairBudget default (S37).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: security/phase3_bounds_test.rs::hyper_binary_budget_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    pub hyper_binary_budget: u32,
+    /// CEP:WHAT: Variable attempts per run for bounded variable elimination.
+    /// CEP:WHY: kSatBveVariableLimit default (S32).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: security/phase3_bounds_test.rs::bve_budget_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    pub bve_variables: u32,
+    /// CEP:WHAT: Committed resolvents per BVE candidate.
+    /// CEP:WHY: kSatBveResolventBudget default (S32).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_resolvent_bound_skips.
+    /// CEP:SECURITY: denial-of-service bound.
+    pub bve_resolvents: u32,
+    /// CEP:WHAT: Blockedness checks per run for blocked-clause elimination.
+    /// CEP:WHY: kSatBceCheckBudget default (S31).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: >= 1.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: security/phase3_bounds_test.rs::bce_budget_enforced.
+    /// CEP:SECURITY: denial-of-service bound.
+    pub bce_checks: u32,
 }
 
 impl SimplifyOptions {
@@ -277,6 +450,11 @@ impl SimplifyOptions {
             pair_budget: kSatSubsumptionPairBudget,
             vivify_candidates: kSatVivifyCandidateLimit,
             vivify_budget: kSatVivifyPropagationBudget,
+            probe_budget: kSatProbeBudget,
+            hyper_binary_budget: kSatHyperBinaryPairBudget,
+            bve_variables: kSatBveVariableLimit,
+            bve_resolvents: kSatBveResolventBudget,
+            bce_checks: kSatBceCheckBudget,
         }
     }
 }
@@ -317,6 +495,60 @@ struct Workspace {
     /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{duplicates_removed, strengthening_rewrites}.
     /// CEP:SECURITY: none.
     replacement: [SatLiteral; kMaxSatClauseLiterals as usize],
+    /// CEP:WHAT: First literals of the hyper-binary snapshot's binary clauses.
+    /// CEP:WHY: The pair scan addresses binaries from the fixed snapshot (S37; no allocation).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: extent given by the scan's bin count.
+    /// CEP:COST: 2 KiB at the kSatHyperBinaryClauseLimit bound.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::hyper_binary_derives_unit.
+    /// CEP:SECURITY: none.
+    bins_a: [SatLiteral; kSatHyperBinaryClauseLimit as usize],
+    /// CEP:WHAT: Second literals of the hyper-binary snapshot's binary clauses.
+    /// CEP:WHY: The pair-scan twin of bins_a.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: extent given by the scan's bin count.
+    /// CEP:COST: 2 KiB at the kSatHyperBinaryClauseLimit bound.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::hyper_binary_derives_unit.
+    /// CEP:SECURITY: none.
+    bins_b: [SatLiteral; kSatHyperBinaryClauseLimit as usize],
+    /// CEP:WHAT: Positive-occurrence offsets: the BVE candidate's positive clauses (S32) and, reused by the BCE scan, the negated blocking literal's clauses.
+    /// CEP:WHY: The elimination and blockedness checks address their clause sets through fixed occurrence buffers (no allocation).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: extent given by the scan; overflow skips the candidate honestly.
+    /// CEP:COST: 256 bytes at the kSatBveOccurrenceLimit bound.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_eliminates_variable.
+    /// CEP:SECURITY: none.
+    occ_pos: [u32; kSatBveOccurrenceLimit as usize],
+    /// CEP:WHAT: Negative-occurrence offsets.
+    /// CEP:WHY: The BVE candidate's negative clauses (S32); the BCE scan reuses the buffer for the blocking literal's clause occurrences.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: extent given by the scan; overflow skips the candidate honestly.
+    /// CEP:COST: 256 bytes at the kSatBveOccurrenceLimit bound.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_eliminates_variable.
+    /// CEP:SECURITY: none.
+    occ_neg: [u32; kSatBveOccurrenceLimit as usize],
+    /// CEP:WHAT: Deleted-clause lengths of the BVE reconstruction payload.
+    /// CEP:WHY: The model-extension record needs the clause boundaries (S32).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the payload pre-check passed, so the count fits.
+    /// CEP:COST: 128 bytes at the stride bound.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_model_extension_satisfies_original.
+    /// CEP:SECURITY: none.
+    stage_lens: [u32; kSatExtEntryLiterals as usize],
+    /// CEP:WHAT: Deleted-clause literals of the BVE reconstruction payload.
+    /// CEP:WHY: The model-extension record needs the clause copies (S32).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: the payload pre-check passed, so the total fits the stride.
+    /// CEP:COST: 128 bytes at the stride bound.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_model_extension_satisfies_original.
+    /// CEP:SECURITY: none.
+    stage_lits: [SatLiteral; kSatExtEntryLiterals as usize],
 }
 
 impl Workspace {
@@ -333,6 +565,12 @@ impl Workspace {
             left: [SatLiteral::from_encoding(0); kMaxSatClauseLiterals as usize],
             right: [SatLiteral::from_encoding(0); kMaxSatClauseLiterals as usize],
             replacement: [SatLiteral::from_encoding(0); kMaxSatClauseLiterals as usize],
+            bins_a: [SatLiteral::from_encoding(0); kSatHyperBinaryClauseLimit as usize],
+            bins_b: [SatLiteral::from_encoding(0); kSatHyperBinaryClauseLimit as usize],
+            occ_pos: [0; kSatBveOccurrenceLimit as usize],
+            occ_neg: [0; kSatBveOccurrenceLimit as usize],
+            stage_lens: [0; kSatExtEntryLiterals as usize],
+            stage_lits: [SatLiteral::from_encoding(0); kSatExtEntryLiterals as usize],
         }
     }
 }
@@ -549,6 +787,138 @@ fn simplify_round(
             status,
         )?;
         if shortened {
+            changed = true;
+        }
+        match status {
+            SimplifyStatus::Complete => {}
+            _ => return Ok(changed),
+        }
+    }
+    // Scan 4: failed-literal probing (S35) - derive units from refuted probes.
+    let entry_count_probe = solver.registry().entry_count();
+    for index in 0..entry_count_probe {
+        let offset = match live_offset(solver, index) {
+            Some(value) => value,
+            None => continue,
+        };
+        let (length, _, _) = read_clause(solver, offset, &mut workspace.left)?;
+        for slot in 0..length {
+            if stats.probes_attempted >= options.probe_budget {
+                *status = SimplifyStatus::ProbeBudgetExhausted;
+                return Ok(changed);
+            }
+            probe_literal(solver, workspace.left[slot], stats, status)?;
+            match status {
+                SimplifyStatus::Complete => {}
+                _ => return Ok(true),
+            }
+            // The probe may have derived units; the trail grew, and later probes
+            // see the values through their own level-0 value checks.
+        }
+    }
+    // Scan 5: hyper-binary resolution (S37) - derive resolvents from binary pairs.
+    let mut bin_count = 0usize;
+    let entry_count_bins = solver.registry().entry_count();
+    for index in 0..entry_count_bins {
+        let offset = match live_offset(solver, index) {
+            Some(value) => value,
+            None => continue,
+        };
+        let (length, _, _) = read_clause(solver, offset, &mut workspace.left)?;
+        if length != 2 {
+            continue;
+        }
+        if bin_count >= kSatHyperBinaryClauseLimit as usize {
+            *status = SimplifyStatus::HyperBinaryBudgetExhausted;
+            return Ok(changed);
+        }
+        workspace.bins_a[bin_count] = workspace.left[0];
+        workspace.bins_b[bin_count] = workspace.left[1];
+        bin_count += 1;
+    }
+    for i in 0..bin_count {
+        for j in (i + 1)..bin_count {
+            if stats.hyper_pairs_examined >= options.hyper_binary_budget {
+                *status = SimplifyStatus::HyperBinaryBudgetExhausted;
+                return Ok(changed);
+            }
+            stats.hyper_pairs_examined += 1;
+            hyper_binary_pair(
+                solver,
+                workspace.bins_a[i],
+                workspace.bins_b[i],
+                workspace.bins_a[j],
+                workspace.bins_b[j],
+                bin_count,
+                workspace,
+                stats,
+                status,
+            )?;
+            match status {
+                SimplifyStatus::Complete => {}
+                _ => return Ok(true),
+            }
+        }
+        // Resolvents added so far may have unit-propagated; re-reading the live
+        // set for the dedup probe would be unsound mid-pair-scan, so the snapshot
+        // dedup only guards against re-deriving pre-existing binaries and the
+        // next round's subsumption scan removes exact duplicates.
+    }
+    // Scan 6: bounded variable elimination (S32).
+    let variables = solver.core().variable_count();
+    let mut bve_attempted = 0u32;
+    for variable in 0..variables {
+        if bve_attempted >= options.bve_variables {
+            *status = SimplifyStatus::BveBudgetExhausted;
+            return Ok(changed);
+        }
+        let positive = match SatLiteral::new(SatVar(variable), true) {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
+        match solver.core().value_of_literal(positive) {
+            SatValue::Unassigned => {}
+            _ => continue,
+        }
+        bve_attempted += 1;
+        stats.bve_attempts += 1;
+        if bve_eliminate(solver, variable, options, workspace, stats, status)? {
+            changed = true;
+        }
+        match status {
+            SimplifyStatus::Complete => {}
+            _ => return Ok(changed),
+        }
+    }
+    // Scan 7: blocked-clause elimination (S31).
+    let entry_count_bce = solver.registry().entry_count();
+    for index in 0..entry_count_bce {
+        let offset = match live_offset(solver, index) {
+            Some(value) => value,
+            None => continue,
+        };
+        let (length, _, _) = read_clause(solver, offset, &mut workspace.left)?;
+        if length < 2 || length > kSatBceMaxClauseLength as usize {
+            continue;
+        }
+        if solver.ext_entry_count() >= kSatBceStackDepth {
+            *status = SimplifyStatus::BceBudgetExhausted;
+            return Ok(changed);
+        }
+        // Copy the candidate's literals out of the shared read buffer first so
+        // the mutable workspace borrow inside bce_eliminate cannot alias them.
+        let mut candidate = [SatLiteral::from_encoding(0); kSatBceMaxClauseLength as usize];
+        candidate[..length].copy_from_slice(&workspace.left[..length]);
+        if bce_eliminate(
+            solver,
+            offset,
+            &candidate[..length],
+            options,
+            workspace,
+            stats,
+            status,
+        )? {
+            stats.bce_clauses += 1;
             changed = true;
         }
         match status {
@@ -870,4 +1240,572 @@ fn delete_clause(solver: &CdclSolver<'_>, offset: u32) -> Result<(), crate::sat:
         .delete(solver.core().clauses(), offset)
         .map_err(crate::sat::cdcl::CdclError::Registry)?;
     Ok(())
+}
+
+// CEP:WHAT: Probes one literal (S35): decides it, propagates, and on conflict adds the negated literal as a derived unit (RUP: the conflict under the assumption proves the database entails the negation).
+// CEP:WHY: Spec 09 section 8: a failed literal l yields the unit -l; the addition goes through the shared derived-add path so registration, proof recording, propagation, and refutation handling are identical to every other addition; already-assigned literals are skipped (a True literal is satisfied, a False literal's negation is already a unit - re-deriving it would only duplicate).
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates CdclError; sets Unsatisfiable when the derived unit refutes the formula (add_clause_checked emits the empty clause).
+// CEP:ASSUMES: decision level 0 at entry and exit; the trail excursion is fully canceled.
+// CEP:COST: one decide plus one propagate per probe, counted against the probe budget by the caller before the call.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{probe_derives_unit, probe_refutation}.
+// CEP:SECURITY: the trail excursion is fully canceled on every path.
+fn probe_literal(
+    solver: &CdclSolver<'_>,
+    literal: SatLiteral,
+    stats: &mut SimplifyStats,
+    status: &mut SimplifyStatus,
+) -> Result<bool, crate::sat::cdcl::CdclError> {
+    match solver.core().value_of_literal(literal) {
+        SatValue::Unassigned => {}
+        _ => return Ok(false),
+    }
+    stats.probes_attempted += 1;
+    if let Err(error) = solver.core().decide(literal) {
+        solver.core().cancel_until(0);
+        return Err(error.into());
+    }
+    let derived = match solver.core().propagate() {
+        Ok(PropagationOutcome::Conflict(_)) => Some(literal.negate()),
+        Ok(PropagationOutcome::NoConflict) => None,
+        Err(error) => {
+            solver.core().cancel_until(0);
+            return Err(error.into());
+        }
+    };
+    solver.core().cancel_until(0);
+    let Some(unit) = derived else {
+        return Ok(false);
+    };
+    stats.probe_units += 1;
+    match add_clause_checked(solver, &[unit])? {
+        Some(()) => Ok(true),
+        None => {
+            // The derived unit refuted the formula (its negation was already
+            // entailed); add_clause_checked emitted the empty clause.
+            *status = SimplifyStatus::Unsatisfiable;
+            Ok(true)
+        }
+    }
+}
+
+// CEP:WHAT: Derives the hyper-binary resolvents of one binary pair (S37): for each pivot x of the first binary whose negation occurs in the second, adds (first minus x) union (second minus the negation) - a unit or a binary - through the shared derived-add path.
+// CEP:WHY: Spec 09 section 9: the resolvent is a consequence, RUP-derivable (its negation unit-propagates both parents to a conflict); the classic unit case (a v b), (-a v b) -> b emerges when the non-pivot literals coincide; exact duplicates of the snapshot's binaries are skipped so a pair's resolvent is added at most once per round (the next round's subsumption scan removes any remaining exact duplicates).
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates CdclError; sets Unsatisfiable when an addition refutes the formula.
+// CEP:ASSUMES: the four literals are sorted within their pairs (read_clause order); decision level 0.
+// CEP:COST: O(bin_count) for the dedup probes per derived resolvent, bounded by the pair budget.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::hyper_binary_derives_unit.
+// CEP:SECURITY: bounded by the caller's pair budget.
+#[allow(clippy::too_many_arguments)]
+fn hyper_binary_pair(
+    solver: &CdclSolver<'_>,
+    first_a: SatLiteral,
+    first_b: SatLiteral,
+    second_a: SatLiteral,
+    second_b: SatLiteral,
+    bin_count: usize,
+    workspace: &Workspace,
+    stats: &mut SimplifyStats,
+    status: &mut SimplifyStatus,
+) -> Result<bool, crate::sat::cdcl::CdclError> {
+    let mut changed = false;
+    for pivot in [first_a, first_b] {
+        let negated = pivot.negate();
+        let second_rest = if second_a == negated {
+            Some(second_b)
+        } else if second_b == negated {
+            Some(second_a)
+        } else {
+            None
+        };
+        let Some(rest) = second_rest else {
+            continue;
+        };
+        let first_rest = if first_a == pivot { first_b } else { first_a };
+        if first_rest == rest {
+            // Unit resolvent: the classic hyper-binary unit derivation. A True
+            // value means the unit is already on the trail (dedup); False means
+            // the formula is refuted and add_clause_checked reports it.
+            if solver.core().value_of_literal(first_rest) == SatValue::True {
+                continue;
+            }
+            match add_clause_checked(solver, &[first_rest])? {
+                Some(()) => {
+                    stats.hyper_binaries += 1;
+                    changed = true;
+                }
+                None => {
+                    *status = SimplifyStatus::Unsatisfiable;
+                    return Ok(true);
+                }
+            }
+        } else if first_rest.encoding() != rest.negate().encoding() {
+            // Binary resolvent; skip tautologies. Skip exact duplicates of the
+            // snapshot so the pair scan cannot re-derive a pre-existing binary.
+            let (low, high) = if first_rest.encoding() < rest.encoding() {
+                (first_rest, rest)
+            } else {
+                (rest, first_rest)
+            };
+            if binary_in_snapshot(workspace, bin_count, low, high) {
+                continue;
+            }
+            match add_clause_checked(solver, &[low, high])? {
+                Some(()) => {
+                    stats.hyper_binaries += 1;
+                    changed = true;
+                }
+                None => {
+                    *status = SimplifyStatus::Unsatisfiable;
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    Ok(changed)
+}
+
+// CEP:WHAT: Linear membership test of a sorted literal pair in the hyper-binary snapshot.
+// CEP:WHY: The dedup probe needs no index; the pair budget bounds the total probes.
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: the snapshot pairs are sorted (read_clause order).
+// CEP:COST: O(bin_count).
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::hyper_binary_derives_unit.
+// CEP:SECURITY: none.
+fn binary_in_snapshot(
+    workspace: &Workspace,
+    bin_count: usize,
+    low: SatLiteral,
+    high: SatLiteral,
+) -> bool {
+    for slot in 0..bin_count {
+        if workspace.bins_a[slot] == low && workspace.bins_b[slot] == high {
+            return true;
+        }
+    }
+    false
+}
+
+// CEP:WHAT: Attempts bounded variable elimination of one variable (S32): collects its live clauses per polarity, pre-checks the resolvent count, lengths, and reconstruction payload, commits all non-tautological resolvents (RUP against the database with the parents present), records the deleted clauses for the model flip, then deletes the clauses.
+// CEP:WHY: Spec 09 section 10: replacing the variable's clauses by their resolvents preserves satisfiability and every model is extendable by the side-flip rule; the resolvents are RUP before their parents are deleted, the record precedes the deletions (the stack stores clause copies, not offsets), and every skip (occurrence, length, resolvent, payload bound) is sound because a skipped candidate never mutates the database.
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates CdclError; sets Unsatisfiable when a resolvent addition refutes the formula; returns false for every skip (counted in stats.bve_skipped).
+// CEP:ASSUMES: decision level 0; the variable is unassigned; no live clause contains both the variable's polarities (the tautology scan removes such clauses each round; a violation is defended against by skipping).
+// CEP:COST: two registry scans per candidate plus O(occ^2 x length) resolution work under the budgets.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bve_eliminates_variable, bve_occurrence_bound_skips, bve_resolvent_bound_skips, bve_model_extension_satisfies_original}.
+// CEP:SECURITY: all loops bounded by the budgets and fixed buffers.
+fn bve_eliminate(
+    solver: &CdclSolver<'_>,
+    variable: u32,
+    options: &SimplifyOptions,
+    workspace: &mut Workspace,
+    stats: &mut SimplifyStats,
+    status: &mut SimplifyStatus,
+) -> Result<bool, crate::sat::cdcl::CdclError> {
+    let entry_count = solver.registry().entry_count();
+    let mut occ_pos = 0usize;
+    let mut occ_neg = 0usize;
+    for index in 0..entry_count {
+        let offset = match live_offset(solver, index) {
+            Some(value) => value,
+            None => continue,
+        };
+        let header = solver
+            .core()
+            .clauses()
+            .header(offset)
+            .map_err(crate::sat::database::SatCoreError::from)?;
+        if header.length < 2 {
+            // A live unit would already be on the trail (add-time propagation);
+            // a violation is defended against by skipping the variable.
+            return Ok(false);
+        }
+        let mut saw_positive = false;
+        let mut saw_negative = false;
+        for slot in 0..header.length {
+            let literal = solver
+                .core()
+                .clauses()
+                .literal(offset, slot)
+                .map_err(crate::sat::database::SatCoreError::from)?;
+            if literal.variable().0 != variable {
+                continue;
+            }
+            if literal.is_positive() {
+                saw_positive = true;
+            } else {
+                saw_negative = true;
+            }
+        }
+        if saw_positive && saw_negative {
+            // Both polarities: a tautology that the round's first scan should
+            // have removed; skip the candidate defensively.
+            return Ok(false);
+        }
+        if !saw_positive && !saw_negative {
+            continue;
+        }
+        if saw_positive {
+            if occ_pos >= kSatBveOccurrenceLimit as usize {
+                stats.bve_skipped += 1;
+                return Ok(false);
+            }
+            workspace.occ_pos[occ_pos] = offset;
+            occ_pos += 1;
+        } else {
+            if occ_neg >= kSatBveOccurrenceLimit as usize {
+                stats.bve_skipped += 1;
+                return Ok(false);
+            }
+            workspace.occ_neg[occ_neg] = offset;
+            occ_neg += 1;
+        }
+    }
+    if occ_pos == 0 || occ_neg == 0 {
+        // Nothing to resolve on: the variable's clauses are all one polarity;
+        // deleting them is NOT entailment-preserving, so this candidate is not
+        // an elimination (the pure-literal rule is a different, model-extended
+        // rewrite and is not part of S32's bounded pass).
+        return Ok(false);
+    }
+    // Pre-check: resolvent count, lengths, and the reconstruction payload.
+    let mut resolvent_count = 0usize;
+    let mut payload_cells = 0usize;
+    for p in 0..occ_pos {
+        for n in 0..occ_neg {
+            let (pos_len, neg_len, tautology) = bve_resolvent_shape(
+                solver,
+                workspace.occ_pos[p],
+                workspace.occ_neg[n],
+                variable,
+                workspace,
+            )?;
+            if tautology {
+                continue;
+            }
+            if pos_len + neg_len > kMaxSatClauseLiterals as usize {
+                // The resolvent cannot be stored; skip the candidate.
+                stats.bve_skipped += 1;
+                return Ok(false);
+            }
+            resolvent_count += 1;
+        }
+    }
+    if resolvent_count > options.bve_resolvents as usize {
+        stats.bve_skipped += 1;
+        return Ok(false);
+    }
+    for side in 0..2 {
+        let occurrences = if side == 0 { occ_pos } else { occ_neg };
+        for slot in 0..occurrences {
+            let offset = if side == 0 {
+                workspace.occ_pos[slot]
+            } else {
+                workspace.occ_neg[slot]
+            };
+            let header = solver
+                .core()
+                .clauses()
+                .header(offset)
+                .map_err(crate::sat::database::SatCoreError::from)?;
+            payload_cells += 1 + header.length as usize;
+        }
+    }
+    if payload_cells > kSatExtEntryLiterals as usize {
+        // The reconstruction payload would not fit the model-extension stack.
+        stats.bve_skipped += 1;
+        return Ok(false);
+    }
+    if solver.ext_entry_count() >= kSatBceStackDepth {
+        // The model-extension stack is full; the candidate is skipped honestly
+        // (before any mutation, so the skip is sound).
+        stats.bve_skipped += 1;
+        return Ok(false);
+    }
+    // Commit: add all non-tautological resolvents first (RUP with the parents
+    // present), then record, then delete the parents.
+    for p in 0..occ_pos {
+        for n in 0..occ_neg {
+            let resolvent_len = bve_build_resolvent(
+                solver,
+                workspace.occ_pos[p],
+                workspace.occ_neg[n],
+                variable,
+                workspace,
+            )?;
+            if resolvent_len == 0 {
+                // Tautological: not added (satisfied by every assignment; the
+                // side-flip reconstruction is exact without it, Spec 09 section 10).
+                continue;
+            }
+            match add_clause_checked(solver, &workspace.replacement[..resolvent_len])? {
+                Some(()) => {
+                    stats.bve_resolvents += 1;
+                }
+                None => {
+                    // The resolvent refuted the formula (a falsified unit or a
+                    // level-0 propagation conflict); add_clause_checked emitted
+                    // the empty clause.
+                    *status = SimplifyStatus::Unsatisfiable;
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    // Record the deleted clauses (they are still live) for the model flip.
+    let mut clause_count = 0usize;
+    let mut literal_count = 0usize;
+    for side in 0..2 {
+        let occurrences = if side == 0 { occ_pos } else { occ_neg };
+        for slot in 0..occurrences {
+            let offset = if side == 0 {
+                workspace.occ_pos[slot]
+            } else {
+                workspace.occ_neg[slot]
+            };
+            let header = solver
+                .core()
+                .clauses()
+                .header(offset)
+                .map_err(crate::sat::database::SatCoreError::from)?;
+            if clause_count + 1 > workspace.stage_lens.len()
+                || literal_count + 1 + header.length as usize > workspace.stage_lits.len()
+            {
+                // The pre-check guarantees this is unreachable; treat it as the
+                // loud backstop it is.
+                return Err(crate::sat::cdcl::CdclError::Storage(
+                    crate::sat::database::SatCoreError::InvariantViolation,
+                ));
+            }
+            workspace.stage_lens[clause_count] = header.length;
+            clause_count += 1;
+            for literal_slot in 0..header.length {
+                let literal = solver
+                    .core()
+                    .clauses()
+                    .literal(offset, literal_slot)
+                    .map_err(crate::sat::database::SatCoreError::from)?;
+                workspace.stage_lits[literal_count] = literal;
+                literal_count += 1;
+            }
+        }
+    }
+    solver.bve_record(
+        variable,
+        &workspace.stage_lens[..clause_count],
+        &workspace.stage_lits[..literal_count],
+    )?;
+    // Delete the variable's clauses.
+    for side in 0..2 {
+        let occurrences = if side == 0 { occ_pos } else { occ_neg };
+        for slot in 0..occurrences {
+            let offset = if side == 0 {
+                workspace.occ_pos[slot]
+            } else {
+                workspace.occ_neg[slot]
+            };
+            delete_clause(solver, offset)?;
+        }
+    }
+    Ok(true)
+}
+
+// CEP:WHAT: Classifies one BVE resolvent without committing it: reads both parents, builds the deduplicated union of the remainders into the workspace's replacement buffer, and reports the raw remainder lengths plus the tautology flag.
+// CEP:WHY: The pre-check needs the resolvent count, the storage length bound, and the tautology classification before any mutation, so a candidate whose elimination is too large is skipped soundly (Spec 09 section 10).
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates storage errors.
+// CEP:ASSUMES: both parents are live at their recorded offsets; decision level 0.
+// CEP:COST: O(parent lengths x log-free sort) per pair.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_eliminates_variable.
+// CEP:SECURITY: bounded by the occurrence buffers.
+fn bve_resolvent_shape(
+    solver: &CdclSolver<'_>,
+    pos_offset: u32,
+    neg_offset: u32,
+    variable: u32,
+    workspace: &mut Workspace,
+) -> Result<(usize, usize, bool), crate::sat::cdcl::CdclError> {
+    let pos_len = read_clause(solver, pos_offset, &mut workspace.left)?.0;
+    let neg_len = read_clause(solver, neg_offset, &mut workspace.right)?.0;
+    let mut total = 0usize;
+    for slot in 0..pos_len {
+        if workspace.left[slot].variable().0 != variable {
+            workspace.replacement[total] = workspace.left[slot];
+            total += 1;
+        }
+    }
+    for slot in 0..neg_len {
+        if workspace.right[slot].variable().0 != variable {
+            workspace.replacement[total] = workspace.right[slot];
+            total += 1;
+        }
+    }
+    let deduped = dedupe(&mut workspace.replacement, total);
+    let mut tautology = false;
+    for slot in 1..deduped {
+        if workspace.replacement[slot].variable().0 == workspace.replacement[slot - 1].variable().0
+            && workspace.replacement[slot].is_positive()
+                != workspace.replacement[slot - 1].is_positive()
+        {
+            tautology = true;
+        }
+    }
+    Ok((pos_len - 1, neg_len - 1, tautology))
+}
+
+// CEP:WHAT: Builds one BVE resolvent into the workspace's replacement buffer: the deduplicated union of the parents' remainders, or length zero when the resolvent is tautological.
+// CEP:WHY: The commit pass rebuilds each resolvent (the database is unchanged between the pre-check and the commit, so the shapes are identical) and adds it through the shared derived-add path.
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates storage errors.
+// CEP:ASSUMES: both parents are live at their recorded offsets; decision level 0.
+// CEP:COST: O(parent lengths x log-free sort) per pair.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_eliminates_variable.
+// CEP:SECURITY: bounded by the occurrence buffers.
+fn bve_build_resolvent(
+    solver: &CdclSolver<'_>,
+    pos_offset: u32,
+    neg_offset: u32,
+    variable: u32,
+    workspace: &mut Workspace,
+) -> Result<usize, crate::sat::cdcl::CdclError> {
+    let pos_len = read_clause(solver, pos_offset, &mut workspace.left)?.0;
+    let neg_len = read_clause(solver, neg_offset, &mut workspace.right)?.0;
+    let mut total = 0usize;
+    for slot in 0..pos_len {
+        if workspace.left[slot].variable().0 != variable {
+            workspace.replacement[total] = workspace.left[slot];
+            total += 1;
+        }
+    }
+    for slot in 0..neg_len {
+        if workspace.right[slot].variable().0 != variable {
+            workspace.replacement[total] = workspace.right[slot];
+            total += 1;
+        }
+    }
+    let deduped = dedupe(&mut workspace.replacement, total);
+    for slot in 1..deduped {
+        if workspace.replacement[slot].variable().0 == workspace.replacement[slot - 1].variable().0
+            && workspace.replacement[slot].is_positive()
+                != workspace.replacement[slot - 1].is_positive()
+        {
+            return Ok(0);
+        }
+    }
+    Ok(deduped)
+}
+
+// CEP:WHAT: Attempts blocked-clause elimination of one clause (S31): tries each literal as the blocking candidate, and when every live clause containing the candidate's negation resolves tautologically against the candidate, records the clause for the model override and deletes it.
+// CEP:WHY: Spec 09 section 11: a clause blocked w.r.t. l is equisatisfiable-deletable (every model of the rest extends by setting l true); the record feeds model_value's reconstruction, and the deletion is a plain DRAT deletion (deletions need no justification).
+// CEP:STATUS: complete
+// CEP:FAILURE: propagates CdclError; sets BceBudgetExhausted when the check budget runs out; sets Unsatisfiable never (BCE adds nothing); returns false when the clause is not blocked (no mutation).
+// CEP:ASSUMES: the clause is live, sorted, deduplicated, with 2 <= length <= kSatBceMaxClauseLength; decision level 0; the model-extension stack has free depth (checked by the caller).
+// CEP:COST: one registry scan per blocking candidate under the check budget.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_eliminates_blocked_clause, bce_budget_stops_early, bce_model_extension_satisfies_original}.
+// CEP:SECURITY: bounded by the check budget and fixed buffers.
+fn bce_eliminate(
+    solver: &CdclSolver<'_>,
+    offset: u32,
+    literals: &[SatLiteral],
+    options: &SimplifyOptions,
+    workspace: &mut Workspace,
+    stats: &mut SimplifyStats,
+    status: &mut SimplifyStatus,
+) -> Result<bool, crate::sat::cdcl::CdclError> {
+    for candidate in literals.iter() {
+        let negated = candidate.negate();
+        // Collect the live clauses containing the candidate's negation.
+        let entry_count = solver.registry().entry_count();
+        let mut occurrences = 0usize;
+        let mut overflow = false;
+        for index in 0..entry_count {
+            if stats.bce_checks_examined >= options.bce_checks {
+                *status = SimplifyStatus::BceBudgetExhausted;
+                return Ok(false);
+            }
+            stats.bce_checks_examined += 1;
+            let other = match live_offset(solver, index) {
+                Some(value) => value,
+                None => continue,
+            };
+            let header = solver
+                .core()
+                .clauses()
+                .header(other)
+                .map_err(crate::sat::database::SatCoreError::from)?;
+            let mut contains = false;
+            for slot in 0..header.length {
+                let literal = solver
+                    .core()
+                    .clauses()
+                    .literal(other, slot)
+                    .map_err(crate::sat::database::SatCoreError::from)?;
+                if literal == negated {
+                    contains = true;
+                    break;
+                }
+            }
+            if !contains {
+                continue;
+            }
+            if occurrences >= kSatBveOccurrenceLimit as usize {
+                overflow = true;
+                break;
+            }
+            workspace.occ_pos[occurrences] = other;
+            occurrences += 1;
+        }
+        if overflow {
+            // Too many clauses contain the candidate's negation for the fixed
+            // buffer; the next candidate may still succeed.
+            continue;
+        }
+        if occurrences == 0 {
+            // Vacuous blockedness (no clause contains the negation) is not
+            // eliminated: it is the pure-literal rule's territory, and deleting
+            // such clauses here would starve the weaker rewrites (strengthening
+            // and vivification) of their resolution partners (Spec 09 section 11).
+            continue;
+        }
+        // Blockedness: every occurrence D must contain the negation of some
+        // candidate-clause literal other than the blocking literal itself, so
+        // the resolvent on the blocking literal is a tautology.
+        let mut blocked = true;
+        for slot in 0..occurrences {
+            let other = workspace.occ_pos[slot];
+            let header = solver
+                .core()
+                .clauses()
+                .header(other)
+                .map_err(crate::sat::database::SatCoreError::from)?;
+            let mut covers = false;
+            for literal_slot in 0..header.length {
+                let literal = solver
+                    .core()
+                    .clauses()
+                    .literal(other, literal_slot)
+                    .map_err(crate::sat::database::SatCoreError::from)?;
+                if literal == negated {
+                    continue;
+                }
+                if literals.contains(&literal.negate()) {
+                    covers = true;
+                    break;
+                }
+            }
+            if !covers {
+                blocked = false;
+                break;
+            }
+        }
+        if !blocked {
+            continue;
+        }
+        solver.bce_record(literals, *candidate)?;
+        delete_clause(solver, offset)?;
+        return Ok(true);
+    }
+    Ok(false)
 }

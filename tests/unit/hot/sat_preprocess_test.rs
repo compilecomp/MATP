@@ -15,11 +15,13 @@
 mod common;
 
 use common::make_arena;
+use mapt::hot::sat::assignment::SatValue;
 use mapt::hot::sat::literal::{SatLiteral, SatVar};
 use mapt::hot::sat::preprocess::{simplify, SimplifyOptions, SimplifyStatus};
 use mapt::hot::sat::proof::ProofStepKind;
 use mapt::hot::sat::restart::RestartPolicy;
-use mapt::hot::sat::solver::{CdclSolver, SolverOptions};
+use mapt::hot::sat::solver::{CdclSolver, SolveResult, SolverOptions};
+use mapt_config::limits::kSatBceStackDepth;
 
 // CEP:WHAT: Test variable count.
 // CEP:WHY: Named fixture size (CEP&CC 11.3).
@@ -68,7 +70,7 @@ fn live_count(solver: &CdclSolver<'_>) -> usize {
 // CEP:WHY: S33.
 // CEP:STATUS: complete
 // CEP:FAILURE: test fails when the tautology survives.
-// CEP:ASSUMES: one tautology plus one normal clause.
+// CEP:ASSUMES: one tautology plus one normal clause; the surviving clause (2 or 3) is not blocked: every blocking candidate's negation occurrence set is empty (vacuous blockedness is skipped, Spec 09 section 11), so the clause survives the full pass.
 // CEP:COST: constant.
 // CEP:EVIDENCE: cited by hot/sat/preprocess.rs::{simplify, read_clause}.
 // CEP:SECURITY: none.
@@ -105,6 +107,8 @@ fn duplicates_removed() {
     assert_eq!(outcome.status, SimplifyStatus::Complete);
     assert!(outcome.stats.duplicates >= 1);
     // The replacement (0 or not 1) is live; the original is tombstoned: net size 1.
+    // (Its blocking candidates all have empty negation-occurrence sets, so the
+    // blocked-clause elimination skips it - Spec 09 section 11.)
     assert_eq!(live_count(&solver), 1);
 }
 
@@ -192,7 +196,7 @@ fn vivification_shortens_clause() {
 // CEP:WHY: The isolation discipline: every raw mark resolves.
 // CEP:STATUS: complete
 // CEP:FAILURE: test fails when the clause stays marked deleted.
-// CEP:ASSUMES: a clause whose every prefix negation is satisfiable.
+// CEP:ASSUMES: a clause whose every prefix negation is satisfiable; every blocking candidate of the single clause has an empty negation-occurrence set, so the blocked-clause elimination skips it and the clause stays live and unmarked.
 // CEP:COST: constant.
 // CEP:EVIDENCE: cited by hot/sat/preprocess.rs::{vivify, unmark_deleted}.
 // CEP:SECURITY: none.
@@ -396,4 +400,390 @@ fn rounds_bounded() {
     options.rounds = 1;
     let outcome = simplify(&solver, &options).expect("simplify");
     assert!(outcome.stats.rounds_done <= 1);
+}
+
+// CEP:WHAT: Verifies failed-literal probing derives the negated literal as a unit.
+// CEP:WHY: S35: the failed literal 9 (its negation occurs through the chain (not 9 or 6), (not 9 or 7), (not 6 or not 7)) conflicts when decided, so the database entails not-9 and the unit is added; vivification cannot derive it (the conflict fires at the last prefix position of every clause containing 9, which leaves each clause unchanged), so the unit is probing's alone.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when no unit is derived or the trail lacks it.
+// CEP:ASSUMES: the fixture above; the trail keeps the derived unit at level 0.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::probe_literal.
+// CEP:SECURITY: none.
+#[test]
+fn probe_derives_unit() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver
+        .add_clause(&[lit(3, true), lit(9, false)])
+        .expect("a");
+    solver.add_clause(&[lit(5, true), lit(9, true)]).expect("b");
+    solver
+        .add_clause(&[lit(6, true), lit(9, false)])
+        .expect("c");
+    solver
+        .add_clause(&[lit(7, true), lit(9, false)])
+        .expect("d");
+    solver
+        .add_clause(&[lit(6, false), lit(7, false)])
+        .expect("e");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert!(outcome.stats.probe_units >= 1, "stats: {:?}", outcome.stats);
+    assert_eq!(
+        solver.core().value_of_literal(lit(9, false)),
+        SatValue::True,
+        "the derived unit must sit on the trail"
+    );
+}
+
+// CEP:WHAT: Verifies the probe budget stops the pass honestly.
+// CEP:WHY: S35 budget discipline (Law 4).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any other status.
+// CEP:ASSUMES: one probe excursion per budget unit; injected budget 1.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::probe_literal and config/limits.rs kSatProbeBudget.
+// CEP:SECURITY: denial-of-service bound exercised.
+#[test]
+fn probe_budget_stops_early() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver.add_clause(&[lit(0, true), lit(2, true)]).expect("b");
+    solver
+        .add_clause(&[lit(1, false), lit(2, false)])
+        .expect("c");
+    let mut options = SimplifyOptions::new();
+    options.probe_budget = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::ProbeBudgetExhausted);
+}
+
+// CEP:WHAT: Verifies hyper-binary resolution derives the resolvent of a complementary binary pair and the fixpoint turns it into the classic unit.
+// CEP:WHY: S37: (0 or 1) and (not 0 or 2) resolve to (1 or 2), whose self-subsumption with (not 1 or 2) yields the unit 2.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when no resolvent is added or the unit is missing.
+// CEP:ASSUMES: the fixture above; the strengthening pair survives BCE because every candidate's negation occurs (non-vacuous).
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::hyper_binary_pair.
+// CEP:SECURITY: none.
+#[test]
+fn hyper_binary_derives_unit() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver
+        .add_clause(&[lit(0, false), lit(2, true)])
+        .expect("b");
+    solver
+        .add_clause(&[lit(1, false), lit(2, true)])
+        .expect("c");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert!(
+        outcome.stats.hyper_binaries >= 1,
+        "stats: {:?}",
+        outcome.stats
+    );
+    assert_eq!(
+        solver.core().value_of_literal(lit(2, true)),
+        SatValue::True,
+        "the hyper-binary chain must derive the unit"
+    );
+}
+
+// CEP:WHAT: Verifies the hyper-binary pair budget stops the pass honestly.
+// CEP:WHY: S37 budget discipline (Law 4).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any other status.
+// CEP:ASSUMES: three binaries make three pairs; injected budget 1.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::hyper_binary_pair and config/limits.rs kSatHyperBinaryPairBudget.
+// CEP:SECURITY: denial-of-service bound exercised.
+#[test]
+fn hyper_binary_budget_stops_early() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver.add_clause(&[lit(0, true), lit(2, true)]).expect("b");
+    solver.add_clause(&[lit(3, true), lit(4, true)]).expect("c");
+    let mut options = SimplifyOptions::new();
+    options.hyper_binary_budget = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::HyperBinaryBudgetExhausted);
+}
+
+// CEP:WHAT: Verifies bounded variable elimination replaces a variable's clauses by its resolvent.
+// CEP:WHY: S32: the resolvent of (0 or 1) and (not 0 or 2) is (1 or 2); the parents are deleted and the reconstruction record is appended.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the variable's clauses survive or no resolvent is added.
+// CEP:ASSUMES: the fixture above; the fixpoint dedups the doubled resolvent (hyper-binary derives it too).
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::bve_eliminate.
+// CEP:SECURITY: none.
+#[test]
+fn bve_eliminates_variable() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver
+        .add_clause(&[lit(0, false), lit(2, true)])
+        .expect("b");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert!(
+        outcome.stats.bve_resolvents >= 1,
+        "stats: {:?}",
+        outcome.stats
+    );
+    assert_eq!(solver.ext_entry_count(), 1);
+    // The fixpoint dedups the doubled resolvent down to one live clause.
+    assert_eq!(live_count(&solver), 1);
+}
+
+// CEP:WHAT: Verifies the BVE model reconstruction: the solved model satisfies the original formula.
+// CEP:WHY: Spec 09 section 12: BVE deletion is equisatisfiable only; model_value flips the eliminated variable to the side its deleted clauses demand, and the extended model must satisfy every original clause.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the extended model falsifies an original clause.
+// CEP:ASSUMES: the fixture above; solve assigns every variable.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/solver.rs::model_value (ext_eliminated_variable_flip).
+// CEP:SECURITY: none.
+#[test]
+fn bve_model_extension_satisfies_original() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver
+        .add_clause(&[lit(0, false), lit(2, true)])
+        .expect("b");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert_eq!(solver.solve(), SolveResult::Satisfiable);
+    let model = |variable: u32| solver.model_value(variable).expect("model");
+    let (m0, m1, m2) = (model(0), model(1), model(2));
+    assert!(
+        (m0 || m1) && (!m0 || m2),
+        "the extended model must satisfy the original formula"
+    );
+}
+
+// CEP:WHAT: Verifies BVE skips a candidate whose positive occurrences exceed the fixed buffer.
+// CEP:WHY: S32 honesty: occurrence-bound skips are sound (no mutation) and must be visible.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the clauses are mutated or the skip is unreported.
+// CEP:ASSUMES: 65 clauses contain variable 0 positively (kSatBveOccurrenceLimit + 1).
+// CEP:COST: linear in the fixture.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::bve_eliminate and config/limits.rs kSatBveOccurrenceLimit.
+// CEP:SECURITY: buffer bound exercised.
+#[test]
+fn bve_occurrence_bound_skips() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 66, RestartPolicy::Luby, false).expect("solver");
+    for variable in 1..=65u32 {
+        solver
+            .add_clause(&[lit(0, true), lit(variable, true)])
+            .expect("c");
+    }
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert!(outcome.stats.bve_skipped >= 1, "stats: {:?}", outcome.stats);
+    assert_eq!(live_count(&solver), 65);
+}
+
+// CEP:WHAT: Verifies BVE skips a candidate whose resolvent count exceeds the budget.
+// CEP:WHY: S32 honesty: the resolvent bound keeps elimination from growing the database; skips are sound and visible.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the clauses are mutated or the skip is unreported.
+// CEP:ASSUMES: variable 0 has a 2x2 occurrence structure (four resolvents); injected budget 1. Hyper-binary first derives the four cross-resolvents, all counted.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::bve_eliminate and config/limits.rs kSatBveResolventBudget.
+// CEP:SECURITY: budget bound exercised.
+#[test]
+fn bve_resolvent_bound_skips() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver.add_clause(&[lit(0, true), lit(2, true)]).expect("b");
+    solver
+        .add_clause(&[lit(0, false), lit(3, true)])
+        .expect("c");
+    solver
+        .add_clause(&[lit(0, false), lit(4, true)])
+        .expect("d");
+    let mut options = SimplifyOptions::new();
+    options.bve_resolvents = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert_eq!(outcome.stats.bve_resolvents, 0);
+    assert!(outcome.stats.bve_skipped >= 1, "stats: {:?}", outcome.stats);
+}
+
+// CEP:WHAT: Verifies the BVE variable budget stops the pass honestly.
+// CEP:WHY: S32 budget discipline (Law 4).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any other status.
+// CEP:ASSUMES: at least one eliminable variable plus further unassigned variables; injected budget 1.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::bve_eliminate and config/limits.rs kSatBveVariableLimit.
+// CEP:SECURITY: denial-of-service bound exercised.
+#[test]
+fn bve_budget_stops_early() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, kVariables, RestartPolicy::Luby, false).expect("solver");
+    solver.add_clause(&[lit(0, true), lit(1, true)]).expect("a");
+    solver
+        .add_clause(&[lit(0, false), lit(2, true)])
+        .expect("b");
+    solver.add_clause(&[lit(3, true), lit(4, true)]).expect("c");
+    solver
+        .add_clause(&[lit(3, false), lit(5, true)])
+        .expect("d");
+    let mut options = SimplifyOptions::new();
+    options.bve_variables = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::BveBudgetExhausted);
+}
+
+// CEP:WHAT: Verifies blocked-clause elimination deletes a clause that resolves tautologically against every clause containing the blocking literal's negation, and records it for the model reconstruction.
+// CEP:WHY: S31: (u or w or c...) against (not u or not w or d...) resolves to a tautology on u, so the clause is blocked and deleted; the reconstruction record feeds model_value.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the clause survives or no record is appended.
+// CEP:ASSUMES: the long-clause fixture also defeats BVE (its reconstruction payload exceeds the stack stride), so the elimination is BCE's alone.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::bce_eliminate.
+// CEP:SECURITY: none.
+#[test]
+fn bce_eliminates_blocked_clause() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 30, RestartPolicy::Luby, false).expect("solver");
+    let mut positive = Vec::new();
+    positive.push(lit(0, true));
+    positive.push(lit(1, true));
+    for variable in 2..16u32 {
+        positive.push(lit(variable, true));
+    }
+    let mut negative = Vec::new();
+    negative.push(lit(0, false));
+    negative.push(lit(1, false));
+    for variable in 16..30u32 {
+        negative.push(lit(variable, true));
+    }
+    solver.add_clause(&positive).expect("blocked");
+    solver.add_clause(&negative).expect("partner");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert_eq!(outcome.stats.bce_clauses, 1, "stats: {:?}", outcome.stats);
+    assert_eq!(solver.ext_entry_count(), 1);
+    assert_eq!(live_count(&solver), 1);
+}
+
+// CEP:WHAT: Verifies the BCE model reconstruction: the solved model satisfies the original formula.
+// CEP:WHY: Spec 09 section 11: BCE deletion is equisatisfiable only; model_value overrides the blocking literal when the blocked clause is unsatisfied, and the extended model must satisfy every original clause.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the extended model falsifies an original clause.
+// CEP:ASSUMES: the fixture above; solve assigns every variable.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/solver.rs::model_value (ext_blocked_clause_satisfied).
+// CEP:SECURITY: none.
+#[test]
+fn bce_model_extension_satisfies_original() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 30, RestartPolicy::Luby, false).expect("solver");
+    let mut positive = Vec::new();
+    positive.push(lit(0, true));
+    positive.push(lit(1, true));
+    for variable in 2..16u32 {
+        positive.push(lit(variable, true));
+    }
+    let mut negative = Vec::new();
+    negative.push(lit(0, false));
+    negative.push(lit(1, false));
+    for variable in 16..30u32 {
+        negative.push(lit(variable, true));
+    }
+    solver.add_clause(&positive).expect("blocked");
+    solver.add_clause(&negative).expect("partner");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::Complete);
+    assert_eq!(solver.solve(), SolveResult::Satisfiable);
+    let model = |variable: u32| solver.model_value(variable).expect("model");
+    let mut blocked_satisfied = false;
+    for variable in 0..16u32 {
+        if model(variable) {
+            blocked_satisfied = true;
+        }
+    }
+    let mut partner_satisfied = false;
+    for slot in 0..2u32 {
+        if !model(slot) {
+            partner_satisfied = true;
+        }
+    }
+    for variable in 16..30u32 {
+        if model(variable) {
+            partner_satisfied = true;
+        }
+    }
+    assert!(
+        blocked_satisfied && partner_satisfied,
+        "the extended model must satisfy the original formula"
+    );
+}
+
+// CEP:WHAT: Verifies the BCE check budget stops the pass honestly.
+// CEP:WHY: S31 budget discipline (Law 4).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails on any other status.
+// CEP:ASSUMES: the candidate's negation occurs in ten clauses (defeating BVE through the payload bound); injected check budget 1.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::bce_eliminate and config/limits.rs kSatBceCheckBudget.
+// CEP:SECURITY: denial-of-service bound exercised.
+#[test]
+fn bce_budget_stops_early() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 13, RestartPolicy::Luby, false).expect("solver");
+    solver
+        .add_clause(&[lit(0, true), lit(1, true), lit(2, true)])
+        .expect("candidate");
+    for variable in 3..13u32 {
+        solver
+            .add_clause(&[lit(0, false), lit(variable, true)])
+            .expect("neg");
+    }
+    let mut options = SimplifyOptions::new();
+    options.bce_checks = 1;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(outcome.status, SimplifyStatus::BceBudgetExhausted);
+}
+
+// CEP:WHAT: Verifies the model-extension stack bound skips BVE candidates honestly instead of overflowing.
+// CEP:WHY: S31/S32 honesty: the stack is bounded; candidates beyond the depth are skipped (sound, no mutation) and visible in the stats.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the stack overflows its bound or the skip is unreported.
+// CEP:ASSUMES: 65 eliminable variable pairs (kSatBceStackDepth + 1 eliminations attempted); the last candidate is skipped at the pre-check.
+// CEP:COST: linear in the fixture.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs::bve_eliminate and config/limits.rs kSatBceStackDepth.
+// CEP:SECURITY: memory bound exercised.
+#[test]
+fn bve_stack_overflow_skips() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 130, RestartPolicy::Luby, false).expect("solver");
+    for pair in 0..65u32 {
+        let positive = pair * 2;
+        let negative = pair * 2 + 1;
+        solver
+            .add_clause(&[lit(positive, true), lit(negative, true)])
+            .expect("a");
+        solver
+            .add_clause(&[lit(positive, false), lit(negative, false)])
+            .expect("b");
+    }
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert!(outcome.stats.bve_skipped >= 1, "stats: {:?}", outcome.stats);
+    assert_eq!(
+        solver.ext_entry_count() as usize,
+        kSatBceStackDepth as usize
+    );
 }

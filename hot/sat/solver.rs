@@ -27,9 +27,9 @@ use crate::sat::restart::{RestartPolicy, RestartScheduler};
 use crate::sat::vsids::{PhaseTable, VsidsHeap};
 use core::cell::Cell;
 use mapt_config::limits::{
-    kMaxAssumptions, kMaxSatClauseLiterals, kMaxSatVariables, kSatMaxConflicts,
-    kSatMaxLearntClauses, kSatProofLiteralCapacity, kSatProofMapCapacity, kSatProofStepCapacity,
-    kSatRegistryCapacity,
+    kMaxAssumptions, kMaxSatClauseLiterals, kMaxSatVariables, kSatBceMaxClauseLength,
+    kSatBceStackDepth, kSatExtEntryLiterals, kSatMaxConflicts, kSatMaxLearntClauses,
+    kSatProofLiteralCapacity, kSatProofMapCapacity, kSatProofStepCapacity, kSatRegistryCapacity,
 };
 
 /// CEP:WHAT: Outcome of one solve.
@@ -258,7 +258,7 @@ impl SolverOptions {
     }
 }
 
-/// CEP:WHAT: The CDCL solver: SAT core, conflict analyzer, VSIDS heap, phase table, restart scheduler, the conflict counter, the clause registry with the reduction policy, the optional proof recorder, and the failed-assumption core buffer, composed into one search state machine.
+/// CEP:WHAT: The CDCL solver: SAT core, conflict analyzer, VSIDS heap, phase table, restart scheduler, the conflict counter, the clause registry with the reduction policy, the optional proof recorder, the failed-assumption core buffer, and the blocked-clause model-extension stack, composed into one search state machine.
 /// CEP:WHY: Design 11.1 components S9-S43 compose into the loop of design 11.4/26; owning the substructures in one type keeps their invariants (heap membership mirrors assignments, phases mirror last assignments, restart counter mirrors conflicts, registry tombstones mirror storage deleted bits) local and testable.
 /// CEP:CLASS: CEP-0
 /// CEP:STATUS: complete
@@ -412,6 +412,33 @@ pub struct CdclSolver<'a> {
     /// CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::repeated_assumption_solves_agree.
     /// CEP:SECURITY: none.
     pending_cleanup_steps_count: Cell<u32>,
+    /// CEP:WHAT: The model-extension stack: one inline entry per soundness-relevant preprocessing elimination — blocked clauses (BCE, design 11.1 S31) and eliminated variables (BVE, design 11.1 S32).
+    /// CEP:WHY: Both deletions are equisatisfiable only, so a Satisfiable model of the preprocessed database must be extended: a blocked clause's blocking literal is overridden to true when the clause is unsatisfied (the blocked property makes the reverse-order reconstruction sound, Spec 09 section 11), and an eliminated variable is flipped to the side its deleted clauses demand (the resolvent argument shows at most one side can be falsified, Spec 09 section 12); the stack is written only by the sanctioned preprocessing path and read only by model_value; inline arena arrays keep the memory bounded by kSatBceStackDepth x kSatExtEntryLiterals.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: record returns CdclError on stack or stride overflow (the preprocessing pass pre-checks both and reports the honest budget status instead).
+    /// CEP:ASSUMES: entries are append-only; the per-entry payload never exceeds kSatExtEntryLiterals cells.
+    /// CEP:COST: (kSatExtEntryLiterals + 4) cells per entry, allocated once at construction.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_eliminates_blocked_clause, bce_model_extension_satisfies_original, bve_eliminates_variable, bve_model_extension_satisfies_original}.
+    /// CEP:SECURITY: bounds-checked reads and writes.
+    ext_literals: &'a [Cell<SatLiteral>],
+    /// CEP:WHAT: Per-entry metadata: (kind, anchor, payload length, clause count) as four u64 cells per entry. Kind 0 = blocked clause (anchor = blocking-literal encoding, payload = the clause's literals); kind 1 = eliminated variable (anchor = the variable index, payload = the deleted clauses' flat literals with a length marker per clause).
+    /// CEP:WHY: The kind dispatches the reconstruction rule; the anchor identifies the overridden variable or literal; the payload length gates the literal-slot reads.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: extent given by ext_depth; payloads <= kSatExtEntryLiterals cells.
+    /// CEP:COST: 32 bytes per entry.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_model_extension_satisfies_original, bve_model_extension_satisfies_original}.
+    /// CEP:SECURITY: bounds-checked reads.
+    ext_meta: &'a [Cell<u64>],
+    /// CEP:WHAT: Number of recorded extension entries.
+    /// CEP:WHY: Extent of the stack; append-only monotone.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: <= kSatBceStackDepth.
+    /// CEP:COST: 4 bytes.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_stack_overflow_stops.
+    /// CEP:SECURITY: none.
+    ext_depth: Cell<u32>,
 }
 
 // CEP:WHAT: Sentinel for "no deferred cleanup pending".
@@ -423,6 +450,26 @@ pub struct CdclSolver<'a> {
 // CEP:EVIDENCE: unit/hot/sat_assumptions_test.rs::learnts_do_not_leak_across_solves.
 // CEP:SECURITY: none.
 const kInvalidPendingCleanup: u32 = u32::MAX;
+
+// CEP:WHAT: Model-extension stack entry kind: a blocked clause (BCE, design 11.1 S31).
+// CEP:WHY: The kind dispatches model_value's reconstruction rule (Spec 09 section 11).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: distinct from kExtKindEliminatedVariable.
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_model_extension_satisfies_original.
+// CEP:SECURITY: none.
+const kExtKindBlockedClause: u64 = 0;
+
+// CEP:WHAT: Model-extension stack entry kind: an eliminated variable (BVE, design 11.1 S32).
+// CEP:WHY: The kind dispatches model_value's reconstruction rule (Spec 09 section 12).
+// CEP:STATUS: complete
+// CEP:FAILURE: none.
+// CEP:ASSUMES: distinct from kExtKindBlockedClause.
+// CEP:COST: compile-time only.
+// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_model_extension_satisfies_original.
+// CEP:SECURITY: none.
+const kExtKindEliminatedVariable: u64 = 1;
 
 // CEP:WHAT: Bit shift separating the proof id and the literal encoding in one packed pending-cleanup step.
 // CEP:WHY: The deferred assumption-delete queue stores (id, literal) pairs in one u64; the layout must be named so pack and unpack cannot drift apart (CEP&CC 11.3 auditability).
@@ -561,6 +608,32 @@ impl<'a> CdclSolver<'a> {
                 crate::sat::clause::SatClauseError::InvalidClauseOffset,
             ))
         })?;
+        let ext_literals_range = arena
+            .alloc_array::<Cell<SatLiteral>>(kSatBceStackDepth * kSatExtEntryLiterals)
+            .map_err(|_| {
+                CdclError::Storage(SatCoreError::Storage(
+                    crate::sat::clause::SatClauseError::ArenaFull,
+                ))
+            })?;
+        let ext_literals = arena
+            .array::<Cell<SatLiteral>>(ext_literals_range)
+            .map_err(|_| {
+                CdclError::Storage(SatCoreError::Storage(
+                    crate::sat::clause::SatClauseError::InvalidClauseOffset,
+                ))
+            })?;
+        let ext_meta_range = arena
+            .alloc_array::<Cell<u64>>(kSatBceStackDepth * 4)
+            .map_err(|_| {
+                CdclError::Storage(SatCoreError::Storage(
+                    crate::sat::clause::SatClauseError::ArenaFull,
+                ))
+            })?;
+        let ext_meta = arena.array::<Cell<u64>>(ext_meta_range).map_err(|_| {
+            CdclError::Storage(SatCoreError::Storage(
+                crate::sat::clause::SatClauseError::InvalidClauseOffset,
+            ))
+        })?;
         Ok(CdclSolver {
             core,
             analyzer,
@@ -578,6 +651,9 @@ impl<'a> CdclSolver<'a> {
             pending_cleanup: Cell::new(kInvalidPendingCleanup),
             pending_cleanup_steps,
             pending_cleanup_steps_count: Cell::new(0),
+            ext_literals,
+            ext_meta,
+            ext_depth: Cell::new(0),
         })
     }
 
@@ -695,22 +771,280 @@ impl<'a> CdclSolver<'a> {
         Ok(outcome)
     }
 
-    /// CEP:WHAT: Returns the value of a variable after a Satisfiable solve.
-    /// CEP:WHY: Model extraction (design 11.1 S40).
+    /// CEP:WHAT: Returns the value of a variable after a Satisfiable solve, extended over the model-extension stack.
+    /// CEP:WHY: Model extraction (design 11.1 S40) plus the preprocessing reconstruction (design 11.1 S31/S32, Spec 09 sections 11-12): BCE and BVE deletions are equisatisfiable only, so the search's model of the preprocessed database is extended by walking the stack newest-entry-first; an entry that "consumes" its anchor variable under the current assignment yields the override (blocked clause: blocking literal to true; eliminated variable: the side flip its deleted clauses demand), which the blocked property and the resolvent argument make sound against the entries already applied (Spec 09 sections 11-12).
     /// CEP:STATUS: complete
-    /// CEP:FAILURE: none (None when unassigned, which cannot happen after Satisfiable).
-    /// CEP:ASSUMES: called after solve returned Satisfiable for meaningful results.
-    /// CEP:COST: 1 load.
-    /// CEP:EVIDENCE: property/cdcl_property_test.rs::models_satisfy_formulas.
+    /// CEP:FAILURE: none (None when unassigned and unconsumed by the stack, which cannot happen after Satisfiable: the search assigns every variable).
+    /// CEP:ASSUMES: called after solve returned Satisfiable for meaningful results; stack entries written only through the record methods.
+    /// CEP:COST: one trail load without stack entries; O(stack x entry size) worst case with the reconstruction active.
+    /// CEP:EVIDENCE: property/cdcl_property_test.rs::models_satisfy_formulas; unit/hot/sat_preprocess_test.rs::{bce_model_extension_satisfies_original, bve_model_extension_satisfies_original}.
     /// CEP:SECURITY: clamped read.
     pub fn model_value(&self, variable: u32) -> Option<bool> {
-        match self
-            .core
-            .value_of_literal(SatLiteral::new(SatVar(variable), true).ok()?)
-        {
+        let literal = SatLiteral::new(SatVar(variable), true).ok()?;
+        let trail = match self.core.value_of_literal(literal) {
             SatValue::True => Some(true),
             SatValue::False => Some(false),
             SatValue::Unassigned => None,
+        };
+        match self.ext_override(variable, 0) {
+            Some(value) => Some(value),
+            None => trail,
+        }
+    }
+
+    /// CEP:WHAT: Returns the number of recorded model-extension stack entries.
+    /// CEP:WHY: The preprocessing pass checks the free depth before recording and reports the honest budget status instead of an error when the stack is full (Spec 09 sections 11-12); public read access matches the core/registry/proof accessors' test-and-preprocessing discipline.
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: none.
+    /// CEP:ASSUMES: none.
+    /// CEP:COST: one load.
+    /// CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_stack_overflow_stops.
+    /// CEP:SECURITY: none.
+    pub fn ext_entry_count(&self) -> u32 {
+        self.ext_depth.get()
+    }
+
+    // CEP:WHAT: Records one BCE elimination onto the stack: the clause's sorted deduplicated literals plus its blocking literal.
+    // CEP:WHY: The entry is the reconstruction input of model_value; the clause must be copied (not referenced by offset) because it is deleted from the database and the storage bytes are not a stable read surface (compaction, ticket CEP-1007, reclaims storage; Spec 09 section 11).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: Returns CdclError::Storage(InvariantViolation) on stack overflow or on an empty/overlong literal slice; the caller pre-checks the free depth so the overflow path is the loud backstop, not the control flow.
+    // CEP:ASSUMES: 1 <= literals.len() <= kSatBceMaxClauseLength; called from the preprocessing pass only.
+    // CEP:COST: one entry copy.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_eliminates_blocked_clause, bce_stack_overflow_stops}.
+    // CEP:SECURITY: bounds-checked writes.
+    pub(crate) fn bce_record(
+        &self,
+        literals: &[SatLiteral],
+        blocking: SatLiteral,
+    ) -> Result<(), CdclError> {
+        if literals.is_empty() || literals.len() > kSatBceMaxClauseLength as usize {
+            return Err(CdclError::Storage(SatCoreError::InvariantViolation));
+        }
+        self.ext_record(
+            kExtKindBlockedClause,
+            blocking.encoding() as u64,
+            literals.len() as u32,
+            literals,
+        )
+    }
+
+    // CEP:WHAT: Records one BVE elimination onto the stack: the variable plus its deleted clauses as a flat length-marked payload.
+    // CEP:WHY: The variable-flip reconstruction (Spec 09 section 12) needs every deleted clause to decide which side the model must satisfy; the payload stores the clauses themselves because they are deleted from the database.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: Returns CdclError::Storage(InvariantViolation) on stack overflow, an empty clause list, a length/literal mismatch, or a payload beyond kSatExtEntryLiterals cells; the caller pre-checks the free depth and payload size (one length-marker cell plus the clause literals per clause) so the overflow path is the loud backstop.
+    // CEP:ASSUMES: every clause contains the variable (positive or negative polarity); clause_lengths[i] matches the i-th literal run; called from the preprocessing pass only.
+    // CEP:COST: one entry copy.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_model_extension_satisfies_original.
+    // CEP:SECURITY: bounds-checked writes.
+    pub(crate) fn bve_record(
+        &self,
+        variable: u32,
+        clause_lengths: &[u32],
+        literals: &[SatLiteral],
+    ) -> Result<(), CdclError> {
+        if clause_lengths.is_empty() {
+            return Err(CdclError::Storage(SatCoreError::InvariantViolation));
+        }
+        let mut literal_sum = 0usize;
+        for length in clause_lengths.iter() {
+            if *length == 0 {
+                return Err(CdclError::Storage(SatCoreError::InvariantViolation));
+            }
+            literal_sum += *length as usize;
+        }
+        if literals.len() != literal_sum
+            || literal_sum + clause_lengths.len() > kSatExtEntryLiterals as usize
+        {
+            return Err(CdclError::Storage(SatCoreError::InvariantViolation));
+        }
+        // The payload is the flat length-marked clause list: one marker cell per
+        // clause (the length stored as an opaque encoding) followed by the literals.
+        let mut payload = [SatLiteral::from_encoding(0); kSatExtEntryLiterals as usize];
+        let mut used = 0usize;
+        let mut cursor = 0usize;
+        for length in clause_lengths.iter() {
+            payload[used] = SatLiteral::from_encoding(*length);
+            used += 1;
+            for slot in 0..*length as usize {
+                payload[used] = literals[cursor + slot];
+                used += 1;
+            }
+            cursor += *length as usize;
+        }
+        self.ext_record(
+            kExtKindEliminatedVariable,
+            variable as u64,
+            clause_lengths.len() as u32,
+            &payload[..used],
+        )
+    }
+
+    // CEP:WHAT: Appends one entry: kind, anchor, payload length, and clause count into the meta slots and the payload into the entry's literal cells.
+    // CEP:WHY: The single append path keeps the stack layout (kind, anchor, length, count) and its bound checks in one place (CEP&CC 33.18).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: Returns CdclError::Storage(InvariantViolation) on stack overflow or a payload beyond the entry stride.
+    // CEP:ASSUMES: payload.len() <= kSatExtEntryLiterals; called by the two typed record methods only.
+    // CEP:COST: one entry copy.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_eliminates_blocked_clause, bve_eliminates_variable}.
+    // CEP:SECURITY: bounds-checked writes.
+    fn ext_record(
+        &self,
+        kind: u64,
+        anchor: u64,
+        clause_count: u32,
+        payload: &[SatLiteral],
+    ) -> Result<(), CdclError> {
+        let depth = self.ext_depth.get() as usize;
+        if depth >= kSatBceStackDepth as usize || payload.len() > kSatExtEntryLiterals as usize {
+            return Err(CdclError::Storage(SatCoreError::InvariantViolation));
+        }
+        let base = depth * kSatExtEntryLiterals as usize;
+        for (slot, literal) in payload.iter().enumerate() {
+            self.ext_literals[base + slot].set(*literal);
+        }
+        self.ext_meta[depth * 4].set(kind);
+        self.ext_meta[depth * 4 + 1].set(anchor);
+        self.ext_meta[depth * 4 + 2].set(payload.len() as u64);
+        self.ext_meta[depth * 4 + 3].set(clause_count as u64);
+        self.ext_depth.set((depth + 1) as u32);
+        Ok(())
+    }
+
+    // CEP:WHAT: Scans the stack from the newest entry down to `lower` (exclusive) and returns the override of the first entry that consumes `variable`, or None when no entry consumes it.
+    // CEP:WHY: The reconstruction processes entries newest-first; the newest consuming entry's override is the effective value because newer entries are already applied and older ones are not (Spec 09 sections 11-12).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: lower <= ext_depth.
+    // CEP:COST: O(stack depth) entries scanned; the nested satisfaction checks recurse with a strictly increasing lower bound, so the total is bounded by the stack depth squared.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_model_extension_satisfies_original, bve_model_extension_satisfies_original}.
+    // CEP:SECURITY: bounds-checked reads.
+    fn ext_override(&self, variable: u32, lower: usize) -> Option<bool> {
+        let depth = self.ext_depth.get() as usize;
+        let mut index = depth;
+        while index > lower {
+            index -= 1;
+            let kind = self.ext_meta[index * 4].get();
+            let anchor = self.ext_meta[index * 4 + 1].get();
+            match kind {
+                kExtKindBlockedClause => {
+                    let blocking = SatLiteral::from_encoding(anchor as u32);
+                    if blocking.variable().0 != variable {
+                        continue;
+                    }
+                    if !self.ext_blocked_clause_satisfied(index) {
+                        return Some(blocking.is_positive());
+                    }
+                }
+                _ => {
+                    if anchor != variable as u64 {
+                        continue;
+                    }
+                    if let Some(flip) = self.ext_eliminated_variable_flip(index) {
+                        return Some(flip);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    // CEP:WHAT: Returns whether a blocked-clause entry's clause is satisfied under the trail plus the overrides of the entries NEWER than `index`.
+    // CEP:WHY: The reconstruction at entry `index` sees exactly the trail and the newer entries' overrides; a satisfied entry does not consume its blocking variable, leaving that variable to the older entries and the trail (Spec 09 section 11).
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: index < ext_depth and the entry is a blocked-clause entry.
+    // CEP:COST: O(clause length) with nested override scans strictly bounded by the stack depth.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_model_extension_satisfies_original.
+    // CEP:SECURITY: bounds-checked reads.
+    fn ext_blocked_clause_satisfied(&self, index: usize) -> bool {
+        let payload = self.entry_literals(index);
+        payload
+            .iter()
+            .any(|literal| self.entry_literal_value(*literal, index))
+    }
+
+    // CEP:WHAT: Returns the side flip a deleted-variable entry demands under the trail plus the newer entries' overrides: true when a positive clause of the variable is falsified, false when a negative clause is falsified, None when every deleted clause is already satisfied.
+    // CEP:WHY: Spec 09 section 12's flip rule: at most one side can be falsified under a model of the reduced database (a falsified clause on each side would falsify their resolvent, which the model satisfies), and flipping to the falsified side satisfies every clause of that side while the resolvent argument keeps the other side satisfied.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none (both-sides-falsified is unreachable; the deterministic tie-break prefers the positive side if it were ever reached).
+    // CEP:ASSUMES: index < ext_depth and the entry is an eliminated-variable entry.
+    // CEP:COST: O(payload cells) with nested override scans strictly bounded by the stack depth.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bve_model_extension_satisfies_original.
+    // CEP:SECURITY: bounds-checked reads.
+    fn ext_eliminated_variable_flip(&self, index: usize) -> Option<bool> {
+        let anchor = self.ext_meta[index * 4 + 1].get() as u32;
+        let payload = self.entry_literals(index);
+        let mut used = 0usize;
+        let mut positive_falsified = false;
+        let mut negative_falsified = false;
+        for _ in 0..self.ext_meta[index * 4 + 3].get() {
+            let length = payload[used].encoding() as usize;
+            used += 1;
+            let mut satisfied = false;
+            for slot in 0..length {
+                let literal = payload[used + slot];
+                if self.entry_literal_value(literal, index) {
+                    satisfied = true;
+                }
+            }
+            used += length;
+            if !satisfied {
+                // The clause's polarity: it contains the anchor variable either as
+                // the positive or the negative literal (BVE deletes exactly the
+                // clauses containing the variable).
+                let contains_positive = payload[used - length..used]
+                    .iter()
+                    .any(|literal| literal.variable().0 == anchor && literal.is_positive());
+                if contains_positive {
+                    positive_falsified = true;
+                } else {
+                    negative_falsified = true;
+                }
+            }
+        }
+        if positive_falsified {
+            Some(true)
+        } else if negative_falsified {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
+    // CEP:WHAT: Copies an entry's payload cells out of the stack slice.
+    // CEP:WHY: One read helper keeps the stride arithmetic and the bounds checks single-sourced.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none (the payload length was validated at record time).
+    // CEP:ASSUMES: index < ext_depth.
+    // CEP:COST: one copy of up to kSatExtEntryLiterals cells.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::bce_model_extension_satisfies_original.
+    // CEP:SECURITY: bounds-checked reads.
+    fn entry_literals(&self, index: usize) -> [SatLiteral; kSatExtEntryLiterals as usize] {
+        let base = index * kSatExtEntryLiterals as usize;
+        let mut cells = [SatLiteral::from_encoding(0); kSatExtEntryLiterals as usize];
+        let length = self.ext_meta[index * 4 + 2].get() as usize;
+        for (slot, cell) in cells.iter_mut().enumerate().take(length) {
+            *cell = self.ext_literals[base + slot].get();
+        }
+        cells
+    }
+
+    // CEP:WHAT: Resolves one payload literal's value: the trail value when assigned, otherwise the override of the entries newer than `index`.
+    // CEP:WHY: The reconstruction at entry `index` must not consult older entries (they are not yet applied); one helper keeps that rule single-sourced for both entry kinds.
+    // CEP:STATUS: complete
+    // CEP:FAILURE: none.
+    // CEP:ASSUMES: none.
+    // CEP:COST: one trail load plus, when unassigned, a nested override scan bounded by the stack depth.
+    // CEP:EVIDENCE: unit/hot/sat_preprocess_test.rs::{bce_model_extension_satisfies_original, bve_model_extension_satisfies_original}.
+    // CEP:SECURITY: none.
+    fn entry_literal_value(&self, literal: SatLiteral, index: usize) -> bool {
+        match self.core.value_of_literal(literal) {
+            SatValue::True => true,
+            SatValue::False => false,
+            SatValue::Unassigned => self
+                .ext_override(literal.variable().0, index + 1)
+                .map(|value| value == literal.is_positive())
+                .unwrap_or(false),
         }
     }
 

@@ -44,7 +44,7 @@ MAPT is a first-order automated theorem prover with an integrated CDCL SAT solve
 | Superposition + resolution + factoring (+ equality resolution/factoring, demodulation, subsumption) | complete | `hot/inference/` |
 | Bounded inference generator (deferrable cursor) | complete | `hot/search/generate.rs` |
 | SAT: clause registry + learnt deletion (LBD/age policy) | complete | `hot/sat/registry.rs` |
-| SAT: preprocessing (subsumption, self-subsumption, tautology, duplicates, vivification) | complete | `hot/sat/preprocess.rs` |
+| SAT: preprocessing (subsumption, self-subsumption, tautology, duplicates, vivification, probing, hyper-binary resolution, bounded variable elimination, blocked-clause elimination with model reconstruction) | complete | `hot/sat/preprocess.rs` |
 | SAT: incremental solving + assumptions with failed cores | complete | `hot/sat/solver.rs`, `hot/sat/cdcl.rs` |
 | SAT: DRAT proof recording, writer, internal RUP/RAT checker | complete | `hot/sat/proof.rs`, `cold/proof_output/` |
 | Formal specs 07-11 (rules, loop, preprocessing, assumptions, DRAT) | complete | `doc/formal/` |
