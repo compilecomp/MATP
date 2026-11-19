@@ -384,12 +384,16 @@ fn level_zero_rejected() {
     let analyzer = ConflictAnalyzer::new(arena, kGraphVariables).expect("analyzer");
     let vsids = VsidsHeap::new(arena, kGraphVariables).expect("vsids");
     // Units over 5 and 6 plus (-5 v -6): the second dequeue falsifies the last non-false
-    // literal of the binary clause, conflicting at level 0.
-    let _ = core.add_clause(&[lit(5, true)]).expect("unit 5");
-    let _ = core.add_clause(&[lit(6, true)]).expect("unit 6");
+    // literal of the binary clause, conflicting at level 0. The binary is added
+    // while the trail is empty (the value-aware root-level attach would
+    // otherwise surface the refutation at attach time instead of leaving it to
+    // propagation - both orders refute, and this fixture exercises the
+    // propagation route to keep the analyzer's input reachable).
     let _ = core
         .add_clause(&[lit(5, false), lit(6, false)])
         .expect("binary");
+    let _ = core.add_clause(&[lit(5, true)]).expect("unit 5");
+    let _ = core.add_clause(&[lit(6, true)]).expect("unit 6");
     let conflict = propagate_conflict(&core);
     let mut buffer = [lit(0, true); 64];
     assert_eq!(
@@ -479,13 +483,16 @@ fn malformed_conflict_rejected() {
     let core = SatCore::new(arena, kGraphVariables).expect("core");
     let analyzer = ConflictAnalyzer::new(arena, kGraphVariables).expect("analyzer");
     let vsids = VsidsHeap::new(arena, kGraphVariables).expect("vsids");
-    // Level 0: units over 0 and 1, then a clause (-0, -1) that is fully falsified at
-    // level 0; attach succeeds (both watches false) and BCP never rescans it.
-    let _ = core.add_clause(&[lit(0, true)]).expect("unit 0");
-    let _ = core.add_clause(&[lit(1, true)]).expect("unit 1");
+    // The falsified binary (-0, -1) is added while the trail is empty so it
+    // attaches with both watches on false literals (above the value-aware
+    // root-level attach's reach the watch push is unconditional), then the two
+    // units falsify it through propagation - the clause offset stays reachable
+    // for the analyzer's malformed-conflict rejection below.
     let attached = core
         .add_clause(&[lit(0, false), lit(1, false)])
         .expect("falsified clause");
+    let _ = core.add_clause(&[lit(0, true)]).expect("unit 0");
+    let _ = core.add_clause(&[lit(1, true)]).expect("unit 1");
     let offset = match attached {
         mapt::hot::sat::database::AttachOutcome::Attached(offset) => offset,
         other => panic!("expected attach, got {:?}", other),

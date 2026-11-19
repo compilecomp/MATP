@@ -548,3 +548,132 @@ fn sr_trail_untouched_on_failure() {
         "the failed attempts unwind completely"
     );
 }
+
+// CEP:WHAT: The paper's resolution-literal-target shape: the side literal's only exact main match is the resolution literal itself.
+// CEP:WHY: The backtracking search assigns each side literal one of two roles - the opposite-polarity resolution match (role A, into the non-empty S') or an exact same-polarity match at an index DIFFERENT from the resolution literal (role B) - and soundness needs both: a side literal allowed to map onto the resolution literal itself would leave sigma(side) unconstrained by the falsifying valuation of main \ {m'} (Spec 07 section 11), so the decision must reject when the only match is the resolution literal and no role-A literal exists.
+// CEP:STATUS: complete
+// CEP:FAILURE: the test fails on a false accept.
+// CEP:ASSUMES: none.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/inference/subsumption.rs::subsumption_resolves_onto.
+// CEP:SECURITY: none.
+#[test]
+fn sr_rejects_resolution_literal_target() {
+    let (_arena, symbols, builder, terms, _p, substitution) = make_inference_fixture();
+    let context = mapt::hot::inference::InferenceContext {
+        terms: &terms,
+        symbols: &symbols,
+        substitution: &substitution,
+        precedence: &_p,
+        ordering: mapt::hot::inference::OrderingKind::Kbo,
+    };
+    let a = fun(&terms, &symbols, &builder, "a", &[]);
+    let b = fun(&terms, &symbols, &builder, "b", &[]);
+    // Side: p(a) positive. Main: p(a) positive (the resolution literal) and
+    // q(x1, b) negative. The side literal exactly equals the resolution
+    // literal; role A needs an opposite-polarity match (none), and role B must
+    // target an index other than the resolution literal (only q(x1, b), which
+    // does not match). Either resolution-literal choice rejects.
+    let x1 = var(&terms, 1);
+    let side = vec![pred(&terms, &symbols, &builder, "p", &[a], true)];
+    let main = vec![
+        pred(&terms, &symbols, &builder, "p", &[a], true),
+        pred(&terms, &symbols, &builder, "q", &[x1, b], false),
+    ];
+    let resolution = subsumption_resolves(&context, &side, &main).expect("decision");
+    assert_eq!(
+        resolution, None,
+        "mapping onto the resolution literal itself is not a licensed role"
+    );
+}
+
+// CEP:WHAT: The head-symbol prefilter of the given-time simplification scans stays sound across the equality pseudo-head: a subsumption-resolution whose resolution literal carries the equality head fires, and the pseudo-head never collides with a real symbol id.
+// CEP:WHY: The scan runs behind a sound head-occurrence prefilter; the equality pseudo-head class (design 8.3's comparable-with-everything equality) is its own class and the side premise's equality-headed resolution literal must pass the prefilter exactly when the main premise carries an equality atom - a collision with a real symbol id would either block a legal deletion or license an illegal one (hot/search/given_clause.rs).
+// CEP:STATUS: complete
+// CEP:FAILURE: the test fails when the equality-headed SR is blocked or fires for the wrong reason.
+// CEP:ASSUMES: the S4 shape with the equality atom as the resolution literal; the search runs to saturation.
+// CEP:COST: one saturation over two clauses.
+// CEP:EVIDENCE: cited by hot/search/given_clause.rs's head-class prefilter and config/limits.rs kSrHeadSymbols.
+// CEP:SECURITY: none.
+#[test]
+fn sr_head_prefilter_soundness() {
+    let (arena, symbols, builder, terms, precedence, _substitution) = make_inference_fixture();
+    let options = mapt::hot::search::given_clause::SearchOptions::new();
+    let space = mapt::hot::search::given_clause::SearchSpace::new_with(
+        arena, &options, 16, 4096, 8192, 8192, 65536, 4096,
+    )
+    .expect("space");
+    let context = mapt::hot::inference::InferenceContext {
+        terms: &terms,
+        symbols: &symbols,
+        substitution: &space.substitution,
+        precedence: &precedence,
+        ordering: mapt::hot::inference::OrderingKind::Kbo,
+    };
+    let a = fun(&terms, &symbols, &builder, "a", &[]);
+    let b = fun(&terms, &symbols, &builder, "b", &[]);
+    let x0 = var(&terms, 0);
+    let x1 = var(&terms, 1);
+    let x2 = var(&terms, 2);
+    let x3 = var(&terms, 3);
+    let x4 = var(&terms, 4);
+    let eq_main = mapt::hot::ir::literal::Literal::new(
+        terms.intern_eq(&symbols, x0, a).expect("eq main"),
+        true,
+    );
+    let eq_side = mapt::hot::ir::literal::Literal::new(
+        terms.intern_eq(&symbols, x1, a).expect("eq side"),
+        false,
+    );
+    // Side premise (selected first): its equality literal sigma-matches the
+    // negation of the main's equality literal (role A: x1 := x0), and its
+    // q literal sigma-matches one main q literal (role B: x4 := x2).
+    let side = vec![
+        eq_side,
+        pred(&terms, &symbols, &builder, "q", &[x4, a], false),
+    ];
+    space
+        .add_input_clause(&context, &options, &side)
+        .expect("side");
+    // Main premise: the equality atom is the resolution literal; the clause
+    // has no other equality literal, so the head-occurrence prefilter must
+    // admit the side premise through the pseudo-head class.
+    let main = vec![
+        eq_main,
+        pred(&terms, &symbols, &builder, "q", &[x2, a], false),
+        pred(&terms, &symbols, &builder, "q", &[x3, b], false),
+    ];
+    space
+        .add_input_clause(&context, &options, &main)
+        .expect("main");
+    let mut stats = mapt::hot::search::given_clause::SearchStats::default();
+    let outcome = mapt::hot::search::given_clause::saturate(
+        &space,
+        &context,
+        &options,
+        &|_iterations: u64| false,
+        &mut stats,
+    )
+    .expect("saturate");
+    assert_eq!(
+        outcome,
+        mapt::hot::search::given_clause::SearchOutcome::Saturated
+    );
+    assert_eq!(
+        stats.subsumption_resolutions, 1,
+        "the equality-headed resolution literal passes the head prefilter"
+    );
+    let mut found = false;
+    for id in 1..=space.store.next_clause_id().0 {
+        if let Ok(record) = space
+            .store
+            .clause_by_id(mapt::hot::ir::clause::ClauseId(id))
+        {
+            if record.derivation.rule == mapt::hot::ir::clause::InferenceRule::SubsumptionResolution
+            {
+                found = true;
+            }
+        }
+    }
+    assert!(found, "an SR chain record must exist in the store");
+}

@@ -959,6 +959,86 @@ pub const kSatBceCheckBudget: u32 = 16_384;
 /// CEP:SECURITY: memory bound on the solver's inline stack.
 pub const kSatExtEntryLiterals: u32 = 32;
 
+/// CEP:WHAT: Term-graph node capacity of the theory solver (design 13.4).
+/// CEP:WHY: The congruence closure works over a fixed-density term graph in the shared arena; the named bound turns an oversized input into a loud TheoryError::TermCapacity instead of unbounded growth.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: term construction returns TheoryError::TermCapacity past the bound.
+/// CEP:ASSUMES: 512 ground terms cover the DPLL(T) workloads of Phase 5; injectable for tests.
+/// CEP:COST: 16 bytes of arena per node (kind, symbol, first argument, arity) plus 4 bytes per argument slot.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::term_capacity_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on the theory state.
+pub const kMaxTheoryTerms: u32 = 512;
+
+/// CEP:WHAT: Variable count of the theory solver's shared variable space (design 13.3).
+/// CEP:WHY: Both theory solvers address one variable space, so Nelson-Oppen's shared-variable interface needs no name mapping; the bound bounds the difference-logic vertex set and the arrangement loops.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: variable registration returns TheoryError::VarCapacity past the bound.
+/// CEP:ASSUMES: 128 variables cover the DPLL(T) workloads of Phase 5; injectable for tests.
+/// CEP:COST: one Bellman-Ford vertex per variable.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::variable_capacity_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on the theory state.
+pub const kMaxTheoryVars: u32 = 128;
+
+/// CEP:WHAT: Theory-atom capacity, which is also the Boolean abstraction's SAT variable count (design 13.2).
+/// CEP:WHY: Atom i maps to SAT variable i; the bound bounds the lemma width (a theory lemma is the negation of one full atom assignment) and the abstraction size.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: atom registration returns TheoryError::AtomCapacity past the bound.
+/// CEP:ASSUMES: 256 atoms cover the DPLL(T) workloads of Phase 5 and stay far below kMaxSatVariables; injectable for tests.
+/// CEP:COST: one SAT variable and one atom-table row per atom.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::atom_capacity_enforced.
+/// CEP:SECURITY: memory-exhaustion bound on the theory state.
+pub const kMaxTheoryAtoms: u32 = 256;
+
+/// CEP:WHAT: Conflict budget of one DPLL(T) run (design 13.2).
+/// CEP:WHY: The outer loop adds one theory lemma per theory conflict, each excluding exactly one atom assignment; the bound makes the worst-case exponential search loud with an honest TheoryResult::Unknown instead of unbounded.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the run returns TheoryResult::Unknown with the conflict count reported.
+/// CEP:ASSUMES: 1_024 conflicts cover Phase 5 workloads; injectable for tests.
+/// CEP:COST: one SAT solve plus one theory check per budget unit.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::conflict_budget_unknown.
+/// CEP:SECURITY: denial-of-service bound on the DPLL(T) loop.
+pub const kMaxTheoryConflicts: u32 = 1_024;
+
+/// CEP:WHAT: Propagation rounds of one Nelson-Oppen consistency check (design 13.3).
+/// CEP:WHY: Each round either propagates at least one shared-variable equality between the theories or stabilizes, so the fixpoint needs at most kMaxTheoryVars + 2 rounds; the bound keeps the pair tests bounded with a loud error past it.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: the check returns TheoryError::PropagationRounds past the bound (unreachable for consistent inputs; the bound is the loud backstop).
+/// CEP:ASSUMES: kMaxTheoryVars + 2 rounds suffice for the equality-propagation fixpoint.
+/// CEP:COST: one propagation round per budget unit.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::nelson_oppen_combines_theories.
+/// CEP:SECURITY: denial-of-service bound on the combination loop.
+pub const kMaxTheoryPropagationRounds: u32 = kMaxTheoryVars + 2;
+
+/// CEP:WHAT: Fixed-point shift of the difference-logic weights (design 13.1's linear-real fragment over Q).
+/// CEP:WHY: The difference-logic solver runs over rationals represented as integers scaled by 2^kTheoryDlScaleShift (no floating point, no allocation); strict disequalities use the one-unit epsilon, which is exact over the discrete representation; stably-infinite Q is what Nelson-Oppen's combination theorem requires (integer difference logic is not stably infinite).
+/// CEP:STATUS: complete
+/// CEP:FAILURE: none (representation constant).
+/// CEP:ASSUMES: 2^-16 granularity suffices for Phase 5 workloads; injectable for tests.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::difference_logic_conflict.
+/// CEP:SECURITY: none.
+pub const kTheoryDlScaleShift: u32 = 16;
+
+/// CEP:WHAT: Maximum |weight| of one difference-logic constraint in fixed-point units (design 13.1).
+/// CEP:WHY: Bounds the magnitudes so every Bellman-Ford accumulation with checked arithmetic stays within i64; overflow is a loud TheoryError::ArithmeticOverflow instead of wraparound unsoundness.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: constraint construction returns TheoryError::ArithmeticOverflow past the bound.
+/// CEP:ASSUMES: kTheoryDlMaxWeight < i64::MAX / (kMaxTheoryVars + 2) / 2 keeps every distance sum in range.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::difference_logic_conflict.
+/// CEP:SECURITY: arithmetic-overflow bound (Severity 0 unsoundness prevention).
+pub const kTheoryDlMaxWeight: i64 = 1 << 40;
+
+/// CEP:WHAT: Maximum arity of one theory application node (design 13.4).
+/// CEP:WHY: The congruence closure reads each node's arguments into one fixed scratch buffer; the arity bound sizes that buffer without per-node allocation.
+/// CEP:STATUS: complete
+/// CEP:FAILURE: application construction returns TheoryError::ArityExceeded past the bound.
+/// CEP:ASSUMES: 16 arguments cover the uninterpreted-function workloads of Phase 5; injectable for tests.
+/// CEP:COST: compile-time constant.
+/// CEP:EVIDENCE: unit/hot/theory_test.rs::term_graph_hash_consing.
+/// CEP:SECURITY: memory bound on the closure scratch.
+pub const kMaxTheoryArity: u32 = 16;
+
 /// CEP:WHAT: Maximum clauses one RUP/RAT check step of the internal DRAT checker may scan (design 11.1 S43).
 /// CEP:WHY: A RAT check scans every clause containing the negated pivot; the named bound turns adversarial proof files into a loud CheckBudgetExceeded instead of unbounded scanning.
 /// CEP:STATUS: complete
@@ -1473,6 +1553,15 @@ const _: () = {
     assert!(kSatBceMaxClauseLength <= kMaxSatClauseLiterals);
     assert!(kSatBceCheckBudget >= 1);
     assert!(kSatExtEntryLiterals >= kSatBceMaxClauseLength);
+    assert!(kMaxTheoryTerms >= 1);
+    assert!(kMaxTheoryVars >= 1);
+    assert!(kMaxTheoryAtoms >= 1);
+    assert!(kMaxTheoryAtoms <= kMaxSatVariables);
+    assert!(kMaxTheoryConflicts >= 1);
+    assert!(kMaxTheoryPropagationRounds > kMaxTheoryVars);
+    assert!(kTheoryDlScaleShift <= 32);
+    assert!((kTheoryDlMaxWeight as i128) < i64::MAX as i128 / (kMaxTheoryVars as i128 + 2) / 2);
+    assert!(kMaxTheoryArity >= 1);
     assert!(kDratRatScanLimit >= 1);
     assert!(kPassiveHeapCapacity >= 1);
     assert!(kActiveSetCapacity >= 1);

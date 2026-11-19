@@ -1,0 +1,12 @@
+{
+  "bench": "CEP-BENCH-0014",
+  "name": "theory_dpll_t_solve",
+  "iterations": 4,
+  "cycles_median": 7746111.5,
+  "cycles_min": 7224182,
+  "rustc": "1.99.0",
+  "profile": "release",
+  "target": "x86-64",
+  "cycle_counter": "serialized-rdtsc",
+  "date_unix": 1795049571
+}

@@ -416,13 +416,13 @@ impl<'a> SatCore<'a> {
         self.attach_clause(offset)
     }
 
-    /// CEP:WHAT: Attaches an existing clause to the watch lists or enqueues its unit literal.
-    /// CEP:WHY: Design 11.3: exactly two watches for clauses of length >= 2, none for units; attachment is push-front on both lists.
+    /// CEP:WHAT: Attaches an existing clause to the watch lists or enqueues its unit literal; at the root level the attachment is value-aware: a clause fully falsified by the recorded level-0 units surfaces the conflict, a clause with exactly one non-false literal enqueues the implication, and the watches sit on non-false literals.
+    /// CEP:WHY: Design 11.3: exactly two watches for clauses of length >= 2, none for units; attachment is push-front on both lists. The value-aware root-level form (Spec 21 section 4) exists because the DPLL(T) lemma path attaches clauses while level-0 units are already recorded, and the propagation queue has already passed those units - a falsified watch would never be re-scanned, so the attach itself must surface the falsification (a clause attached above the root level keeps the plain form: the search backjump re-clears the watches before propagation).
     /// CEP:STATUS: complete
     /// CEP:FAILURE: propagates storage and assignment errors.
     /// CEP:ASSUMES: the clause was created by this core's storage.
-    /// CEP:COST: O(1) plus possible unit enqueue.
-    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse.
+    /// CEP:COST: O(length) at the root level (one value scan plus the watch push), O(1) above the root.
+    /// CEP:EVIDENCE: unit/hot/sat_watch_test.rs::attach_and_traverse; unit/hot/sat_solver_test.rs::{falsified_clause_attachment_surfaces_conflict, unit_under_trail_attachment_propagates}.
     /// CEP:SECURITY: none.
     pub fn attach_clause(&self, offset: u32) -> Result<AttachOutcome, SatCoreError> {
         let header = self.clauses.header(offset)?;
@@ -436,6 +436,66 @@ impl<'a> SatCore<'a> {
                     Ok(AttachOutcome::UnitEnqueued(offset))
                 }
             };
+        }
+        if self.trail.level() == 0 {
+            // Value-aware attachment at the root level (Spec 21 section 4): a
+            // clause may arrive while level-0 units already falsify some of its
+            // literals (the DPLL(T) lemma path), and the propagation queue has
+            // already passed those units, so the falsified watches would never
+            // be re-scanned; the watches must sit on non-false literals and a
+            // unit-or-falsified clause must surface immediately.
+            let watch0 = self.clauses.literal(offset, 0)?;
+            let mut non_false = [u32::MAX; 2];
+            let mut seen = 0usize;
+            for index in 0..header.length {
+                let literal = self.clauses.literal(offset, index)?;
+                if self.value_of_literal(literal) != SatValue::False {
+                    if seen < 2 {
+                        non_false[seen] = index;
+                    }
+                    seen += 1;
+                }
+            }
+            match seen {
+                0 => return Ok(AttachOutcome::Conflict),
+                1 => {
+                    if non_false[0] != 0 {
+                        let keep = self.clauses.literal(offset, 0)?;
+                        let survivor = self.clauses.literal(offset, non_false[0])?;
+                        self.clauses.set_literal(offset, 0, survivor)?;
+                        self.clauses.set_literal(offset, non_false[0], keep)?;
+                    }
+                    let survivor = self.clauses.literal(offset, 0)?;
+                    self.assign_with_reason(survivor, offset)?;
+                    // Fall through to the watch push with the survivor in
+                    // position 0; the clause is attached and its implication is
+                    // enqueued for the next propagation.
+                }
+                _ => {
+                    if self.value_of_literal(watch0) == SatValue::False {
+                        let keep = watch0;
+                        let survivor = self.clauses.literal(offset, non_false[0])?;
+                        self.clauses.set_literal(offset, 0, survivor)?;
+                        self.clauses.set_literal(offset, non_false[0], keep)?;
+                    }
+                    let watch1_now = self.clauses.literal(offset, 1)?;
+                    if self.value_of_literal(watch1_now) == SatValue::False {
+                        let mut index = 1;
+                        loop {
+                            let literal = self.clauses.literal(offset, index)?;
+                            if self.value_of_literal(literal) != SatValue::False {
+                                if index != 1 {
+                                    let keep = watch1_now;
+                                    self.clauses.set_literal(offset, 1, literal)?;
+                                    self.clauses.set_literal(offset, index, keep)?;
+                                }
+                                break;
+                            }
+                            index += 1;
+                        }
+                    }
+                }
+            }
         }
         let watch0 = self.clauses.literal(offset, 0)?;
         let watch1 = self.clauses.literal(offset, 1)?;

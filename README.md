@@ -1,6 +1,6 @@
 # MAPT
 
-MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-4 plus the revised-build-order Phase 4: Foundations, Core Engines, Search Loops, Integration, and Automated Induction / Conjecture Generation / Proof Recording**, together with the input-parsing layer (DIMACS CNF and TPTP CNF/FOF, `cold/parsing/`, Spec 20), built to the letter of the **CEP&CC 0.4** coding standard (`standard.md`). Documentation follows the Documentation Style Guide (`doc standard.md`): every component document in `doc/` carries its section 3 structure (Abstract, Formal Definitions, Algorithm, Invariants, Integration Points, Known Limitations), and its section 5 CI gates run in the `docs` job.
+MAPT is a first-order automated theorem prover with an integrated CDCL SAT solver, AVATAR-style clause splitting, theory reasoning, portfolio concurrency, and certified proof production (see `DESIGN.md`). This repository currently contains **Phases 1-4, the revised-build-order Phase 4, and the revised-build-order Phase 5 theory rows (DPLL(T) integration, congruence closure, Nelson-Oppen combination; `hot/theory/`, Spec 21 - the higher-order row remains ticketed under CEP-1033/CEP-1062): Foundations, Core Engines, Search Loops, Integration, Automated Induction / Conjecture Generation / Proof Recording, and Theory Reasoning**, together with the input-parsing layer (DIMACS CNF and TPTP CNF/FOF, `cold/parsing/`, Spec 20), built to the letter of the **CEP&CC 0.4** coding standard (`standard.md`). Documentation follows the Documentation Style Guide (`doc standard.md`): every component document in `doc/` carries its section 3 structure (Abstract, Formal Definitions, Algorithm, Invariants, Integration Points, Known Limitations), and its section 5 CI gates run in the `docs` job.
 
 ## Revised-build-order Phase 4 contents (automated induction, conjecture generation, proof recording)
 
@@ -45,6 +45,7 @@ MAPT is a first-order automated theorem prover with an integrated CDCL SAT solve
 | Bounded inference generator (deferrable cursor) | complete | `hot/search/generate.rs` |
 | SAT: clause registry + learnt deletion (LBD/age policy) | complete | `hot/sat/registry.rs` |
 | SAT: preprocessing (subsumption, self-subsumption, tautology, duplicates, vivification, probing, hyper-binary resolution, bounded variable elimination, blocked-clause elimination with model reconstruction) | complete | `hot/sat/preprocess.rs` |
+| Theory reasoning: DPLL(T), congruence closure (EUF), difference logic over Q, Nelson-Oppen combination | complete | `hot/theory/` |
 | SAT: incremental solving + assumptions with failed cores | complete | `hot/sat/solver.rs`, `hot/sat/cdcl.rs` |
 | SAT: DRAT proof recording, writer, internal RUP/RAT checker | complete | `hot/sat/proof.rs`, `cold/proof_output/` |
 | Formal specs 07-11 (rules, loop, preprocessing, assumptions, DRAT) | complete | `doc/formal/` |

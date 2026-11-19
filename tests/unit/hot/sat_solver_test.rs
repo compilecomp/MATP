@@ -408,3 +408,94 @@ fn restarts_fire_during_search() {
     );
     assert!(solver.conflicts() > 0);
 }
+
+// CEP:WHAT: Verifies a clause attached while fully falsified by level-0 units surfaces the conflict (the value-aware root-level attach).
+// CEP:WHY: Spec 21 section 4: the DPLL(T) lemma path attaches clauses under a populated level-0 trail, and the propagation queue has already passed the falsifying units, so the attach must surface the falsification itself.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the falsified clause is accepted and the next solve claims satisfiability.
+// CEP:ASSUMES: units (not 1)(not 2)(not 3) are level-0 facts; the clause (1 or 2 or 3) is attached afterwards.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/database.rs::attach_clause.
+// CEP:SECURITY: none.
+#[test]
+fn falsified_clause_attachment_surfaces_conflict() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 10, RestartPolicy::Luby, false).expect("solver");
+    for variable in 1..=3u32 {
+        solver
+            .add_clause(&[SatLiteral::new(SatVar(variable), false).expect("lit")])
+            .expect("unit");
+    }
+    assert_eq!(solver.solve(), SolveResult::Satisfiable);
+    solver.return_to_root_level().expect("root level");
+    solver
+        .add_clause(&[
+            SatLiteral::new(SatVar(1), true).expect("l1"),
+            SatLiteral::new(SatVar(2), true).expect("l2"),
+            SatLiteral::new(SatVar(3), true).expect("l3"),
+        ])
+        .expect("attach");
+    assert_eq!(
+        solver.solve(),
+        SolveResult::Unsatisfiable,
+        "the falsified clause must refute at the root"
+    );
+}
+
+// CEP:WHAT: Verifies a clause attached with exactly one non-false literal enqueues the implication.
+// CEP:WHY: Spec 21 section 4: the unit-under-trail case must not wait for a watch event that never comes.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the implication is lost and the model violates the clause.
+// CEP:ASSUMES: units (not 1)(not 2) are level-0 facts; the clause (1 or 2 or 3) is attached afterwards.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/database.rs::attach_clause.
+// CEP:SECURITY: none.
+#[test]
+fn unit_under_trail_attachment_propagates() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 10, RestartPolicy::Luby, false).expect("solver");
+    for variable in 1..=2u32 {
+        solver
+            .add_clause(&[SatLiteral::new(SatVar(variable), false).expect("lit")])
+            .expect("unit");
+    }
+    assert_eq!(solver.solve(), SolveResult::Satisfiable);
+    solver.return_to_root_level().expect("root level");
+    solver
+        .add_clause(&[
+            SatLiteral::new(SatVar(1), true).expect("l1"),
+            SatLiteral::new(SatVar(2), true).expect("l2"),
+            SatLiteral::new(SatVar(3), true).expect("l3"),
+        ])
+        .expect("attach");
+    assert_eq!(solver.solve(), SolveResult::Satisfiable);
+    assert_eq!(
+        solver.model_value(3),
+        Some(true),
+        "the implication must hold"
+    );
+}
+
+// CEP:WHAT: Verifies the root-level return path exists and keeps level-0 facts.
+// CEP:WHY: The DPLL(T) lemma loop's sanctioned inter-solve state (Spec 21 section 4).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the return path loses a level-0 unit or fails.
+// CEP:ASSUMES: one unit clause; a solve; the return; the value persists.
+// CEP:COST: constant.
+// CEP:EVIDENCE: cited by hot/sat/solver.rs::return_to_root_level.
+// CEP:SECURITY: none.
+#[test]
+fn return_to_root_level_keeps_root_facts() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 10, RestartPolicy::Luby, false).expect("solver");
+    solver
+        .add_clause(&[SatLiteral::new(SatVar(0), true).expect("lit")])
+        .expect("unit");
+    assert_eq!(solver.solve(), SolveResult::Satisfiable);
+    solver.return_to_root_level().expect("root level");
+    assert_eq!(
+        solver.model_value(0),
+        Some(true),
+        "the level-0 fact must survive the return"
+    );
+}

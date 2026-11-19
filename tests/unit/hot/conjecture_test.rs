@@ -1049,6 +1049,8 @@ fn two_harvests_stay_sound() {
                         | InferenceRule::Demodulation
                         | InferenceRule::Factoring
                         | InferenceRule::EqualityFactoring
+                        | InferenceRule::SubsumptionResolution
+                        | InferenceRule::Condensation
                 ),
                 "proof-only or lemma clause c{} (rule {:?}) leaked into the second harvest's premise set",
                 ancestor,

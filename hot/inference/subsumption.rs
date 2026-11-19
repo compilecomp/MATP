@@ -194,7 +194,7 @@ pub fn condensation_target(
 /// CEP:FAILURE: Ok(false) when m' is not licensed; Err propagates structural failures; trail-disciplined.
 /// CEP:ASSUMES: resolution < clause.len(); the clause's namespace is dense.
 /// CEP:COST: O(|clause|) renamed instance matches.
-/// CEP:EVIDENCE: unit/cold/kernel_test.rs::{condensation_replay_accepts_recorded_step, condensation_replay_rejects_tampered_step}.
+/// CEP:EVIDENCE: unit/cold/kernel_test.rs::condensation_replay_accepts_recorded_step (the tampered-conclusion rejection is asserted in the same test).
 /// CEP:SECURITY: bounded matches.
 pub fn condensation_resolves_onto(
     context: &InferenceContext<'_>,

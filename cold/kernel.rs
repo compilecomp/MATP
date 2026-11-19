@@ -215,7 +215,7 @@ pub enum KernelRejection {
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: none.
     /// CEP:COST: enum value.
-    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::{subsumption_resolution_replay_accepts_recorded_step, subsumption_resolution_replay_rejects_tampered_step}.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::subsumption_resolution_replay_accepts_recorded_step (the tampered-conclusion rejection is asserted in the same test).
     /// CEP:SECURITY: proof validation.
     BrokenSubsumptionResolution,
     /// CEP:WHAT: No legal condensation application reproduces the conclusion (CEP-1034).
@@ -224,7 +224,7 @@ pub enum KernelRejection {
     /// CEP:FAILURE: none.
     /// CEP:ASSUMES: none.
     /// CEP:COST: enum value.
-    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::{condensation_replay_accepts_recorded_step, condensation_replay_rejects_tampered_step}.
+    /// CEP:EVIDENCE: unit/cold/kernel_test.rs::condensation_replay_accepts_recorded_step (the tampered-conclusion rejection is asserted in the same test).
     /// CEP:SECURITY: proof validation.
     BrokenCondensation,
     /// CEP:WHAT: The recorded component clause is not a component of the production split of its parent.

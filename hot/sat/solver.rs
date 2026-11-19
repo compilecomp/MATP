@@ -657,6 +657,20 @@ impl<'a> CdclSolver<'a> {
         })
     }
 
+    /// CEP:WHAT: Returns the solver to decision level 0, keeping all clauses and learnts.
+    /// CEP:WHY: The DPLL(T) outer loop (hot/theory) must add theory lemmas between solves; the Satisfiable exit of a solve intentionally leaves the trail at the search level so the model stays readable, so the lemma loop needs the sanctioned return path after it has snapshotted the atom values. The trail's level-0 facts persist; the search-level assignments do not (the caller must extract the model first, Spec 21 section 4).
+    /// CEP:STATUS: complete
+    /// CEP:FAILURE: propagates the deferred-cleanup flush error; never panics.
+    /// CEP:ASSUMES: called between solves; model_value is invalid for search-level variables after this call.
+    /// CEP:COST: O(trail height) plus the batched VSIDS reinsertion wave.
+    /// CEP:EVIDENCE: unit/hot/theory_test.rs::dpll_t_unsat_via_lemmas.
+    /// CEP:SECURITY: none.
+    pub fn return_to_root_level(&self) -> Result<(), CdclError> {
+        self.flush_pending_cleanup()?;
+        self.backtrack(0);
+        Ok(())
+    }
+
     // CEP:WHAT: Flushes a deferred assumption-solve cleanup: backtracks to level 0, deletes the assumption-dependent learnt clauses, and removes the assumption units from the proof trace.
     // CEP:WHY: Spec 10 section 5: the cleanup is mandatory before any further solver interaction (the deferred learnts may depend on assumption units that no longer hold); parking it behind one explicit method keeps every entry point (add_clause, both solve entry points) sound with a single call.
     // CEP:STATUS: complete

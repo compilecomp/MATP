@@ -180,7 +180,10 @@ fn conjecture_distance_ignores_conjecture_symbols() {
         vec![core::cell::Cell::new(p_id), core::cell::Cell::new(f_id)];
     set.sort_by_key(|cell| cell.get());
     let distance = SelectionWeight::conjecture_distance(&terms, &symbols, Some(&set), &literals);
-    assert_eq!(distance, 0, "p and f are conjecture symbols");
+    assert_eq!(
+        distance, 1,
+        "p and f are conjecture symbols; the constant a remains foreign - the walk covers every symbol id of the atom (design 15.2's symbol-overlap reading, and the file's third sub-case pins the same 1)"
+    );
     // Only p known: f and a are foreign (distinct symbols, weight 1 each).
     let mut partial: Vec<core::cell::Cell<u32>> = vec![core::cell::Cell::new(p_id)];
     partial.sort_by_key(|cell| cell.get());
@@ -448,8 +451,8 @@ fn sos_restriction_spares_nonsupport_clauses() {
         "the unsupported clause must never generate (no resolution against the seed)"
     );
     assert_eq!(
-        stats.given_processed, 2,
-        "both clauses are processed (simplified, activated), only the seed is given"
+        stats.given_processed, 3,
+        "both input clauses are processed (simplified, activated), only the seed starts a generation; the seed's given-time subsumption-resolution (CEP-1034) replaces the plain clause with q(a,a), a support descendant, whose given-candidate pass makes the third processing"
     );
 }
 

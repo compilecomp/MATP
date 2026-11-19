@@ -787,3 +787,108 @@ fn bve_stack_overflow_skips() {
         kSatBceStackDepth as usize
     );
 }
+
+// CEP:WHAT: BCE stack overflow stops the pass honestly (Spec 09 sections 11-12).
+// CEP:WHY: BCE deletion is equisatisfiable only, so every eliminated clause is recorded inline; the stack holds kSatBceStackDepth entries, the pass checks the free depth before recording, and the 65th independent blocked pair must stop the round with the budget status instead of an error or a silent skip (the recorded entries still reconstruct the model).
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the overflow is an error, a silent overrun, or the pass claims completion.
+// CEP:ASSUMES: 65 independent blocked pairs in the sixteen-literal shape (the elimination scan's payload bound leaves them to BCE); each pair eliminates exactly one clause.
+// CEP:COST: 130 clauses, one simplify run.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs (the BCE pass and the eliminated-clause accounting) and hot/sat/solver.rs::{ext_entry_count, bce_record} and config/limits.rs kSatBceStackDepth.
+// CEP:SECURITY: denial-of-service bound under test.
+#[test]
+fn bce_stack_overflow_stops() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 2000, RestartPolicy::Luby, false).expect("solver");
+    // Sixty-five independent blocked pairs in the same shape the single-pair
+    // fixture uses: the shared variables carry fourteen fresh single-occurrence
+    // literals per side, so each pair is mutually blocked (every resolvent
+    // tautological), the sixteen-literal candidate fits kSatBceMaxClauseLength,
+    // and the variable-elimination scan skips every variable because the two
+    // clauses' inline deletion payload exceeds kSatExtEntryLiterals (the same
+    // shape leaves the single-pair fixture to BCE). Each elimination records
+    // exactly one stack entry, so the sixty-fifth attempt finds the full stack.
+    for pair in 0..65u32 {
+        let left = 30 * pair;
+        let right = 30 * pair + 1;
+        let mut positive = vec![lit(left, true), lit(right, true)];
+        let mut negative = vec![lit(left, false), lit(right, false)];
+        for extra in 0..14u32 {
+            positive.push(lit(30 * pair + 2 + extra, true));
+            negative.push(lit(30 * pair + 16 + extra, true));
+        }
+        solver.add_clause(&positive).expect("blocked");
+        solver.add_clause(&negative).expect("partner");
+    }
+    // The elimination scan's variable budget must cover all 1,950 variables so
+    // the round reaches BCE with every variable skipped by the payload bound
+    // (the scan's own budget status must not pre-empt the stack stop).
+    let mut options = SimplifyOptions::new();
+    options.bve_variables = 2000;
+    // The blockedness check budget must cover 65 sixteen-literal candidates
+    // (each candidate's resolvent scan dominates), so the stack bound - not the
+    // check budget - is what stops the pass.
+    options.bce_checks = 1_000_000;
+    let outcome = simplify(&solver, &options).expect("simplify");
+    assert_eq!(
+        outcome.status,
+        SimplifyStatus::BceBudgetExhausted,
+        "the full stack stops the pass with the honest budget status"
+    );
+    assert_eq!(
+        solver.ext_entry_count(),
+        mapt_config::limits::kSatBceStackDepth,
+        "the stack holds exactly its depth in recorded eliminations"
+    );
+    assert_eq!(
+        outcome.stats.bce_clauses,
+        mapt_config::limits::kSatBceStackDepth,
+        "stats: {:?}",
+        outcome.stats
+    );
+    // Soundness: the solver stays usable and the surviving clause set is
+    // satisfiable (the model reconstruction over the recorded entries applies).
+    assert_eq!(
+        solver.solve(),
+        SolveResult::Satisfiable,
+        "the surviving clauses are satisfiable"
+    );
+}
+
+// CEP:WHAT: A probe excursion whose derived unit refutes the formula reports Unsatisfiable (Spec 09 section 8).
+// CEP:WHY: The probe pass decides a literal, propagates, and on conflict adds the negated literal through the shared derived-add path; when that addition falsifies at the root the formula is refuted and the status must say so - the probe is a refutation engine, not just a strengthening pass.
+// CEP:STATUS: complete
+// CEP:FAILURE: test fails when the refutation is missed or misreported.
+// CEP:ASSUMES: the fixture's every probe order refutes (probing x or y derives the refuting unit deterministically).
+// CEP:COST: one simplify run.
+// CEP:EVIDENCE: cited by hot/sat/preprocess.rs probe_literal.
+// CEP:SECURITY: none.
+#[test]
+fn probe_refutation() {
+    let arena = make_arena(12_582_912);
+    let solver = CdclSolver::new(arena, 8, RestartPolicy::Luby, false).expect("solver");
+    // (x or y), (x or not y), (not x or z), (not z): probing x derives not x,
+    // whose BCP forces y and not y; probing y derives not y, whose BCP forces
+    // x and then z and not z. Either order refutes.
+    solver
+        .add_clause(&[lit(0, true), lit(1, true)])
+        .expect("clause 1");
+    solver
+        .add_clause(&[lit(0, true), lit(1, false)])
+        .expect("clause 2");
+    solver
+        .add_clause(&[lit(0, false), lit(2, true)])
+        .expect("clause 3");
+    solver.add_clause(&[lit(2, false)]).expect("clause 4");
+    let outcome = simplify(&solver, &SimplifyOptions::new()).expect("simplify");
+    assert_eq!(
+        outcome.status,
+        SimplifyStatus::Unsatisfiable,
+        "the probe-derived unit refutes the formula"
+    );
+    assert_eq!(
+        solver.solve(),
+        SolveResult::Unsatisfiable,
+        "the refutation persists in the solver"
+    );
+}

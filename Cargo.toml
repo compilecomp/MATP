@@ -149,6 +149,14 @@ name = "sat_preprocess_test"
 path = "tests/unit/hot/sat_preprocess_test.rs"
 
 [[test]]
+name = "phase5_bounds_test"
+path = "tests/security/phase5_bounds_test.rs"
+
+[[test]]
+name = "theory_test"
+path = "tests/unit/hot/theory_test.rs"
+
+[[test]]
 name = "drat_writer_test"
 path = "tests/unit/cold/drat_writer_test.rs"
 
@@ -179,6 +187,10 @@ path = "tests/unit/hot/given_clause_test.rs"
 [[test]]
 name = "sat_preprocess_property_test"
 path = "tests/property/sat_preprocess_property_test.rs"
+
+[[test]]
+name = "theory_property_test"
+path = "tests/property/theory_property_test.rs"
 
 [[test]]
 name = "sat_incremental_property_test"
@@ -458,6 +470,10 @@ harness = false
 [[bench]]
 name = "cdcl_bench"
 path = "benches/hot/cdcl_bench.rs"
+
+[[bench]]
+name = "theory_bench"
+path = "benches/hot/theory_bench.rs"
 harness = false
 
 [profile.release]

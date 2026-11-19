@@ -57,7 +57,12 @@ pub mod ordering;
 pub mod result;
 /// SAT engine: literals, assignment, trail, watch lists, database, BCP, CDCL, VSIDS, restarts, registry, preprocessing, incremental solving, proof recording.
 pub mod sat;
+
+// CEP:WHAT: The theory-reasoning engine: the term graph, congruence closure, difference logic, Nelson-Oppen combination, and DPLL(T) loop (design 13, Phase 5 of design 26).
+// CEP:WHY: Design 26 Phase 5's three theory rows in one module family; the design 14 higher-order row remains ticketed (CEP-1033, CEP-1062).
 /// Search loop: passive set, active set, bounded inference generator, given-clause saturation.
 pub mod search;
+/// The theory-reasoning engine of design 13: term graph, congruence closure, difference logic over Q, Nelson-Oppen combination, and the DPLL(T) outer loop over the CDCL solver.
+pub mod theory;
 /// Unification subsystem: the substitution engine and the unification, matching, and composition algorithms.
 pub mod unification;

@@ -73,6 +73,20 @@ CEP_BASELINES = {
     "deque_steal": 68.65,
     "mpmc_enqueue_dequeue": 1008.83,
     "codec_roundtrip": 2281.13,
+    # CEP:NOTE: Phase 5 additions (revised build order) recorded 2026-11-19,
+    # same host class as above: theory_congruence_check (one closure check:
+    # reset, four asserted merges, the signature fixpoint over a twelve-node
+    # two-layer term graph), theory_dl_check (one difference-logic check:
+    # reset, thirty-two asserted constraints including two zero-equality
+    # pairs, one Bellman-Ford), theory_dpll_t_solve / theory_dpll_t_unsat
+    # (one full DPLL(T) run over a fresh 12 MiB fixture: solver construction,
+    # atom registration, clause encoding, and the SAT or UNSAT end -
+    # allocation-dominated by the fresh-fixture discipline shared with the
+    # preprocessing round bench).
+    "theory_congruence_check": 1235.996,
+    "theory_dl_check": 4904.604,
+    "theory_dpll_t_solve": 7746111.5,
+    "theory_dpll_t_unsat": 7789092.5,
 }
 
 
